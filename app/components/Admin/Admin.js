@@ -158,7 +158,7 @@ function Admin() {
       )}
       {updateStatus && (
         <Snackbar
-          key={updateStatus.message + updateStatus.type} // unique key
+          key={updateStatus.message + updateStatus.type}
           message={updateStatus.message}
           isError={updateStatus.type !== 200}
           closeFunc={handleCloseSnackbar}
