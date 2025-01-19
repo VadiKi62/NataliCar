@@ -186,7 +186,7 @@ export default function NavBar({
                       textTransform: "uppercase",
                     }}
                   >
-                    Календари
+                    Календарь заказов
                   </Typography>
                 </Link>
                 <Link href="/admin/orders-calendar">
@@ -208,7 +208,7 @@ export default function NavBar({
                       textTransform: "uppercase",
                     }}
                   >
-                    Календарь заказов
+                    Список заказов
                   </Typography>
                 </Link>
 

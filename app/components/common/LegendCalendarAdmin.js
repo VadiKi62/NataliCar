@@ -30,7 +30,7 @@ function LegendCalendarAdmin({ client }) {
           }}
         />
         <Typography component="span" variant="body2">
-          Подтвержденные брони
+          Not Available
         </Typography>
       </Box>
 
@@ -53,7 +53,7 @@ function LegendCalendarAdmin({ client }) {
           }}
         />
         <Typography component="span" variant="body2">
-          Неподтвержденные брони
+          Partially Reserved
         </Typography>
       </Box>
 
