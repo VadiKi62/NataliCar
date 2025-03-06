@@ -59,8 +59,8 @@ const SuccessMessage = ({
       </Typography>
       {emailSent && (
         <Typography variant="body1" sx={{ mt: 1 }}>
-          We have got your order and we will contact you within 24 hours to
-          finalize the details.
+          We have got your order and we will contact you shortly to clarify the
+          details..
         </Typography>
       )}
     </Box>
