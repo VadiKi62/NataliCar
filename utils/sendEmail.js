@@ -28,6 +28,7 @@ const sendEmail = async (
     ? companyEmail
     : "ntf_elcor@gmail.com";
 
+  console.log("!!!!!emailCompany", emailCompany);
   emailjs.init(options);
   const params = {
     from_name: "RentCarsAdmins",

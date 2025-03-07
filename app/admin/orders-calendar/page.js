@@ -12,7 +12,7 @@ export default async function PageOrdersCalendar() {
   unstable_noStore();
   const carsData = await fetchAllCars();
   const ordersData = await reFetchAllOrders();
-  const companyId = "676440c79775c7ee203e4e0e";
+  const companyId = "679903bd10e6c8a8c0f027bc";
   const company = await fetchCompany(companyId);
   return (
     <Suspense fallback={<Loading />}>
