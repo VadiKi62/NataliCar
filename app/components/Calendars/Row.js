@@ -231,7 +231,7 @@ export default function CarTableRow({
                 color: "common.white",
               }}
             >
-              {order.timeEnd}
+              {order?.timeEnd}
             </Box>
 
             {/* Start Date Box - Right half */}
