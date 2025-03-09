@@ -1,0 +1,59 @@
+{
+  "header": {
+    "main": "Main",
+    "terms": "Terms",
+    "contacts": "Contacts",
+    "cars": "Cars",
+    "calendars": "Calendars",
+    "table": "Orders table",
+    "calendar": "Calendar",
+    "orders": "Orders"
+  },
+  "basic": {
+    "close": "close",
+    "cancel": "cancel",
+    "from": "from ",
+    "to": "to",
+    "till": "till "
+  },
+  "statusMesssages": {
+    "pending": "Order in progress, these dates might not be available : {{dates}} . We will get in touch with you with details. ",
+    "conflict": "Dates {{dates}} are already booked. Time to get creative!",
+    "orderDone": "Order successful! We'll touch base within 48 hours. 🎉"
+  },
+  "order": {
+    "chooseDates": "Choose your dates for booking",
+    "notAvailableDate": "Not available",
+    "pendingDate": "Pending (available for booking)",
+    "confirmBooking": "Confirm booking",
+    "book": "Book {{model}}",
+    "youBook": "You are booking {{model}} from ",
+    "till": "till ",
+    "name": "Name",
+    "phone": "Phone number",
+    "thank": "Thank you for booking with us!",
+    "daysNumber": " Number of days:",
+    "price": "Total price :",
+    "weContact": " We have got your order and we will contact you within 24 hours to finalize the details.",
+    "confirmed": "Confirmed orders",
+    "not-confirmed": "Non-confirmed orders",
+    "conflict": "Conflict orders"
+  },
+  "car": {
+    "viewDetails": "View more details",
+    "upTo": "Up to {{days}} days",
+    "pricesFor": "Prices for current Season",
+    "fromTo": "from {{date1}} to {{date2}}",
+    "class": "Class",
+    "transmission": "Transmission",
+    "fuel": "Fuel type",
+    "seats": "Seats",
+    "air": "Air Conditioning",
+    "reg-year": "Registration Year",
+    "reg-numb": "Registration Number",
+    "color": "Color",
+    "doors": "Number of Doors",
+    "engine-pow": "Engine Power",
+    "engine": "Engine"
+  }
+}
