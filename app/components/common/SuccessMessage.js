@@ -59,8 +59,13 @@ const SuccessMessage = ({
       </Typography>
       {emailSent && (
         <Typography variant="body1" sx={{ mt: 1 }}>
+<<<<<<< HEAD
           We have got your order and we will contact you shortly to finalize the
           details.
+=======
+          We have got your order and we will contact you shortly to clarify the
+          details..
+>>>>>>> 61ac9e0eab70c3c44e987db881ba8307dec79694
         </Typography>
       )}
     </Box>
