@@ -222,13 +222,15 @@ const EditOrderModal = ({
         ...order,
         rentalStartDate: dayjs(order.rentalStartDate),
         rentalEndDate: dayjs(order.rentalEndDate),
-        timeIn: dayjs.utc(order.timeIn),
-        timeOut: dayjs.utc(order.timeOut),
+        // Отображаем время заказа в локальной зоне Афин
+        timeIn: dayjs.utc(order.timeIn).tz(timeZone),
+        timeOut: dayjs.utc(order.timeOut).tz(timeZone),
       };
       setEditedOrder(adjustedOrder);
       setIsManualTotalPrice(false); // Сброс ручного режима при открытии
-      setStartTime(dayjs.utc(order.timeIn));
-      setEndTime(dayjs.utc(order.timeOut));
+      // Таймпикеры также в локальной зоне Афин
+      setStartTime(dayjs.utc(order.timeIn).tz(timeZone));
+      setEndTime(dayjs.utc(order.timeOut).tz(timeZone));
       isFirstOpen.current = true; // Сбросить флаг при каждом открытии
       if (order.hasConflictDates && order.hasConflictDates.length > 0) {
         const conflictingOrderIds = new Set(order.hasConflictDates);
@@ -395,24 +397,25 @@ const EditOrderModal = ({
     setIsUpdating(true);
     try {
       const selectedCar = cars.find((c) => c._id === editedOrder.car);
+      // Собираем локальные (Афины) времена и конвертируем в UTC для БД
+      const startDateStr = editedOrder.rentalStartDate.format("YYYY-MM-DD");
+      const endDateStr = editedOrder.rentalEndDate.format("YYYY-MM-DD");
+      const timeInLocal = dayjs.tz(
+        `${startDateStr} ${dayjs(startTime).format("HH:mm")}`,
+        "YYYY-MM-DD HH:mm",
+        timeZone
+      );
+      const timeOutLocal = dayjs.tz(
+        `${endDateStr} ${dayjs(endTime).format("HH:mm")}`,
+        "YYYY-MM-DD HH:mm",
+        timeZone
+      );
 
       const datesToSend = {
         rentalStartDate: dayjs(editedOrder.rentalStartDate).toDate(),
         rentalEndDate: dayjs(editedOrder.rentalEndDate).toDate(),
-        timeIn: dayjs
-          .utc(
-            editedOrder.rentalStartDate.format("YYYY-MM-DD") +
-              " " +
-              startTime.format("HH:mm")
-          )
-          .toDate(),
-        timeOut: dayjs
-          .utc(
-            editedOrder.rentalEndDate.format("YYYY-MM-DD") +
-              " " +
-              endTime.format("HH:mm")
-          )
-          .toDate(),
+        timeIn: timeInLocal.utc().toDate(),
+        timeOut: timeOutLocal.utc().toDate(),
         car: editedOrder.car,
         carNumber: selectedCar ? selectedCar.carNumber : undefined,
         placeIn: editedOrder.placeIn,
@@ -455,12 +458,12 @@ const EditOrderModal = ({
         isStartConflict &&
           setTimeInMessage(
             `Car is Not available before ${dayjs(isStartConflict).format(
-              "HH:MM"
+              "HH:mm"
             )}`
           );
         isEndConflict &&
           setTimeOutMessage(
-            `Car is Not available after ${dayjs(isEndConflict).format("HH:MM")}`
+            `Car is Not available after ${dayjs(isEndConflict).format("HH:mm")}`
           );
       }
     } catch (error) {

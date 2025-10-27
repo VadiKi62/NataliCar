@@ -1,5 +1,11 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { companyData } from "@utils/companyData";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const TIMEZONE = "Europe/Athens";
 
 const defaultStartHour = companyData.defaultStart.slice(0, 2);
 const defaultStartMinute = companyData.defaultStart.slice(-2);
@@ -114,9 +120,9 @@ export function extractArraysOfStartEndConfPending(orders) {
     const startDate = dayjs(order.rentalStartDate);
     const endDate = dayjs(order.rentalEndDate);
 
-    const timeStart = order.timeIn.toString().slice(11, 16);
-
-    const timeEnd = order.timeOut.toString().slice(11, 16);
+    // Формируем время строго в зоне Афин из UTC-значений БД
+    const timeStart = dayjs.utc(order.timeIn).tz(TIMEZONE).format("HH:mm");
+    const timeEnd = dayjs.utc(order.timeOut).tz(TIMEZONE).format("HH:mm");
 
     // Add start and end dates to special handling array
     startEnd.push({
@@ -298,7 +304,7 @@ export function setTimeToDatejs(date, time, isStart = false) {
   // console.log("DATE", date);
   // console.log("time", time);
   if (time) {
-    const hour = Number(time?.slice(0, 2)) + 1;
+    const hour = Number(time?.slice(0, 2));
     const minute = Number(time?.slice(-2));
     const newDateWithTime = dayjs(date)
       .hour(hour)

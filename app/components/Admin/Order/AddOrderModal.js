@@ -331,41 +331,30 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       "AddOrderModal: нужно создать UTC время сохранив локальные часы"
     );
 
-    // ИСПРАВЛЕНИЕ v2: создаю UTC объекты, сохраняя локальное время (как в setTimeToDatejs)
-    const timeInWithDate = dayjs.utc(
-      bookDates.start + " " + startTime.format("HH:mm")
-    ); // создаю UTC из строки
+    // Интерпретируем ввод как локальное время Афин и конвертируем в UTC для БД
+    const timeInLocal = dayjs.tz(
+      `${bookDates.start} ${dayjs(startTime).format("HH:mm")}`,
+      "YYYY-MM-DD HH:mm",
+      "Europe/Athens"
+    );
+    const timeOutLocal = dayjs.tz(
+      `${bookDates.end} ${dayjs(endTime).format("HH:mm")}`,
+      "YYYY-MM-DD HH:mm",
+      "Europe/Athens"
+    );
 
-    const timeOutWithDate = dayjs.utc(
-      bookDates.end + " " + endTime.format("HH:mm")
-    ); // создаю UTC из строки
-
-    console.log("После исправления v2:");
-    console.log("timeInWithDate.$u:", timeInWithDate.$u);
-    console.log(
-      "timeInWithDate.format('HH:mm'):",
-      timeInWithDate.format("HH:mm")
-    );
-    console.log("timeInWithDate.toISOString():", timeInWithDate.toISOString());
-    console.log("timeOutWithDate.$u:", timeOutWithDate.$u);
-    console.log(
-      "timeOutWithDate.format('HH:mm'):",
-      timeOutWithDate.format("HH:mm")
-    );
-    console.log(
-      "timeOutWithDate.toISOString():",
-      timeOutWithDate.toISOString()
-    );
+    const timeInUTC = timeInLocal.utc().toDate();
+    const timeOutUTC = timeOutLocal.utc().toDate();
 
     const data = {
       carNumber: car?.carNumber,
       customerName: orderDetails.customerName,
       phone: orderDetails.phone,
       email: orderDetails.email,
-      timeIn: timeInWithDate,
-      timeOut: timeOutWithDate,
-      rentalStartDate: dayjs.utc(timeInWithDate).toDate(),
-      rentalEndDate: dayjs.utc(timeOutWithDate).toDate(),
+      timeIn: timeInUTC,
+      timeOut: timeOutUTC,
+      rentalStartDate: dayjs(timeInUTC).toDate(),
+      rentalEndDate: dayjs(timeOutUTC).toDate(),
       placeIn: orderDetails.placeIn,
       placeOut: orderDetails.placeOut,
       confirmed: orderDetails.confirmed,

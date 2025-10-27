@@ -6,6 +6,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // ИСПРАВЛЕННАЯ функция проверки конфликтов
 function checkConflictsFixed(allOrders, newStart, newEnd) {
@@ -403,20 +404,11 @@ async function checkForResolvedConflicts(order, newStartDate, newEndDate) {
 }
 
 async function timeAndDate(startDate, endDate, startTime, endTime) {
-  const newStartHour = startTime.hour();
-  const newStartMinute = startTime.minute();
-  const newEndHour = endTime.hour();
-  const newEndMinute = endTime.minute();
-
-  const newStartDate = dayjs(startDate)
-    .hour(newStartHour)
-    .minute(newStartMinute);
-
-  const newEndDate = dayjs(endDate).hour(newEndHour).minute(newEndMinute);
-
+  // Важно: используем точные моменты startTime/endTime (из клиента/базы),
+  // чтобы избежать ошибок из-за локали сервера и DST при пересборке часов.
   return {
-    start: newStartDate,
-    end: newEndDate,
+    start: dayjs(startTime),
+    end: dayjs(endTime),
   };
 }
 

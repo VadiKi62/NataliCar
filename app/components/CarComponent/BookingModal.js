@@ -34,11 +34,14 @@ import sendEmail from "@utils/sendEmail";
 import { setTimeToDatejs } from "@utils/functions";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { useMainContext } from "../../Context";
 import { useSnackbar } from "notistack";
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
+dayjs.extend(timezone);
+const TIME_ZONE = "Europe/Athens";
 
 const BookingModal = ({
   open,
@@ -60,6 +63,7 @@ const BookingModal = ({
   const [phone, setPhone] = useState("");
   const [childSeats, setChildSeats] = useState(0);
   const [insurance, setInsurance] = useState("");
+  const [franchiseOrder, setFranchiseOrder] = useState(0);
   const [errors, setErrors] = useState({});
   const [emailSent, setSuccessfullySent] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -182,6 +186,25 @@ const BookingModal = ({
       setOrderNumber(generateOrderNumber());
       setPlaceIn("Halkidikí"); // Значение по умолчанию
       setPlaceOut("Halkidikí"); // Значение по умолчанию
+      // Подтягиваем franchise из базы/prop автомобиля при открытии модалки
+      // 1) если пришёл вместе с car — используем его
+      if (car && typeof car.franchise !== "undefined") {
+        setFranchiseOrder(Number(car.franchise) || 0);
+      } else if (car && car._id) {
+        // 2) иначе пробуем получить из API
+        fetch(`/api/car/${car._id}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data && typeof data.franchise !== "undefined") {
+              setFranchiseOrder(Number(data.franchise) || 0);
+            }
+          })
+          .catch(() => {
+            // игнорируем, оставим 0 по умолчанию
+          });
+      } else {
+        setFranchiseOrder(0);
+      }
     }
   }, [open]);
 
@@ -201,22 +224,46 @@ const BookingModal = ({
     setIsSubmitting(true);
 
     try {
+      // Интерпретируем ввод как локальное время Афин и конвертируем в UTC для БД
+      const startDateStr = presetDates?.startDate
+        ? dayjs(presetDates.startDate).format("YYYY-MM-DD")
+        : null;
+      const endDateStr = presetDates?.endDate
+        ? dayjs(presetDates.endDate).format("YYYY-MM-DD")
+        : null;
+
+      const timeInLocal = startDateStr
+        ? dayjs.tz(
+            `${startDateStr} ${dayjs(startTime).format("HH:mm")}`,
+            "YYYY-MM-DD HH:mm",
+            TIME_ZONE
+          )
+        : null;
+      const timeOutLocal = endDateStr
+        ? dayjs.tz(
+            `${endDateStr} ${dayjs(endTime).format("HH:mm")}`,
+            "YYYY-MM-DD HH:mm",
+            TIME_ZONE
+          )
+        : null;
+
+      const timeInUTC = timeInLocal ? timeInLocal.utc().toDate() : null;
+      const timeOutUTC = timeOutLocal ? timeOutLocal.utc().toDate() : null;
+
       const orderData = {
         carNumber: car.carNumber || "",
         customerName: name || "",
         phone: phone || "",
         email: email ? email : "",
-        timeIn: startTime ? startTime.toISOString() : "",
-        timeOut: endTime ? endTime.toISOString() : "",
-        rentalStartDate: presetDates?.startDate
-          ? dayjs.utc(presetDates.startDate).toDate()
-          : "",
-        rentalEndDate: presetDates?.endDate
-          ? dayjs.utc(presetDates.endDate).toDate()
-          : "",
+        timeIn: timeInUTC,
+        timeOut: timeOutUTC,
+        // Привязываем даты аренды к тем же суткам, что и timeIn/timeOut
+        rentalStartDate: timeInUTC ? dayjs(timeInUTC).toDate() : "",
+        rentalEndDate: timeOutUTC ? dayjs(timeOutUTC).toDate() : "",
         my_order: true,
         ChildSeats: childSeats,
         insurance: insurance,
+        franchiseOrder: Number(franchiseOrder) || 0,
         orderNumber: orderNumber,
         placeIn: placeIn,
         placeOut: placeOut,

@@ -341,7 +341,7 @@ function setTimeToDatejs(date, time, isStart = false) {
   // console.log("DATE", date);
   // console.log("time", time);
   if (time) {
-    const hour = Number(time?.slice(0, 2)) + 1;
+    const hour = Number(time?.slice(0, 2));
     const minute = Number(time?.slice(-2));
     const newDateWithTime = dayjs(date)
       .hour(hour)
