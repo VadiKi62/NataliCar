@@ -72,7 +72,8 @@ const BookingModal = ({
   const [submittedOrder, setSubmittedOrder] = useState(null);
 
   const [startTime, setStartTime] = useState(() =>
-    setTimeToDatejs(presetDates?.startDate, selectedTimes?.start, true)
+    // По умолчанию принудительно ставим 14:00 (companyData.defaultStart), игнорируя selectedTimes
+    setTimeToDatejs(presetDates?.startDate, null, true)
   );
   const [endTime, setEndTime] = useState(() =>
     setTimeToDatejs(presetDates?.endDate, selectedTimes?.end)
@@ -128,9 +129,8 @@ const BookingModal = ({
 
   useEffect(() => {
     if (presetDates && presetDates.startDate && presetDates.endDate) {
-      setStartTime(
-        setTimeToDatejs(presetDates.startDate, selectedTimes?.start, true)
-      );
+      // При выборе дат также принудительно ставим дефолтное время начала 14:00
+      setStartTime(setTimeToDatejs(presetDates.startDate, null, true));
       setEndTime(setTimeToDatejs(presetDates.endDate, selectedTimes?.end));
     }
   }, [presetDates, car, selectedTimes]);
