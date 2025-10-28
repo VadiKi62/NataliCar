@@ -4,8 +4,6 @@ import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
-import fs from "fs/promises";
-import path from "path";
 import cloudinary from "@utils/cloudinary";
 
 dayjs.extend(isBetween);
@@ -13,6 +11,9 @@ dayjs.extend(isBetween);
 // Main handler function
 export async function POST(req) {
   try {
+    // Ensure DB connection for all operations
+    await connectToDB();
+
     const formData = await req.formData();
     const carData = extractCarData(formData);
 
@@ -29,7 +30,7 @@ export async function POST(req) {
 
     carData.dateAddCar = dayjs().toDate();
     // Create and save the car
-    const newCar = new Car(carData);
+  const newCar = new Car(carData);
 
     await newCar.save();
 
@@ -63,23 +64,43 @@ async function generateCarNumber() {
 }
 // Function to extract data from the form
 function extractCarData(formData) {
-  console.log("formdata from API :", formData);
+  console.log("[addOne] Incoming formData keys:", Array.from(formData.keys()));
   const file = formData.get("image");
+
+  // Normalize and coerce types from FormData (string | Blob) to schema types
+  const toNumber = (val, fallback = undefined) => {
+    if (val === null || val === undefined || val === "") return fallback;
+    const n = Number(val);
+    return Number.isNaN(n) ? fallback : n;
+  };
+  const toBoolean = (val, fallback = false) => {
+    if (typeof val === "boolean") return val;
+    if (val === null || val === undefined) return fallback;
+    const s = String(val).trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(s)) return true;
+    if (["false", "0", "no", "off"].includes(s)) return false;
+    return fallback;
+  };
+
   return {
     file,
     model: formData.get("model"),
     class: formData.get("class"),
     transmission: formData.get("transmission"),
-    seats: formData.get("seats"),
-    numberOfDoors: formData.get("numberOfDoors"),
-    airConditioning: formData.get("airConditioning"),
-    enginePower: formData.get("enginePower"),
+    seats: toNumber(formData.get("seats")),
+    numberOfDoors: toNumber(formData.get("numberOfDoors")),
+    airConditioning: toBoolean(formData.get("airConditioning"), false),
+    enginePower: toNumber(formData.get("enginePower")),
     pricingTiers: parsePricingTiers(formData.get("pricingTiers")),
     regNumber: formData.get("regNumber"),
     color: formData.get("color"),
-    engine: formData.get("engine"),
+    engine: String(formData.get("engine") || ""),
     fueltype: formData.get("fueltype"),
-    registration: formData.get("registration"),
+    registration: toNumber(formData.get("registration")),
+    deposit: toNumber(formData.get("deposit"), 0),
+    PriceChildSeats: toNumber(formData.get("PriceChildSeats")),
+    PriceKacko: toNumber(formData.get("PriceKacko")),
+    franchise: toNumber(formData.get("franchise")),
   };
 }
 

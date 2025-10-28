@@ -51,6 +51,8 @@ export const fetchAll = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      cache: "no-store",
+      next: { cache: "no-store" },
     });
     if (!response.ok) {
       const body = await response.text().catch(() => "<no body>");
@@ -79,6 +81,8 @@ export const fetchAllCars = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      cache: "no-store",
+      next: { cache: "no-store" },
     });
     if (!response.ok) {
       const body = await response.text().catch(() => "<no body>");

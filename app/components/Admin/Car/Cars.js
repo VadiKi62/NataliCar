@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import DataGridOrders from "../DataGridOrders";
 import DataGridCars from "../DataGridCars";
@@ -28,14 +28,10 @@ function Cars({ onCarDelete, setUpdateStatus }) {
 
   // Диагностика: выводим массив cars в консоль после загрузки с сервера
   // console.log("Cars.js cars:", cars);
-  const [carsData, setCars] = useState(cars);
-
-  // console.log("cars", cars);
-  // console.log("carsData", carsData);
-
+  // Используем cars из контекста напрямую и мемоизируем отсортированный список
   const sortedCars = useMemo(() => {
-    return carsData.sort((a, b) => a.model.localeCompare(b.model));
-  }, [carsData]);
+    return [...cars].sort((a, b) => a.model.localeCompare(b.model));
+  }, [cars]);
 
   // const fetchAndUpdateCars = async () => {
   //   try {

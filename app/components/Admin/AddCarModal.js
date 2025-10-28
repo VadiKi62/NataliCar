@@ -98,11 +98,18 @@ const AddCarModal = ({
       formData.append("fueltype", carData.fueltype || "");
       formData.append("seats", String(carData.seats));
       formData.append("numberOfDoors", String(carData.numberOfDoors));
-      formData.append("airConditioning", Boolean(carData.airConditioning));
+      // Send booleans as explicit strings to avoid truthy string pitfalls server-side
+      formData.append(
+        "airConditioning",
+        carData.airConditioning ? "true" : "false"
+      );
       formData.append("enginePower", String(carData.enginePower));
       formData.append("engine", String(carData.engine));
       formData.append("color", String(carData.color));
       formData.append("registration", String(carData.registration));
+      if (carData.deposit !== undefined && carData.deposit !== null) {
+        formData.append("deposit", String(carData.deposit));
+      }
       formData.append("pricingTiers", JSON.stringify(carData.pricingTiers));
 
       console.log("?? FORMDATA", formData);
@@ -117,17 +124,32 @@ const AddCarModal = ({
         body: formData,
       });
 
-      const result = await response.json();
-      setUpdateStatus({ message: result.message, type: result.status });
+      // Try to parse JSON if available; otherwise read text for better errors
+      const contentType = response.headers.get("content-type") || "";
+      let result;
+      if (contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(text || `Unexpected non-JSON response (status ${response.status})`);
+      }
 
-      if (result.status === 200) {
+      if (!response.ok || result?.success === false) {
+        const details = result?.details ? ` — ${result.details}` : "";
+        const base = result?.message || response.statusText || "Failed to add car";
+        throw new Error(`${base}${details}`);
+      }
+
+      setUpdateStatus({ message: result.message || "OK", type: 200 });
+
+      if (response.ok) {
         await resubmitCars(); // Refresh car data
         onClose(); // Close the modal
         setCarData({});
         setSelectedImage(null); // Clear image
       }
     } catch (error) {
-      setUpdateStatus({ message: error.message, type: 400 });
+      setUpdateStatus({ message: error?.message || "Unknown error", type: 400 });
     } finally {
       setLoading(false);
     }
