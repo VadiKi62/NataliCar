@@ -36,6 +36,20 @@ function LegendCalendarAdmin({ client }) {
             marginRight: "10px",
           }}
         />
+        {/* Зелёный квадратик прямо справа от красного перед текстом (только админка) */}
+        {!client && (
+          <Box
+            component="span"
+            sx={{
+              display: "inline-block",
+              width: "20px",
+              height: "20px",
+              // Точно такой цвет, как у зелёных подтверждённых заказов (my_order=true) в Row.js
+              backgroundColor: "#4CAF50",
+              marginRight: "10px",
+            }}
+          />
+        )}
         <Typography
           component="span"
           variant="body2"
