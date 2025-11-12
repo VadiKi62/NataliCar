@@ -101,7 +101,9 @@
     "engine-pow": "Мощность двигателя",
     "engine": "Двигатель",
     "childSeatsPrice": "Цена детского кресла",
+    "insuranceTPLFree": "Страховка ОСАГО - бесплатно",
     "franchise": "Франшиза",
+    "franchiseKacko": "Франшиза КАСКО",
     "KackoPrice": "Цена КАСКО в день",
     "deposit": "Депозит",
     "noDeposit": "БЕЗ ДЕПОЗИТА"

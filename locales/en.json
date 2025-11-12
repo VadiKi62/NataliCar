@@ -101,7 +101,9 @@
     "engine-pow": "Engine Power",
     "engine": "Engine",
     "childSeatsPrice": "Child seat price",
+    "insuranceTPLFree": "TPL insurance - free",
     "franchise": "Franchise",
+    "franchiseKacko": "CDW franchise",
     "KackoPrice": "CDW price per day",
     "deposit": "Deposit",
     "noDeposit": "NO DEPOSIT"

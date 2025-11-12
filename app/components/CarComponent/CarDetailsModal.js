@@ -90,7 +90,55 @@ const CarDetailsModal = ({ open, onClose, car }) => {
     },
   ];
 
-  const allDetails = [...defaultDetails, ...additionalDetails];
+  // Финансовые / страховые детали, добавленные по запросу:
+  const financialDetails = [
+    {
+      key: "PriceChildSeats",
+      label: t("car.childSeatsPrice"),
+      icon: "/icons/childseat.png",
+      getValue: (car) =>
+        car.PriceChildSeats || car.PriceChildSeats === 0
+          ? `${car.PriceChildSeats} € / ${t("order.perDay")}`
+          : "-",
+    },
+    {
+      key: "insuranceTPLFree",
+      label: t("car.insuranceTPLFree"), // Строка без значения, просто текст
+      icon: "/icons/insurance_tpl.png",
+      getValue: () => "", // Ничего справа, вся информация в label
+    },
+    {
+      key: "PriceKacko",
+      label: t("car.KackoPrice"),
+      icon: "/icons/insurance_kasko.png",
+      getValue: (car) =>
+        car.PriceKacko || car.PriceKacko === 0
+          ? `${car.PriceKacko} € / ${t("order.perDay")}`
+          : "-",
+    },
+    {
+      key: "franchiseKacko",
+      label: t("car.franchiseKacko"),
+      icon: "/icons/franchise.png",
+      getValue: (car) =>
+        car.franchise || car.franchise === 0 ? `${car.franchise} €` : "-",
+    },
+    {
+      key: "deposit",
+      label: t("car.deposit"),
+      icon: "/icons/deposit.png",
+      getValue: (car) =>
+        car.deposit && car.deposit > 0
+          ? `${car.deposit} €`
+          : t("car.noDeposit"),
+    },
+  ];
+
+  const allDetails = [
+    ...defaultDetails,
+    ...additionalDetails,
+    ...financialDetails,
+  ];
   return (
     <Modal open={open} onClose={onClose} sx={{ textAlign: "center" }}>
       <Box
