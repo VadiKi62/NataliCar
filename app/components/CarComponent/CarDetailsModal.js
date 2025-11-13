@@ -37,16 +37,25 @@ const CarDetailsModal = ({ open, onClose, car }) => {
       key: "enginePower",
       label: t("car.engine-pow"),
       icon: "/icons/engine_power.png",
-      getValue: (car) => car.enginePower,
+      getValue: (car) =>
+        car.enginePower || car.enginePower === 0
+          ? `${car.enginePower} bhp`
+          : "",
     },
     {
       key: "engine",
       label: t("car.engine"),
       icon: "/icons/engine.png",
-      getValue: (car) =>
-        car.engine
-          ? car.engine.charAt(0).toUpperCase() + car.engine.slice(1)
-          : "",
+      getValue: (car) => {
+        if (car.engine || car.engine === 0) {
+          const base =
+            typeof car.engine === "string" && car.engine
+              ? car.engine.charAt(0).toUpperCase() + car.engine.slice(1)
+              : car.engine;
+          return `${base} c.c.`;
+        }
+        return "";
+      },
     },
   ];
 
@@ -103,7 +112,7 @@ const CarDetailsModal = ({ open, onClose, car }) => {
     },
     {
       key: "insuranceTPLFree",
-      label: t("car.insuranceTPLFree"), // Строка без значения, просто текст
+      label: t("car.insuranceTPLFree"), // Строка без значения, просто текст (исправлен ключ)
       icon: "/icons/insurance_tpl.png",
       getValue: () => "", // Ничего справа, вся информация в label
     },
@@ -152,25 +161,38 @@ const CarDetailsModal = ({ open, onClose, car }) => {
           maxHeight: "90vh",
           bgcolor: "background.paper",
           boxShadow: 24,
-          p: 4,
+          pt: 0,
+          px: 4,
+          pb: 4,
           overflowY: "auto",
           cursor: "pointer",
         }}
       >
-        {/* Заголовок с названием автомобиля */}
-        <Typography
-          variant="h5"
-          component="h2"
-          gutterBottom
+        {/* Заголовок с названием автомобиля (липкий при прокрутке, непрозрачный фон) */}
+        <Box
           sx={{
-            textTransform: "uppercase",
-            fontWeight: 700,
-            mb: 3,
-            color: "primary.main",
+            position: "sticky",
+            top: 0,
+            zIndex: 5,
+            bgcolor: "#ffffff", // делаем фон полностью непрозрачным
+            py: 1,
+            mb: 2,
+            borderBottom: "1px solid",
+            borderColor: "divider",
           }}
         >
-          {car?.model || "Car Details"}
-        </Typography>
+          <Typography
+            variant="h5"
+            component="h2"
+            sx={{
+              textTransform: "uppercase",
+              fontWeight: 700,
+              color: "primary.main",
+            }}
+          >
+            {car?.model || "Car Details"}
+          </Typography>
+        </Box>
         <Grid container direction="column" spacing={2}>
           {allDetails.map((detail) => (
             <Grid item key={detail.key}>
@@ -185,12 +207,22 @@ const CarDetailsModal = ({ open, onClose, car }) => {
                 </Grid>
                 <Grid item>
                   <CarTypography>
-                    {detail.label}:{" "}
-                    {typeof detail.getValue(car) === "string" &&
-                    detail.getValue(car)
-                      ? detail.getValue(car).charAt(0).toUpperCase() +
-                        detail.getValue(car).slice(1)
-                      : detail.getValue(car)}
+                    {detail.label}
+                    {(() => {
+                      const value = detail.getValue(car);
+                      // Для insuranceTPLFree (строка без значения) двоеточие не выводим
+                      if (detail.key === "insuranceTPLFree") return "";
+                      // Если значение пустое или отсутствует, тоже не ставим двоеточие
+                      if (value === "" || value === null || value === undefined)
+                        return "";
+                      return ": ";
+                    })()}
+                    {(() => {
+                      const value = detail.getValue(car);
+                      if (typeof value === "string" && value)
+                        return value.charAt(0).toUpperCase() + value.slice(1);
+                      return value;
+                    })()}
                   </CarTypography>
                 </Grid>
               </Grid>
