@@ -397,7 +397,8 @@ const BookingModal = ({
             ) : (
               <Box>
                 <Typography variant="body1">
-                  {t("order.youBook", { model: car.model })}
+                  {/* {t("order.youBook", { model: car.model })} */}
+                  {t("basic.from", { model: car.model })}
                   <Box
                     component="span"
                     sx={{ fontWeight: "bold", color: "primary.main" }}
@@ -460,28 +461,50 @@ const BookingModal = ({
                 </Box>
                 <Box
                   component="form"
-                  sx={{ "& .MuiTextField-root": { my: 1 } }}
+                  sx={{ "& .MuiTextField-root": { my: { xs: 0.5, sm: 1 } } }}
                 >
                   {/* Время в одной строке, 24-часовой формат */}
-                  <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
+                  <Box sx={{ display: "flex", gap: 2, mb: { xs: 1, sm: 1 } }}>
                     <TextField
                       label={t("order.pickupTime")}
                       type="time"
+                      variant="outlined"
+                      InputLabelProps={{ shrink: true }}
                       value={startTime.format("HH:mm")}
                       onChange={(e) =>
                         setStartTime(dayjs(e.target.value, "HH:mm"))
                       }
-                      sx={{ flex: 1 }}
+                      sx={{
+                        flex: 1,
+                        "& .MuiInputBase-root": {
+                          height: { xs: 40 },
+                        },
+                        "& .MuiOutlinedInput-input": {
+                          py: 0,
+                          px: 1.5,
+                        },
+                      }}
                       size="small"
                     />
                     <TextField
                       label={t("order.returnTime")}
                       type="time"
+                      variant="outlined"
+                      InputLabelProps={{ shrink: true }}
                       value={endTime.format("HH:mm")}
                       onChange={(e) =>
                         setEndTime(dayjs(e.target.value, "HH:mm"))
                       }
-                      sx={{ flex: 1 }}
+                      sx={{
+                        flex: 1,
+                        "& .MuiInputBase-root": {
+                          height: { xs: 40 },
+                        },
+                        "& .MuiOutlinedInput-input": {
+                          py: 0,
+                          px: 1.5,
+                        },
+                      }}
                       size="small"
                     />
                   </Box>
@@ -490,8 +513,8 @@ const BookingModal = ({
                     sx={{
                       display: "flex",
                       flexDirection: { xs: "column", sm: "row" },
-                      gap: 2,
-                      mb: 2,
+                      gap: { xs: 1, sm: 2 },
+                      mb: { xs: 1, sm: 2 },
                       mt: 0,
                       width: "100%",
                       alignItems: "stretch",
@@ -633,8 +656,16 @@ const BookingModal = ({
                     error={!!errors.name}
                     helperText={errors.name}
                   /> */}
-                  <Box sx={{ display: "flex", gap: 2, mt: 1, mb: 3 }}>
-                    <FormControl sx={{ flex: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 2,
+                      mt: { xs: 1, sm: 1 },
+                      mb: { xs: 1, sm: 3 },
+                      flexDirection: { xs: "column", sm: "row" },
+                    }}
+                  >
+                    <FormControl sx={{ flex: 1, width: { xs: "100%" } }}>
                       <InputLabel>{t("order.insurance")}</InputLabel>
                       <Select
                         label={t("order.insurance")}
@@ -658,7 +689,7 @@ const BookingModal = ({
                         ))}
                       </Select>
                     </FormControl>
-                    <FormControl sx={{ flex: 1 }}>
+                    <FormControl sx={{ flex: 1, width: { xs: "100%" } }}>
                       <InputLabel>
                         {t("order.childSeats")}{" "}
                         {car.PriceChildSeats ? car.PriceChildSeats : 0}€/
