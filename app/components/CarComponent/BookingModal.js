@@ -901,7 +901,7 @@ const BookingModal = ({
                     sx={{
                       "@media (max-width:600px) and (orientation: portrait)": {
                         flexBasis: 0,
-                        flexGrow: 1.1,
+                        flexGrow: 0.7,
                         minWidth: 0,
                       },
                     }}
@@ -946,9 +946,9 @@ const BookingModal = ({
                         "@media (max-width:600px) and (orientation: portrait)":
                           {
                             flexBasis: 0,
-                            flexGrow: 0.9,
+                            flexGrow: 1.3,
                             minWidth: 0,
-                            padding: "12px 28px",
+                            padding: "12px 20px",
                             margin: 0,
                           },
                         "@keyframes bookButtonPulse": {
