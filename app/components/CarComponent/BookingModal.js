@@ -382,9 +382,119 @@ const BookingModal = ({
         </Box>
       ) : (
         <React.Fragment>
-          <DialogTitle textAlign="center" mt="3">
-            {t("order.book", { model: car.model })}
-          </DialogTitle>
+          {/* Единый липкий блок: заголовок + период бронирования + дни/стоимость */}
+          <Box
+            sx={{
+              position: { xs: "sticky", sm: "static" },
+              top: { xs: 0 },
+              zIndex: { xs: 40 },
+              backgroundColor: { xs: "background.paper" },
+              borderBottom: { xs: "1px solid" },
+              borderColor: { xs: "divider" },
+              pt: { xs: 0.6, sm: 0 },
+              pb: { xs: 0.45, sm: 0 },
+              mb: { xs: 1, sm: 0 },
+            }}
+          >
+            <Typography
+              variant="h6"
+              align="center"
+              sx={{
+                fontSize: { xs: "1.05rem", sm: "1.25rem" },
+                m: 0,
+                lineHeight: 1.15,
+              }}
+            >
+              {t("order.book", { model: car.model })}
+            </Typography>
+            {/* Строка периода бронирования (скрыта по просьбе клиента)
+            <Typography
+              variant="body2"
+              align="center"
+              sx={{
+                mt: { xs: 0.15, sm: 0.4 },
+                mb: { xs: 0, sm: 0.3 },
+                lineHeight: 1.1,
+                fontSize: { xs: "0.78rem", sm: "0.9rem" },
+              }}
+            >
+              {t("basic.from")}
+              <Box component="span" sx={{ fontWeight: 600, color: "primary.main", mx: 0.5 }}>
+                {dayjs(presetDates?.startDate).format("DD.MM.YYYY")}
+              </Box>
+              {t("order.till")}
+              <Box component="span" sx={{ fontWeight: 600, color: "primary.main", mx: 0.5 }}>
+                {dayjs(presetDates?.endDate).format("DD.MM.YYYY")}
+              </Box>
+            </Typography>
+            */}
+            {/* Дни и стоимость – без промежутка, приклеено */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                gap: { xs: 0, sm: 2 },
+                alignItems: { xs: "center", sm: "center" },
+                justifyContent: "center",
+                mt: { xs: 0.15, sm: 0.4 },
+                lineHeight: 1.12,
+              }}
+            >
+              {calcLoading ? (
+                <Typography
+                  variant="body2"
+                  sx={{ fontSize: { xs: "0.9rem", sm: "1.06rem" } }}
+                >
+                  {t("order.calculating")}
+                </Typography>
+              ) : (
+                <>
+                  <Typography
+                    component="div"
+                    variant="body2"
+                    sx={{
+                      fontSize: { xs: "0.9rem", sm: "1.06rem" },
+                      m: 0,
+                      lineHeight: 1.12,
+                    }}
+                  >
+                    {t("order.daysNumber", { count: daysAndTotal.days })}
+                    <Box
+                      component="span"
+                      sx={{
+                        fontWeight: "bold",
+                        color: "primary.main",
+                        mx: 0.5,
+                      }}
+                    >
+                      {daysAndTotal.days}
+                    </Box>
+                  </Typography>
+                  <Typography
+                    component="div"
+                    variant="body2"
+                    sx={{
+                      fontSize: { xs: "0.9rem", sm: "1.06rem" },
+                      m: 0,
+                      lineHeight: 1.12,
+                    }}
+                  >
+                    {t("order.price")}
+                    <Box
+                      component="span"
+                      sx={{
+                        fontWeight: "bold",
+                        color: "primary.main",
+                        mx: 0.5,
+                      }}
+                    >
+                      {daysAndTotal.totalPrice}€
+                    </Box>
+                  </Typography>
+                </>
+              )}
+            </Box>
+          </Box>
           <DialogContent>
             {isSubmitted ? (
               <SuccessMessage
@@ -396,117 +506,105 @@ const BookingModal = ({
               />
             ) : (
               <Box>
-                <Typography variant="body1">
-                  {/* {t("order.youBook", { model: car.model })} */}
-                  {t("basic.from", { model: car.model })}
-                  <Box
-                    component="span"
-                    sx={{ fontWeight: "bold", color: "primary.main" }}
-                  >
-                    {dayjs(presetDates?.startDate).format("MMMM D")}
-                  </Box>{" "}
-                  {t("order.till")}
-                  <Box
-                    component="span"
-                    sx={{ fontWeight: "bold", color: "primary.main" }}
-                  >
-                    {dayjs(presetDates?.endDate).format("MMMM D")}
-                  </Box>
-                  .
-                </Typography>
-                {/* Информация о количестве дней и стоимости */}
-                <Box
-                  sx={{
-                    mb: 2,
-                    mt: 1,
-                    fontWeight: 400,
-                    fontSize: "1.05rem",
-                    color: "black",
-                    display: "flex",
-                    gap: 2,
-                  }}
-                >
-                  {calcLoading ? (
-                    t("order.calculating")
-                  ) : (
-                    <Typography
-                      variant="body1"
-                      component="span"
-                      sx={{ fontWeight: 400, color: "black" }}
-                    >
-                      {t("order.daysNumber", { count: daysAndTotal.days })}
-                      <Box
-                        component="span"
-                        sx={{
-                          fontWeight: "bold",
-                          color: "primary.main",
-                          mx: 0.5,
-                        }}
-                      >
-                        {daysAndTotal.days}
-                      </Box>
-                      | {t("order.price")}
-                      <Box
-                        component="span"
-                        sx={{
-                          fontWeight: "bold",
-                          color: "primary.main",
-                          mx: 0.5,
-                        }}
-                      >
-                        {daysAndTotal.totalPrice}€
-                      </Box>
-                    </Typography>
-                  )}
-                </Box>
+                {/* Удалён старый отдельный блок: теперь информация перенесена в липкий заголовок */}
                 <Box
                   component="form"
                   sx={{ "& .MuiTextField-root": { my: { xs: 0.5, sm: 1 } } }}
                 >
-                  {/* Время в одной строке, 24-часовой формат */}
+                  {/* Дата над временем, нередактируемые поля с видом выпадающих */}
                   <Box sx={{ display: "flex", gap: 2, mb: { xs: 1, sm: 1 } }}>
-                    <TextField
-                      label={t("order.pickupTime")}
-                      type="time"
-                      variant="outlined"
-                      InputLabelProps={{ shrink: true }}
-                      value={startTime.format("HH:mm")}
-                      onChange={(e) =>
-                        setStartTime(dayjs(e.target.value, "HH:mm"))
-                      }
+                    {/* Колонка получения */}
+                    <Box
                       sx={{
                         flex: 1,
-                        "& .MuiInputBase-root": {
-                          height: { xs: 40 },
-                        },
-                        "& .MuiOutlinedInput-input": {
-                          py: 0,
-                          px: 1.5,
-                        },
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
                       }}
-                      size="small"
-                    />
-                    <TextField
-                      label={t("order.returnTime")}
-                      type="time"
-                      variant="outlined"
-                      InputLabelProps={{ shrink: true }}
-                      value={endTime.format("HH:mm")}
-                      onChange={(e) =>
-                        setEndTime(dayjs(e.target.value, "HH:mm"))
-                      }
+                    >
+                      <TextField
+                        label={t("order.pickupDate") || "Дата получения"}
+                        variant="outlined"
+                        value={
+                          presetDates?.startDate
+                            ? dayjs(presetDates.startDate).format("DD.MM.YYYY")
+                            : ""
+                        }
+                        InputLabelProps={{ shrink: true }}
+                        InputProps={{ readOnly: true }}
+                        sx={{
+                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiOutlinedInput-input": {
+                            py: 0,
+                            px: 1.5,
+                            color: "primary.red",
+                            fontWeight: 600,
+                          },
+                        }}
+                        size="small"
+                      />
+                      <TextField
+                        label={t("order.pickupTime")}
+                        type="time"
+                        variant="outlined"
+                        InputLabelProps={{ shrink: true }}
+                        value={startTime.format("HH:mm")}
+                        onChange={(e) =>
+                          setStartTime(dayjs(e.target.value, "HH:mm"))
+                        }
+                        sx={{
+                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
+                        }}
+                        size="small"
+                      />
+                    </Box>
+                    {/* Колонка возврата */}
+                    <Box
                       sx={{
                         flex: 1,
-                        "& .MuiInputBase-root": {
-                          height: { xs: 40 },
-                        },
-                        "& .MuiOutlinedInput-input": {
-                          py: 0,
-                          px: 1.5,
-                        },
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
                       }}
-                      size="small"
-                    />
+                    >
+                      <TextField
+                        label={t("order.returnDate") || "Дата возврата"}
+                        variant="outlined"
+                        value={
+                          presetDates?.endDate
+                            ? dayjs(presetDates.endDate).format("DD.MM.YYYY")
+                            : ""
+                        }
+                        InputLabelProps={{ shrink: true }}
+                        InputProps={{ readOnly: true }}
+                        sx={{
+                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiOutlinedInput-input": {
+                            py: 0,
+                            px: 1.5,
+                            color: "primary.red",
+                            fontWeight: 600,
+                          },
+                        }}
+                        size="small"
+                      />
+                      <TextField
+                        label={t("order.returnTime")}
+                        type="time"
+                        variant="outlined"
+                        InputLabelProps={{ shrink: true }}
+                        value={endTime.format("HH:mm")}
+                        onChange={(e) =>
+                          setEndTime(dayjs(e.target.value, "HH:mm"))
+                        }
+                        sx={{
+                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
+                        }}
+                        size="small"
+                      />
+                    </Box>
                   </Box>
                   {/* Места получения/возврата — на мобильных экранах столбцом, на больших в строке */}
                   <Box
