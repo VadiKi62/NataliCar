@@ -391,9 +391,9 @@ const BookingModal = ({
               backgroundColor: { xs: "background.paper" },
               borderBottom: { xs: "1px solid" },
               borderColor: { xs: "divider" },
-              pt: { xs: 0.6, sm: 0 },
-              pb: { xs: 0.45, sm: 0 },
-              mb: { xs: 1, sm: 0 },
+              pt: { xs: 2.4, sm: 1.2 },
+              pb: { xs: 1.3, sm: 1.2 },
+              mb: { xs: 0.3, sm: 0 },
             }}
           >
             <Typography
@@ -437,13 +437,13 @@ const BookingModal = ({
                 alignItems: { xs: "center", sm: "center" },
                 justifyContent: "center",
                 mt: { xs: 0.15, sm: 0.4 },
-                lineHeight: 1.12,
+                lineHeight: 1.14,
               }}
             >
               {calcLoading ? (
                 <Typography
                   variant="body2"
-                  sx={{ fontSize: { xs: "0.9rem", sm: "1.06rem" } }}
+                  sx={{ fontSize: { xs: "0.94rem", sm: "1.1rem" } }}
                 >
                   {t("order.calculating")}
                 </Typography>
@@ -453,9 +453,9 @@ const BookingModal = ({
                     component="div"
                     variant="body2"
                     sx={{
-                      fontSize: { xs: "0.9rem", sm: "1.06rem" },
+                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
                       m: 0,
-                      lineHeight: 1.12,
+                      lineHeight: 1.14,
                     }}
                   >
                     {t("order.daysNumber", { count: daysAndTotal.days })}
@@ -474,9 +474,9 @@ const BookingModal = ({
                     component="div"
                     variant="body2"
                     sx={{
-                      fontSize: { xs: "0.9rem", sm: "1.06rem" },
+                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
                       m: 0,
-                      lineHeight: 1.12,
+                      lineHeight: 1.14,
                     }}
                   >
                     {t("order.price")}
