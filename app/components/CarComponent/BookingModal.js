@@ -889,9 +889,23 @@ const BookingModal = ({
                     pt: 2,
                     borderTop: "1px solid",
                     borderColor: "divider",
+                    "@media (max-width:600px) and (orientation: portrait)": {
+                      width: "100%",
+                      justifyContent: "space-between",
+                    },
                   }}
                 >
-                  <Button onClick={handleModalClose} variant="outlined">
+                  <Button
+                    onClick={handleModalClose}
+                    variant="outlined"
+                    sx={{
+                      "@media (max-width:600px) and (orientation: portrait)": {
+                        flexBasis: 0,
+                        flexGrow: 1.1,
+                        minWidth: 0,
+                      },
+                    }}
+                  >
                     {isSubmitted ? "OK" : t("basic.cancel")}
                   </Button>
                   {!isSubmitted && (
@@ -929,6 +943,14 @@ const BookingModal = ({
                           backgroundColor: "#grey.400",
                           animation: "none",
                         },
+                        "@media (max-width:600px) and (orientation: portrait)":
+                          {
+                            flexBasis: 0,
+                            flexGrow: 0.9,
+                            minWidth: 0,
+                            padding: "12px 28px",
+                            margin: 0,
+                          },
                         "@keyframes bookButtonPulse": {
                           "0%": {
                             backgroundColor: "primary.red",
