@@ -37,9 +37,12 @@ const SuccessMessage = ({
       <Typography variant="body1" sx={{ mt: 2 }}>
         {t("bookMesssages.bookReceive")}{" "}
         <strong>{submittedOrder?.carModel}</strong> {t("basic.from")}{" "}
-        <strong>{dayjs(presetDates?.startDate).format("MMMM D")}</strong>{" "}
+        {/* <strong>{dayjs(presetDates?.startDate).format("MMMM D")}</strong>{" "}
         {t("basic.to")}{" "}
-        <strong>{dayjs(presetDates?.endDate).format("MMMM D")}</strong>.
+        <strong>{dayjs(presetDates?.endDate).format("MMMM D")}</strong>. */}
+        <strong>{dayjs(presetDates?.startDate).format("DD.MM.YY")}</strong>{" "}
+        {t("basic.to")}{" "}
+        <strong>{dayjs(presetDates?.endDate).format("DD.MM.YY")}</strong>.
       </Typography>
 
       <Typography
@@ -48,7 +51,7 @@ const SuccessMessage = ({
         variant="h5"
         color="primary.red"
       >
-        {t("bookMesssages.bookDays")}: {submittedOrder.numberOfDays}{" "}
+        {t("bookMesssages.bookDays")} {submittedOrder.numberOfDays}{" "}
       </Typography>
       <Typography
         textAlign="center"
@@ -56,7 +59,7 @@ const SuccessMessage = ({
         variant="h5"
         color="primary.red"
       >
-        {t("bookMesssages.bookPrice")} : €{submittedOrder.totalPrice}{" "}
+        {t("bookMesssages.bookPrice")} €{submittedOrder.totalPrice}{" "}
       </Typography>
       {emailSent && (
         <Typography variant="body1" sx={{ mt: 1 }}>
