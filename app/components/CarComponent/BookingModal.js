@@ -533,7 +533,11 @@ const BookingModal = ({
                         InputLabelProps={{ shrink: true }}
                         InputProps={{ readOnly: true }}
                         sx={{
-                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiInputBase-root": { height: { sm: 40 } },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              "& .MuiInputBase-root": { height: 50 },
+                            },
                           "& .MuiOutlinedInput-input": {
                             py: 0,
                             px: 1.5,
@@ -553,7 +557,11 @@ const BookingModal = ({
                           setStartTime(dayjs(e.target.value, "HH:mm"))
                         }
                         sx={{
-                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiInputBase-root": { height: { sm: 40 } },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              "& .MuiInputBase-root": { height: 50 },
+                            },
                           "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
                         }}
                         size="small"
@@ -579,7 +587,11 @@ const BookingModal = ({
                         InputLabelProps={{ shrink: true }}
                         InputProps={{ readOnly: true }}
                         sx={{
-                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiInputBase-root": { height: { sm: 40 } },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              "& .MuiInputBase-root": { height: 50 },
+                            },
                           "& .MuiOutlinedInput-input": {
                             py: 0,
                             px: 1.5,
@@ -599,7 +611,11 @@ const BookingModal = ({
                           setEndTime(dayjs(e.target.value, "HH:mm"))
                         }
                         sx={{
-                          "& .MuiInputBase-root": { height: { xs: 40 } },
+                          "& .MuiInputBase-root": { height: { sm: 40 } },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              "& .MuiInputBase-root": { height: 50 },
+                            },
                           "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
                         }}
                         size="small"
@@ -659,6 +675,13 @@ const BookingModal = ({
                               size="small"
                               InputLabelProps={{ shrink: true }}
                               fullWidth
+                              sx={{
+                                "& .MuiInputBase-root": { height: { sm: 40 } },
+                                "@media (max-width:600px) and (orientation: portrait)":
+                                  {
+                                    "& .MuiInputBase-root": { height: 50 },
+                                  },
+                              }}
                             />
                           )}
                         />
@@ -670,6 +693,11 @@ const BookingModal = ({
                           sx={{
                             width: { xs: "40%", sm: "50%" },
                             alignSelf: "stretch",
+                            "& .MuiInputBase-root": { height: { sm: 40 } },
+                            "@media (max-width:600px) and (orientation: portrait)":
+                              {
+                                "& .MuiInputBase-root": { height: 50 },
+                              },
                           }}
                           InputLabelProps={{ shrink: true }}
                         />
@@ -711,6 +739,13 @@ const BookingModal = ({
                             size="small"
                             InputLabelProps={{ shrink: true }}
                             fullWidth
+                            sx={{
+                              "& .MuiInputBase-root": { height: { sm: 40 } },
+                              "@media (max-width:600px) and (orientation: portrait)":
+                                {
+                                  "& .MuiInputBase-root": { height: 50 },
+                                },
+                            }}
                           />
                         )}
                       />
@@ -740,6 +775,13 @@ const BookingModal = ({
                           size="small"
                           InputLabelProps={{ shrink: true }}
                           fullWidth
+                          sx={{
+                            "& .MuiInputBase-root": { height: { sm: 40 } },
+                            "@media (max-width:600px) and (orientation: portrait)":
+                              {
+                                "& .MuiInputBase-root": { height: 50 },
+                              },
+                          }}
                         />
                       )}
                     />
@@ -770,7 +812,14 @@ const BookingModal = ({
                         value={insurance}
                         onChange={(e) => setInsurance(e.target.value)}
                         size="small"
-                        sx={{ flex: 1, minHeight: 40 }}
+                        sx={{
+                          flex: 1,
+                          minHeight: { sm: 40 },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              minHeight: 50,
+                            },
+                        }}
                       >
                         {(
                           t("order.insuranceOptions", {
@@ -800,7 +849,14 @@ const BookingModal = ({
                         value={childSeats}
                         onChange={(e) => setChildSeats(Number(e.target.value))}
                         size="small"
-                        sx={{ flex: 1, minHeight: 40 }}
+                        sx={{
+                          flex: 1,
+                          minHeight: { sm: 40 },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              minHeight: 50,
+                            },
+                        }}
                       >
                         <MenuItem value={0}>
                           {t("order.childSeatsNone")}
@@ -828,11 +884,23 @@ const BookingModal = ({
                     // required
                     error={!!errors.name}
                     helperText={errors.name}
-                    sx={{ mt: 2 }}
+                    sx={{
+                      mt: 2,
+                      "& .MuiInputBase-root": { height: { sm: 56 } },
+                      "@media (max-width:600px) and (orientation: portrait)": {
+                        "& .MuiInputBase-root": { height: 50 },
+                      },
+                    }}
                   />
 
-                  {/* Phone и Email в одной строке, как в AddOrderModal */}
-                  <Box sx={{ display: "flex", gap: 2 }}>
+                  {/* Phone и Email: на портретном мобиле столбцом, на sm — в строке */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: { xs: 0.5, sm: 2 },
+                      flexDirection: { xs: "column", sm: "row" },
+                    }}
+                  >
                     <TextField
                       label={
                         <>
@@ -847,6 +915,13 @@ const BookingModal = ({
                       //required
                       error={!!errors.phone}
                       helperText={errors.phone}
+                      sx={{
+                        "& .MuiInputBase-root": { height: { sm: 56 } },
+                        "@media (max-width:600px) and (orientation: portrait)":
+                          {
+                            "& .MuiInputBase-root": { height: 50 },
+                          },
+                      }}
                     />
                     <TextField
                       label={
@@ -870,6 +945,15 @@ const BookingModal = ({
                       type="email"
                       error={!!errors.email}
                       helperText={errors.email}
+                      sx={{
+                        "& .MuiInputBase-root": { height: { sm: 56 } },
+                        "@media (max-width:600px) and (orientation: portrait)":
+                          {
+                            "& .MuiInputBase-root": { height: 50 },
+                            mt: 0,
+                            mb: 0,
+                          },
+                      }}
                       // required убран, поле необязательное
                     />
                   </Box>
@@ -892,6 +976,8 @@ const BookingModal = ({
                     "@media (max-width:600px) and (orientation: portrait)": {
                       width: "100%",
                       justifyContent: "space-between",
+                      mt: 1,
+                      pt: 1,
                     },
                   }}
                 >
