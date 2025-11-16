@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   Dialog,
   Grid,
@@ -107,6 +107,88 @@ const EditCarModal = ({
     setIsLoading(false);
   };
   const { t } = useTranslation();
+  // Динамические модели из базы
+  const [dbCarModels, setDbCarModels] = useState([]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const fetchModels = async () => {
+      try {
+        // Получаем уже уникальные модели (API-level дедупликация)
+        const res = await fetch("/api/car/models", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+        // Поддержка как массива строк, так и массива объектов { model }
+        const raw = data.map((item) =>
+          typeof item === "string" ? item : item?.model
+        );
+        const models = Array.from(
+          new Set(
+            raw.filter((m) => typeof m === "string" && m.trim().length > 0)
+          )
+        ).sort((a, b) => a.localeCompare(b));
+        if (!cancelled) setDbCarModels(models);
+      } catch (_) {
+        // игнорируем ошибку, останутся статические модели
+      }
+    };
+    fetchModels();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const fallbackModels = [
+    "Audi",
+    "BMW",
+    "BYD",
+    "Chevrolet",
+    "Citroën",
+    "Dacia",
+    "Dodge",
+    "Fiat",
+    "Ford",
+    "Honda",
+    "Hyundai",
+    "Isuzu",
+    "Kia",
+    "Mazda",
+    "Mercedes-Benz",
+    "MG",
+    "Mini",
+    "Mitsubishi",
+    "Nissan",
+    "Opel",
+    "Peugeot",
+    "Renault",
+    "Seat",
+    "Škoda",
+    "Smart",
+    "Suzuki",
+    "Tesla",
+    "Toyota",
+    "Volkswagen",
+    "Volvo",
+  ];
+  const autoCompleteOptions = useMemo(() => {
+    // Объединяем статический список, БД и текущую модель авто, убираем повторы и сортируем A→Z
+    const lowerSeen = new Set();
+    const merged = [];
+    const add = (val) => {
+      if (typeof val !== "string") return;
+      const v = val.trim();
+      if (!v) return;
+      const key = v.toLowerCase();
+      if (lowerSeen.has(key)) return;
+      lowerSeen.add(key);
+      merged.push(v);
+    };
+    fallbackModels.forEach(add);
+    dbCarModels.forEach(add);
+    add(updatedCar?.model);
+    return merged.sort((a, b) => a.localeCompare(b));
+  }, [dbCarModels, updatedCar?.model]);
   return (
     <Dialog open={open} onClose={handleCloseModal} fullWidth maxWidth="lg">
       {/* <Box sx={{ p: 3, position: "relative" }}> */}
@@ -120,33 +202,7 @@ const EditCarModal = ({
             <Stack spacing={3}>
               <Autocomplete
                 freeSolo
-                options={[
-                  "Audi",
-                  "BMW",
-                  "Chevrolet",
-                  "Citroën",
-                  "Dacia",
-                  "Dodge",
-                  "Fiat",
-                  "Ford",
-                  "Honda",
-                  "Hyundai",
-                  "Isuzu",
-                  "Kia",
-                  "Mazda",
-                  "Mercedes-Benz",
-                  "MG",
-                  "Mini",
-                  "Mitsubishi",
-                  "Nissan",
-                  "Opel",
-                  "Peugeot",
-                  "Renault",
-                  "Seat",
-                  "Škoda",
-                  "Smart",
-                  "Suzuki",
-                ]}
+                options={autoCompleteOptions}
                 value={updatedCar.model || ""}
                 onChange={(_, newValue) =>
                   handleChange({

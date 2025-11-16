@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -131,12 +131,15 @@ const AddCarModal = ({
         result = await response.json();
       } else {
         const text = await response.text();
-        throw new Error(text || `Unexpected non-JSON response (status ${response.status})`);
+        throw new Error(
+          text || `Unexpected non-JSON response (status ${response.status})`
+        );
       }
 
       if (!response.ok || result?.success === false) {
         const details = result?.details ? ` — ${result.details}` : "";
-        const base = result?.message || response.statusText || "Failed to add car";
+        const base =
+          result?.message || response.statusText || "Failed to add car";
         throw new Error(`${base}${details}`);
       }
 
@@ -149,7 +152,10 @@ const AddCarModal = ({
         setSelectedImage(null); // Clear image
       }
     } catch (error) {
-      setUpdateStatus({ message: error?.message || "Unknown error", type: 400 });
+      setUpdateStatus({
+        message: error?.message || "Unknown error",
+        type: 400,
+      });
     } finally {
       setLoading(false);
     }
@@ -169,6 +175,84 @@ const AddCarModal = ({
     }
   };
   const { t } = useTranslation();
+  // Модели машин из базы
+  const [dbCarModels, setDbCarModels] = useState([]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const fetchCars = async () => {
+      try {
+        const res = await fetch("/api/car/all", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+        const models = Array.from(
+          new Set(
+            data
+              .map((c) => c.model)
+              .filter((m) => typeof m === "string" && m.trim().length > 0)
+          )
+        ).sort((a, b) => a.localeCompare(b));
+        if (!cancelled) setDbCarModels(models);
+      } catch (_) {
+        // тихо игнорируем ошибку, остаются дефолтные значения
+      }
+    };
+    fetchCars();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const fallbackModels = [
+    "Audi",
+    "BMW",
+    "BYD",
+    "Chevrolet",
+    "Citroën",
+    "Dacia",
+    "Dodge",
+    "Fiat",
+    "Ford",
+    "Honda",
+    "Hyundai",
+    "Isuzu",
+    "Kia",
+    "Mazda",
+    "Mercedes-Benz",
+    "MG",
+    "Mini",
+    "Mitsubishi",
+    "Nissan",
+    "Opel",
+    "Peugeot",
+    "Renault",
+    "Seat",
+    "Škoda",
+    "Smart",
+    "Suzuki",
+    "Tesla",
+    "Toyota",
+    "Volkswagen",
+    "Volvo",
+  ];
+  const autoCompleteOptions = useMemo(() => {
+    // Объединяем статический список и БД, убираем повторы (без учёта регистра), сортируем A→Z
+    const lowerSeen = new Set();
+    const merged = [];
+    const add = (val) => {
+      if (typeof val !== "string") return;
+      const v = val.trim();
+      if (!v) return;
+      const key = v.toLowerCase();
+      if (lowerSeen.has(key)) return;
+      lowerSeen.add(key);
+      merged.push(v);
+    };
+    fallbackModels.forEach(add);
+    dbCarModels.forEach(add);
+    return merged.sort((a, b) => a.localeCompare(b));
+  }, [dbCarModels]);
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
@@ -199,33 +283,7 @@ const AddCarModal = ({
                   <Stack spacing={3}>
                     <Autocomplete
                       freeSolo
-                      options={[
-                        "Audi",
-                        "BMW",
-                        "Chevrolet",
-                        "Citroën",
-                        "Dacia",
-                        "Dodge",
-                        "Fiat",
-                        "Ford",
-                        "Honda",
-                        "Hyundai",
-                        "Isuzu",
-                        "Kia",
-                        "Mazda",
-                        "Mercedes-Benz",
-                        "MG",
-                        "Mini",
-                        "Mitsubishi",
-                        "Nissan",
-                        "Opel",
-                        "Peugeot",
-                        "Renault",
-                        "Seat",
-                        "Škoda",
-                        "Smart",
-                        "Suzuki",
-                      ]}
+                      options={autoCompleteOptions}
                       value={carData.model || ""}
                       onChange={(_, newValue) =>
                         handleChange({
