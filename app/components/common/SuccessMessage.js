@@ -34,15 +34,23 @@ const SuccessMessage = ({
         </Typography>
       )}
 
-      <Typography variant="body1" sx={{ mt: 2 }}>
+      <Typography
+        variant="body1"
+        sx={{ mt: 2, fontSize: { xs: "1.05rem", sm: "1.1rem" } }}
+      >
         {t("bookMesssages.bookReceive")}{" "}
-        <strong>{submittedOrder?.carModel}</strong> {t("basic.from")}{" "}
-        {/* <strong>{dayjs(presetDates?.startDate).format("MMMM D")}</strong>{" "}
+        <Box component="span" sx={{ color: "primary.red", fontWeight: 700 }}>
+          {submittedOrder?.carModel}
+        </Box>{" "}
+        {t("basic.from")}{" "}
+        <Box component="span" sx={{ color: "primary.red", fontWeight: 700 }}>
+          {dayjs(presetDates?.startDate).format("DD.MM.YY")}
+        </Box>{" "}
         {t("basic.to")}{" "}
-        <strong>{dayjs(presetDates?.endDate).format("MMMM D")}</strong>. */}
-        <strong>{dayjs(presetDates?.startDate).format("DD.MM.YY")}</strong>{" "}
-        {t("basic.to")}{" "}
-        <strong>{dayjs(presetDates?.endDate).format("DD.MM.YY")}</strong>.
+        <Box component="span" sx={{ color: "primary.red", fontWeight: 700 }}>
+          {dayjs(presetDates?.endDate).format("DD.MM.YY")}
+        </Box>
+        .
       </Typography>
 
       <Typography

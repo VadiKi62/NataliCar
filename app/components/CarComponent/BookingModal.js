@@ -383,31 +383,32 @@ const BookingModal = ({
       ) : (
         <React.Fragment>
           {/* Единый липкий блок: заголовок + период бронирования + дни/стоимость */}
-          <Box
-            sx={{
-              position: { xs: "sticky", sm: "static" },
-              top: { xs: 0 },
-              zIndex: { xs: 40 },
-              backgroundColor: { xs: "background.paper" },
-              borderBottom: { xs: "1px solid" },
-              borderColor: { xs: "divider" },
-              pt: { xs: 2.4, sm: 1.2 },
-              pb: { xs: 1.3, sm: 1.2 },
-              mb: { xs: 0.3, sm: 0 },
-            }}
-          >
-            <Typography
-              variant="h6"
-              align="center"
+          {!isSubmitted && (
+            <Box
               sx={{
-                fontSize: { xs: "1.05rem", sm: "1.25rem" },
-                m: 0,
-                lineHeight: 1.15,
+                position: { xs: "sticky", sm: "static" },
+                top: { xs: 0 },
+                zIndex: { xs: 40 },
+                backgroundColor: { xs: "background.paper" },
+                borderBottom: { xs: "1px solid" },
+                borderColor: { xs: "divider" },
+                pt: { xs: 2.4, sm: 1.2 },
+                pb: { xs: 1.3, sm: 1.2 },
+                mb: { xs: 0.3, sm: 0 },
               }}
             >
-              {t("order.book", { model: car.model })}
-            </Typography>
-            {/* Строка периода бронирования (скрыта по просьбе клиента)
+              <Typography
+                variant="h6"
+                align="center"
+                sx={{
+                  fontSize: { xs: "1.05rem", sm: "1.25rem" },
+                  m: 0,
+                  lineHeight: 1.15,
+                }}
+              >
+                {t("order.book", { model: car.model })}
+              </Typography>
+              {/* Строка периода бронирования (скрыта по просьбе клиента)
             <Typography
               variant="body2"
               align="center"
@@ -428,73 +429,74 @@ const BookingModal = ({
               </Box>
             </Typography>
             */}
-            {/* Дни и стоимость – без промежутка, приклеено */}
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: { xs: "column", sm: "row" },
-                gap: { xs: 0, sm: 2 },
-                alignItems: { xs: "center", sm: "center" },
-                justifyContent: "center",
-                mt: { xs: 0.15, sm: 0.4 },
-                lineHeight: 1.14,
-              }}
-            >
-              {calcLoading ? (
-                <Typography
-                  variant="body2"
-                  sx={{ fontSize: { xs: "0.94rem", sm: "1.1rem" } }}
-                >
-                  {t("order.calculating")}
-                </Typography>
-              ) : (
-                <>
+              {/* Дни и стоимость – без промежутка, приклеено */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: { xs: 0, sm: 2 },
+                  alignItems: { xs: "center", sm: "center" },
+                  justifyContent: "center",
+                  mt: { xs: 0.15, sm: 0.4 },
+                  lineHeight: 1.14,
+                }}
+              >
+                {calcLoading ? (
                   <Typography
-                    component="div"
                     variant="body2"
-                    sx={{
-                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
-                      m: 0,
-                      lineHeight: 1.14,
-                    }}
+                    sx={{ fontSize: { xs: "0.94rem", sm: "1.1rem" } }}
                   >
-                    {t("order.daysNumber", { count: daysAndTotal.days })}
-                    <Box
-                      component="span"
+                    {t("order.calculating")}
+                  </Typography>
+                ) : (
+                  <>
+                    <Typography
+                      component="div"
+                      variant="body2"
                       sx={{
-                        fontWeight: "bold",
-                        color: "primary.main",
-                        mx: 0.5,
+                        fontSize: { xs: "0.94rem", sm: "1.1rem" },
+                        m: 0,
+                        lineHeight: 1.14,
                       }}
                     >
-                      {daysAndTotal.days}
-                    </Box>
-                  </Typography>
-                  <Typography
-                    component="div"
-                    variant="body2"
-                    sx={{
-                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
-                      m: 0,
-                      lineHeight: 1.14,
-                    }}
-                  >
-                    {t("order.price")}
-                    <Box
-                      component="span"
+                      {t("order.daysNumber", { count: daysAndTotal.days })}
+                      <Box
+                        component="span"
+                        sx={{
+                          fontWeight: "bold",
+                          color: "primary.main",
+                          mx: 0.5,
+                        }}
+                      >
+                        {daysAndTotal.days}
+                      </Box>
+                    </Typography>
+                    <Typography
+                      component="div"
+                      variant="body2"
                       sx={{
-                        fontWeight: "bold",
-                        color: "primary.main",
-                        mx: 0.5,
+                        fontSize: { xs: "0.94rem", sm: "1.1rem" },
+                        m: 0,
+                        lineHeight: 1.14,
                       }}
                     >
-                      {daysAndTotal.totalPrice}€
-                    </Box>
-                  </Typography>
-                </>
-              )}
+                      {t("order.price")}
+                      <Box
+                        component="span"
+                        sx={{
+                          fontWeight: "bold",
+                          color: "primary.main",
+                          mx: 0.5,
+                        }}
+                      >
+                        {daysAndTotal.totalPrice}€
+                      </Box>
+                    </Typography>
+                  </>
+                )}
+              </Box>
             </Box>
-          </Box>
+          )}
           <DialogContent>
             {isSubmitted ? (
               <SuccessMessage
