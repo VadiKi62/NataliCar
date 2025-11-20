@@ -48,7 +48,7 @@ function useDaysAndTotal(
 
   return { daysAndTotal, calcLoading };
 }
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Paper,
   Typography,
@@ -104,12 +104,18 @@ const EditOrderModal = ({
   setIsConflictOrder,
   startEndDates,
   cars, // <-- список автомобилей
+  isViewOnly, // <-- режим просмотра (передаётся из BigCalendar для завершённых заказов)
 }) => {
   const { allOrders, fetchAndUpdateOrders, company } = useMainContext();
   const locations = company.locations.map((loc) => loc.name);
-  const [editedOrder, setEditedOrder] = useState({
-    ...order,
-  });
+  const [editedOrder, setEditedOrder] = useState({ ...order });
+    // Определяем завершён ли заказ (конец раньше сегодняшнего дня)
+    const isCompletedOrder = useMemo(
+      () => !!order && dayjs(order.rentalEndDate).isBefore(dayjs(), "day"),
+      [order]
+    );
+    // Итоговый флаг режима только просмотра
+    const viewOnly = isViewOnly || isCompletedOrder;
   // Флаг: первое открытие модального окна (не запускать автосинхронизацию totalPrice)
   const isFirstOpen = React.useRef(true);
   // Флаг: редактирует ли админ вручную поле totalPrice
@@ -183,6 +189,7 @@ const EditOrderModal = ({
   }, [order]);
 
   const handleDelete = async () => {
+    if (viewOnly) return; // Блокируем удаление в режиме просмотра
     const isConfirmed = window.confirm(t("order.sureDelOrder"));
     if (!isConfirmed) return;
 
@@ -371,6 +378,7 @@ const EditOrderModal = ({
   const [updateMessage, setUpdateMessage] = useState(null);
 
   const handleConfirmationToggle = async () => {
+    if (viewOnly) return; // Блокируем смену статуса в режиме просмотра
     setIsUpdating(true);
     setUpdateMessage(null);
     try {
@@ -394,6 +402,7 @@ const EditOrderModal = ({
   };
 
   const handleDateUpdate = async () => {
+    if (viewOnly) return; // Блокируем обновление дат в режиме просмотра
     setIsUpdating(true);
     try {
       const selectedCar = cars.find((c) => c._id === editedOrder.car);
@@ -475,6 +484,7 @@ const EditOrderModal = ({
   };
 
   const handleCustomerUpdate = async () => {
+    if (viewOnly) return; // Блокируем обновление данных клиента в режиме просмотра
     setIsUpdating(true);
     try {
       // Логгируем email перед отправкой
@@ -507,11 +517,13 @@ const EditOrderModal = ({
   };
 
   const handleChangeSelectedBox = (e) => {
+    if (viewOnly) return; // Блокируем изменения в режиме просмотра
     const { name, value } = e.target;
     setEditedOrder({ ...editedOrder, [name]: value });
   };
 
   const handleChange = (field, value) => {
+    if (viewOnly) return; // Блокируем изменения в режиме просмотра
     const defaultStartHour = companyData.defaultStart.slice(0, 2);
     const defaultStartMinute = companyData.defaultStart.slice(-2);
 
@@ -574,10 +586,13 @@ const EditOrderModal = ({
           size="small"
           value={value}
           onChange={(e) => {
+            if (viewOnly) return; // запрет изменения
             const newValue = e.target.value;
             handleChange(field, newValue);
           }}
           type={inputType}
+          disabled={viewOnly}
+          InputProps={{ readOnly: viewOnly }}
         />
       </Box>
     );
@@ -611,7 +626,7 @@ const EditOrderModal = ({
               color="primary.main"
               sx={{ letterSpacing: "-0.5px", fontSize: "1.3rem" }}
             >
-              {t("order.editOrder")} №
+              {viewOnly ? "Просмотреть заказ" : t("order.editOrder")} №
               {order?.orderNumber ? order.orderNumber.slice(2, -2) : ""}
               {(() => {
                 // Найти автомобиль по id заказа
@@ -646,6 +661,7 @@ const EditOrderModal = ({
                     : ""
                 }
                 onChange={(e) => {
+                  if (viewOnly) return;
                   const val = e.target.value.replace(/[^0-9]/g, "");
                   setEditedOrder((prev) => ({
                     ...prev,
@@ -701,6 +717,7 @@ const EditOrderModal = ({
                     fontSize: 18,
                   },
                 }}
+                disabled={viewOnly}
               />
             </Box>
 
@@ -768,12 +785,14 @@ const EditOrderModal = ({
               <Button
                 variant="contained"
                 onClick={handleConfirmationToggle}
-                disabled={isUpdating}
+                disabled={isUpdating || viewOnly}
                 sx={{
                   width: "100%",
                   backgroundColor: editedOrder?.confirmed
                     ? "text.green"
                     : "text.red",
+                  opacity: viewOnly ? 0.6 : 1,
+                  cursor: viewOnly ? "not-allowed" : "pointer",
                 }}
               >
                 {editedOrder?.confirmed
@@ -798,6 +817,7 @@ const EditOrderModal = ({
                     "YYYY-MM-DD"
                   )}
                   onChange={(e) => {
+                    if (viewOnly) return;
                     const newStart = dayjs(e.target.value);
                     setEditedOrder((prev) => {
                       const currentReturn = dayjs(prev.rentalEndDate);
@@ -818,6 +838,7 @@ const EditOrderModal = ({
                   sx={{ flex: 1, minHeight: 48 }}
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
+                  disabled={viewOnly}
                 />
                 <TextField
                   label={t("order.returnDate")}
@@ -828,6 +849,7 @@ const EditOrderModal = ({
                       : ""
                   }
                   onChange={(e) => {
+                    if (viewOnly) return;
                     const newReturn = dayjs(e.target.value);
                     const minReturn = dayjs(editedOrder.rentalStartDate).add(
                       1,
@@ -844,6 +866,7 @@ const EditOrderModal = ({
                       }));
                     }
                   }}
+                  disabled={viewOnly}
                   sx={{ flex: 1, minHeight: 48 }}
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
@@ -862,6 +885,7 @@ const EditOrderModal = ({
                   onChange={(e) => setStartTime(dayjs(e.target.value, "HH:mm"))}
                   sx={{ flex: 1 }}
                   size="small"
+                  disabled={viewOnly}
                 />
                 <TextField
                   label={t("order.returnTime")}
@@ -870,6 +894,7 @@ const EditOrderModal = ({
                   onChange={(e) => setEndTime(dayjs(e.target.value, "HH:mm"))}
                   sx={{ flex: 1 }}
                   size="small"
+                  disabled={viewOnly}
                 />
               </Box>
               {/* Место получения и возврата: Autocomplete с freeSolo */}
@@ -890,6 +915,7 @@ const EditOrderModal = ({
                       placeIn: newInputValue,
                     }))
                   }
+                  disabled={viewOnly}
                   PaperProps={{
                     sx: {
                       border: "2px solid black !important",
@@ -930,6 +956,7 @@ const EditOrderModal = ({
                       size="medium"
                       sx={{ width: "25%", alignSelf: "stretch" }}
                       InputLabelProps={{ shrink: true }}
+                      disabled={viewOnly}
                     />
                   )}
                 <Autocomplete
@@ -948,6 +975,7 @@ const EditOrderModal = ({
                       placeOut: newInputValue,
                     }))
                   }
+                  disabled={viewOnly}
                   PaperProps={{
                     sx: {
                       border: "2px solid black !important",
@@ -987,11 +1015,13 @@ const EditOrderModal = ({
                     label={t("order.insurance")}
                     value={editedOrder.insurance || ""}
                     onChange={(e) =>
+                      !viewOnly &&
                       setEditedOrder((prev) => ({
                         ...prev,
                         insurance: e.target.value,
                       }))
                     }
+                    disabled={viewOnly}
                   >
                     {(
                       t("order.insuranceOptions", { returnObjects: true }) || []
@@ -1027,12 +1057,14 @@ const EditOrderModal = ({
                       type="number"
                       updatedCar={editedOrder}
                       handleChange={(e) =>
+                        !viewOnly &&
                         setEditedOrder((prev) => ({
                           ...prev,
                           franchiseOrder: Number(e.target.value),
                         }))
                       }
                       isLoading={loading}
+                      disabled={viewOnly}
                     />
                   </Box>
                 )}
@@ -1064,11 +1096,13 @@ const EditOrderModal = ({
                         : 0
                     }
                     onChange={(e) =>
+                      !viewOnly &&
                       setEditedOrder((prev) => ({
                         ...prev,
                         ChildSeats: Number(e.target.value),
                       }))
                     }
+                    disabled={viewOnly}
                   >
                     <MenuItem value={0}>{t("order.childSeatsNone")}</MenuItem>
                     {[1, 2, 3, 4].map((num) => (
@@ -1103,11 +1137,13 @@ const EditOrderModal = ({
                   }
                   value={editedOrder.customerName || ""}
                   onChange={(e) =>
+                    !viewOnly &&
                     setEditedOrder((prev) => ({
                       ...prev,
                       customerName: e.target.value,
                     }))
                   }
+                  disabled={viewOnly}
                 />
               </FormControl>
               <Box sx={{ display: "flex", gap: 2, mb: 0 }}>
@@ -1128,11 +1164,13 @@ const EditOrderModal = ({
                     }
                     value={editedOrder.phone || ""}
                     onChange={(e) =>
+                      !viewOnly &&
                       setEditedOrder((prev) => ({
                         ...prev,
                         phone: e.target.value,
                       }))
                     }
+                    disabled={viewOnly}
                   />
                 </FormControl>
                 <FormControl
@@ -1160,11 +1198,13 @@ const EditOrderModal = ({
                     }
                     value={editedOrder.email || ""}
                     onChange={(e) =>
+                      !viewOnly &&
                       setEditedOrder((prev) => ({
                         ...prev,
                         email: e.target.value,
                       }))
                     }
+                    disabled={viewOnly}
                   />
                 </FormControl>
               </Box>
@@ -1184,9 +1224,10 @@ const EditOrderModal = ({
               <Button
                 variant="contained"
                 color="primary"
-                disabled={isUpdating}
+                disabled={isUpdating || viewOnly}
                 sx={{ mx: 2, width: "40%" }}
                 onClick={async () => {
+                  if (viewOnly) return;
                   setIsUpdating(true);
                   try {
                     // Сохраняем даты
@@ -1212,7 +1253,7 @@ const EditOrderModal = ({
               <Button
                 variant="contained"
                 onClick={handleDelete}
-                disabled={isUpdating}
+                disabled={isUpdating || viewOnly}
                 color="error"
                 sx={{ width: "30%" }}
               >

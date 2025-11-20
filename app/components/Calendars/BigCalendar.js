@@ -686,6 +686,7 @@ export default function BigCalendar({ cars }) {
                 setIsConflictOrder={setIsConflictOrder}
                 startEndDates={startEndDates}
                 cars={cars}
+                isViewOnly={dayjs(order.rentalEndDate).isBefore(dayjs(), "day")}
               />
             </Grid>
           ))}

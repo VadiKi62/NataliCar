@@ -175,25 +175,74 @@ export default function CarTableRow({
     if (moveMode) {
       return;
     }
+    // Определяем типы даты (старт / конец) и совмещённость
+    const startEndInfo = startEndDates.find((d) => d.date === dateStr);
+    const isStartDate = startEndInfo?.type === "start";
+    const isEndDate = startEndInfo?.type === "end";
+    const isStartEndOverlap = Boolean(
+      startEndOverlapDates?.find((dateObj) => dateObj.date === dateStr)
+    );
 
-    if (hasOrder(dateStr) && !isLastDateForOrder(dateStr)) {
-      setWasLongPress(false); // Сбрасываем флаг
+    // Собираем все заказы, покрывающие эту дату
+    const relevantOrders = carOrders.filter((order) => {
+      const rentalStart = dayjs(order.rentalStartDate).format("YYYY-MM-DD");
+      const rentalEnd = dayjs(order.rentalEndDate).format("YYYY-MM-DD");
+      return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
+    });
+    // Проверяем: все заказы завершены (дата окончания раньше сегодняшнего дня)
+    const allCompleted =
+      relevantOrders.length > 0 &&
+      relevantOrders.every((o) =>
+        dayjs(o.rentalEndDate).isBefore(dayjs(), "day")
+      );
+    // Если все завершены — запрещаем переход в режим перемещения
+    if (allCompleted) {
+      return;
+    }
+
+    // Есть ли хотя бы один незавершённый заказ (его конец сегодня или в будущем)
+    const hasActiveOrder = relevantOrders.some(
+      (o) => !dayjs(o.rentalEndDate).isBefore(dayjs(), "day")
+    );
+
+    // Разрешаем длинное нажатие на совмещённой дате (конец + старт), даже если это последний день одного из заказов
+    const allowLongPress =
+      hasOrder(dateStr) &&
+      hasActiveOrder &&
+      (!isLastDateForOrder(dateStr) ||
+        isStartEndOverlap ||
+        (isStartDate && isEndDate));
+
+    if (allowLongPress) {
+      setWasLongPress(false);
 
       const timer = setTimeout(() => {
-        const order = getOrderByDate(dateStr);
+        // Предпочитаем заказ, который НАЧИНАЕТСЯ в эту дату (требование: на совмещённой дате выбирать начинающийся заказ)
+        const startingOrder = relevantOrders.find(
+          (order) =>
+            dayjs(order.rentalStartDate).format("YYYY-MM-DD") === dateStr
+        );
+        // Если нет стартующего, пробуем заканчивающийся (на случай редких ситуаций), иначе fallback к первой найденной логике
+        const endingOrder = relevantOrders.find(
+          (order) => dayjs(order.rentalEndDate).format("YYYY-MM-DD") === dateStr
+        );
+        const fallbackOrder = getOrderByDate(dateStr);
+        const order = startingOrder || endingOrder || fallbackOrder;
+
         if (order) {
-          setWasLongPress(true); // Устанавливаем флаг длинного нажатия
+          setWasLongPress(true);
           console.log("Long press detected on order:", {
             id: order._id,
             customer: order.customerName,
             carId: order.car,
             dates: order.rentalStartDate + " - " + order.rentalEndDate,
+            picked: startingOrder
+              ? "starting"
+              : endingOrder
+              ? "ending"
+              : "fallback",
           });
-
-          // Выделяем заказ синим цветом
           setSelectedOrderId(order._id);
-
-          // Вызываем функцию длинного нажатия (активирует режим перемещения)
           if (onLongPress) {
             onLongPress(order);
           }
@@ -214,6 +263,20 @@ export default function CarTableRow({
   const renderDateCell = useCallback(
     (date) => {
       const dateStr = date.format("YYYY-MM-DD");
+      const isPastDay = date.isBefore(dayjs(), "day");
+      // Флаг: ячейка относится к завершённому заказу (его конечная дата раньше сегодняшнего дня)
+      const isCompletedCell = carOrders.some((order) => {
+        const rentalStart = dayjs(order.rentalStartDate).format("YYYY-MM-DD");
+        const rentalEnd = dayjs(order.rentalEndDate).format("YYYY-MM-DD");
+        const isEndBeforeToday = dayjs(order.rentalEndDate).isBefore(
+          dayjs(),
+          "day"
+        );
+        return (
+          isEndBeforeToday &&
+          dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]")
+        );
+      });
 
       if (isPartOfSelectedOrder(dateStr) && selectedOrderId) {
         const selectedOrder = carOrders.find((o) => o._id === selectedOrderId);
@@ -631,6 +694,12 @@ export default function CarTableRow({
           return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
         });
 
+        // Блокируем клик по ячейке, в которой последний день заказа, если дата в прошлом
+        // НО не блокируем если это одновременно первый день другого заказа (isStartDate)
+        if (isPastDay && isEndDate && !isStartDate) {
+          return;
+        }
+
         // 1. Если одновременно последний и первый день заказа
         if (isEndDate && isStartDate) {
           setSelectedOrders(relevantOrders);
@@ -672,6 +741,11 @@ export default function CarTableRow({
       // ИСПРАВЛЕННАЯ функция обработки клика по пустой ячейке
       const handleEmptyCellClick = () => {
         console.log("Empty cell click - moveMode:", moveMode, "car:", car);
+
+        // Блокируем клик по пустой ячейке, если дата в прошлом
+        if (isPastDay) {
+          return;
+        }
 
         // Если в режиме перемещения
         if (moveMode) {
@@ -834,7 +908,9 @@ export default function CarTableRow({
               moveMode && isInMoveModeDateRange
                 ? "Нажмите для перемещения заказа"
                 : !moveMode
-                ? "Нажмите для создания нового заказа"
+                ? isPastDay
+                  ? "Дата в прошлом — клик недоступен"
+                  : "Нажмите для создания нового заказа"
                 : undefined
             }
             sx={{
@@ -852,7 +928,11 @@ export default function CarTableRow({
               borderRadius,
               color,
               cursor:
-                moveMode && !isInMoveModeDateRange ? "not-allowed" : "pointer",
+                moveMode && !isInMoveModeDateRange
+                  ? "not-allowed"
+                  : isPastDay
+                  ? "not-allowed"
+                  : "pointer",
               border: border,
               width: "100%",
             }}
@@ -872,11 +952,15 @@ export default function CarTableRow({
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
-              isPartOfSelectedOrder(dateStr)
-                ? "Нажмите для выхода из режима перемещения"
-                : !moveMode
-                ? "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра всех заказов"
-                : undefined
+              moveMode
+                ? isPartOfSelectedOrder(dateStr)
+                  ? "Нажмите для выхода из режима перемещения"
+                  : undefined
+                : isCompletedCell
+                ? "Нажмите для просмотра заказа"
+                : isPastDay && isEndDate && !isStartDate
+                ? "Дата в прошлом — клик недоступен"
+                : "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра всех заказов"
             }
             sx={{
               border: border,
@@ -892,7 +976,7 @@ export default function CarTableRow({
                 ? "#1976d2"
                 : "text.green",
               cursor:
-                moveMode && !isPartOfSelectedOrder(dateStr)
+                isPastDay && isEndDate && !isStartDate
                   ? "not-allowed"
                   : "pointer",
               width: "100%",
@@ -1020,13 +1104,17 @@ export default function CarTableRow({
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
-              shouldShowFirstMoveDay || shouldShowLastMoveDay
-                ? "Нажмите для перемещения заказа"
-                : isPartOfSelectedOrder(dateStr)
-                ? "Нажмите для выхода из режима перемещения"
-                : !moveMode
-                ? "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра и редактирования заказов"
-                : undefined
+              moveMode
+                ? shouldShowFirstMoveDay || shouldShowLastMoveDay
+                  ? "Нажмите для перемещения заказа"
+                  : isPartOfSelectedOrder(dateStr)
+                  ? "Нажмите для выхода из режима перемещения"
+                  : undefined
+                : isCompletedCell
+                ? "Нажмите для просмотра заказа"
+                : isPastDay && isEndDate && !isStartDate
+                ? "Дата в прошлом — клик недоступен"
+                : "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра и редактирования заказов"
             }
             sx={{
               border: border,
@@ -1036,7 +1124,9 @@ export default function CarTableRow({
               display: "flex",
               flexDirection: "row",
               cursor:
-                moveMode && !isActiveInMoveMode ? "not-allowed" : "pointer",
+                isPastDay && isEndDate && !isStartDate
+                  ? "not-allowed"
+                  : "pointer",
             }}
           >
             {/* Желтый overlay для первого/последнего дня перемещения */}
@@ -1158,13 +1248,15 @@ export default function CarTableRow({
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
-              shouldShowFirstMoveDay
-                ? "Нажмите для перемещения заказа в первый день"
-                : shouldHighlightRight
-                ? "Нажмите для выхода из режима перемещения"
-                : !moveMode
-                ? "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
-                : undefined
+              moveMode
+                ? shouldShowFirstMoveDay
+                  ? "Нажмите для перемещения заказа в первый день"
+                  : shouldHighlightRight
+                  ? "Нажмите для выхода из режима перемещения"
+                  : undefined
+                : isCompletedCell
+                ? "Нажмите для просмотра заказа"
+                : "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
             }
             sx={{
               border: border,
@@ -1284,13 +1376,17 @@ export default function CarTableRow({
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
-              shouldShowLastMoveDay
-                ? "Нажмите для перемещения заказа в последний день"
-                : shouldHighlightLeft || shouldHighlightRight
-                ? "Нажмите для выхода из режима перемещения"
-                : !moveMode
-                ? "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
-                : undefined
+              moveMode
+                ? shouldShowLastMoveDay
+                  ? "Нажмите для перемещения заказа в последний день"
+                  : shouldHighlightLeft || shouldHighlightRight
+                  ? "Нажмите для выхода из режима перемещения"
+                  : undefined
+                : isCompletedCell
+                ? "Нажмите для просмотра заказа"
+                : isPastDay
+                ? "Дата в прошлом — клик недоступен"
+                : "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
             }
             sx={{
               border: border,
@@ -1299,8 +1395,11 @@ export default function CarTableRow({
               height: "100%",
               display: "flex",
               flexDirection: "row",
-              cursor:
-                moveMode && !isActiveInMoveMode ? "not-allowed" : "pointer",
+              cursor: isPastDay
+                ? "not-allowed"
+                : moveMode && !isActiveInMoveMode
+                ? "not-allowed"
+                : "pointer",
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -1434,11 +1533,13 @@ export default function CarTableRow({
           onMouseLeave={handleLongPressEnd}
           onContextMenu={(e) => e.preventDefault()}
           title={
-            isPartOfSelectedOrder(dateStr)
-              ? "Нажмите для выхода из режима перемещения"
-              : !moveMode
-              ? "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
-              : undefined
+            moveMode
+              ? isPartOfSelectedOrder(dateStr)
+                ? "Нажмите для выхода из режима перемещения"
+                : undefined
+              : isCompletedCell
+              ? "Нажмите для просмотра заказа"
+              : "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
           }
           sx={{
             position: "relative",
