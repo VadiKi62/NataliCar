@@ -188,6 +188,37 @@ export default function NavBar({
   const handleSaveDiscount = async () => {
     if (!isAdmin) return;
 
+    // Валидация дат перед сохранением
+    const today = new Date();
+    const startOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    if (!discountStartDate || !discountEndDate) {
+      console.error("❌ Даты скидки не заполнены");
+      alert("Укажите дату начала и дату окончания скидки");
+      return;
+    }
+    const startDateLocal = new Date(
+      discountStartDate.getFullYear(),
+      discountStartDate.getMonth(),
+      discountStartDate.getDate()
+    );
+    const endDateLocal = new Date(
+      discountEndDate.getFullYear(),
+      discountEndDate.getMonth(),
+      discountEndDate.getDate()
+    );
+    if (startDateLocal < startOfToday) {
+      alert("Дата начала скидки не может быть раньше сегодняшней");
+      return;
+    }
+    if (endDateLocal <= startDateLocal) {
+      alert("Дата окончания скидки должна быть позже даты начала");
+      return;
+    }
+
     // 👉 Преобразуем в UTC-полночь вручную, чтобы сохранить точную дату
     // const startDateUtc = new Date(discountStartDate);
     // startDateUtc.setUTCHours(12, 0, 0, 0);
@@ -230,6 +261,34 @@ export default function NavBar({
 
     setDiscountModalOpen(false);
   };
+
+  // Определение: активна ли скидка сегодня (по локальной дате, без времени)
+  const isDiscountActiveToday = () => {
+    if (!(selectedDiscount > 0 && discountStartDate && discountEndDate))
+      return false;
+    const normalize = (d) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const today = normalize(new Date());
+    const start = normalize(discountStartDate);
+    const end = normalize(discountEndDate);
+    return today >= start && today <= end;
+  };
+
+  // Форматирование даты для надписи кнопки: DD.MM.YY
+  const formatDiscountDate = (date) => {
+    if (!date) return "";
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yy = String(date.getFullYear()).slice(-2);
+    return `${dd}.${mm}.${yy}`;
+  };
+
+  // Итоговая надпись для кнопки скидки (десктоп / мобильное меню)
+  const discountButtonLabel = isDiscountActiveToday()
+    ? `СКИДКА ${selectedDiscount}% с ${formatDiscountDate(
+        discountStartDate
+      )} до ${formatDiscountDate(discountEndDate)}`
+    : "СКИДКА";
 
   return (
     <>
@@ -377,9 +436,7 @@ export default function NavBar({
                       },
                     }}
                   >
-                    {selectedDiscount > 0
-                      ? `Скидка ${selectedDiscount}%`
-                      : "Скидка"}
+                    {discountButtonLabel}
                   </Button>
                 )}
               </Stack>
@@ -568,13 +625,7 @@ export default function NavBar({
                       setDiscountModalOpen(true);
                     }}
                   >
-                    <ListItemText
-                      primary={
-                        selectedDiscount > 0
-                          ? `Скидка (${selectedDiscount}%)`
-                          : "Скидка"
-                      }
-                    />
+                    <ListItemText primary={discountButtonLabel} />
                   </ListItem>
                 )}
               </>
@@ -610,7 +661,40 @@ export default function NavBar({
                 <DatePicker
                   label="Дата начала скидки"
                   value={discountStartDate}
-                  onChange={(newValue) => setDiscountStartDate(newValue)}
+                  disablePast
+                  // Минимальная дата - сегодня
+                  minDate={new Date()}
+                  onChange={(newValue) => {
+                    // Если пользователь очистил поле
+                    if (!newValue) {
+                      setDiscountStartDate(null);
+                      return;
+                    }
+                    // Обрезаем время (Adapter может давать с временем)
+                    const d = new Date(
+                      newValue.getFullYear(),
+                      newValue.getMonth(),
+                      newValue.getDate()
+                    );
+                    // Запрещаем установку прошлых дат (дополнительная защита)
+                    const today = new Date();
+                    const todayStart = new Date(
+                      today.getFullYear(),
+                      today.getMonth(),
+                      today.getDate()
+                    );
+                    if (d < todayStart) return; // просто игнорируем
+                    setDiscountStartDate(d);
+                    // Если дата окончания установлена и стала недопустимой (<= старт), сбрасываем её
+                    if (discountEndDate) {
+                      const endLocal = new Date(
+                        discountEndDate.getFullYear(),
+                        discountEndDate.getMonth(),
+                        discountEndDate.getDate()
+                      );
+                      if (endLocal <= d) setDiscountEndDate(null);
+                    }
+                  }}
                   inputFormat="dd.MM.yyyy"
                   renderInput={(params) => (
                     <TextField
@@ -626,7 +710,57 @@ export default function NavBar({
                 <DatePicker
                   label="Дата окончания скидки"
                   value={discountEndDate}
-                  onChange={(newValue) => setDiscountEndDate(newValue)}
+                  // Минимальная дата: строго позже даты начала, либо завтра если начало ещё не выбрано
+                  disablePast
+                  minDate={(function () {
+                    const today = new Date();
+                    const base = new Date(
+                      today.getFullYear(),
+                      today.getMonth(),
+                      today.getDate()
+                    );
+                    if (discountStartDate) {
+                      return new Date(
+                        discountStartDate.getFullYear(),
+                        discountStartDate.getMonth(),
+                        discountStartDate.getDate() + 1
+                      );
+                    }
+                    return new Date(
+                      base.getFullYear(),
+                      base.getMonth(),
+                      base.getDate() + 1
+                    );
+                  })()}
+                  onChange={(newValue) => {
+                    if (!newValue) {
+                      setDiscountEndDate(null);
+                      return;
+                    }
+                    const d = new Date(
+                      newValue.getFullYear(),
+                      newValue.getMonth(),
+                      newValue.getDate()
+                    );
+                    if (discountStartDate) {
+                      const startLocal = new Date(
+                        discountStartDate.getFullYear(),
+                        discountStartDate.getMonth(),
+                        discountStartDate.getDate()
+                      );
+                      // Требуем строго позже старта
+                      if (d <= startLocal) return; // игнорируем недопустимый выбор
+                    }
+                    // Дополнительная защита от прошлого
+                    const today = new Date();
+                    const todayStart = new Date(
+                      today.getFullYear(),
+                      today.getMonth(),
+                      today.getDate()
+                    );
+                    if (d <= todayStart) return; // конец не может быть сегодня или в прошлом
+                    setDiscountEndDate(d);
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
