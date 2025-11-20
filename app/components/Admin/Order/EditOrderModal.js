@@ -109,13 +109,13 @@ const EditOrderModal = ({
   const { allOrders, fetchAndUpdateOrders, company } = useMainContext();
   const locations = company.locations.map((loc) => loc.name);
   const [editedOrder, setEditedOrder] = useState({ ...order });
-    // Определяем завершён ли заказ (конец раньше сегодняшнего дня)
-    const isCompletedOrder = useMemo(
-      () => !!order && dayjs(order.rentalEndDate).isBefore(dayjs(), "day"),
-      [order]
-    );
-    // Итоговый флаг режима только просмотра
-    const viewOnly = isViewOnly || isCompletedOrder;
+  // Определяем завершён ли заказ (конец раньше сегодняшнего дня)
+  const isCompletedOrder = useMemo(
+    () => !!order && dayjs(order.rentalEndDate).isBefore(dayjs(), "day"),
+    [order]
+  );
+  // Итоговый флаг режима только просмотра
+  const viewOnly = isViewOnly || isCompletedOrder;
   // Флаг: первое открытие модального окна (не запускать автосинхронизацию totalPrice)
   const isFirstOpen = React.useRef(true);
   // Флаг: редактирует ли админ вручную поле totalPrice
