@@ -192,6 +192,17 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
         startDate = normalizeDate(date);
         endDate = normalizeDate(dayjs(date).add(1, "day"));
       }
+      // Если стартовая дата в прошлом — заменяем на сегодня и корректируем конец
+      const todayStr = dayjs().format("YYYY-MM-DD");
+      if (startDate && dayjs(startDate).isBefore(dayjs(), "day")) {
+        startDate = todayStr;
+        if (
+          !endDate ||
+          dayjs(endDate).isSameOrBefore(dayjs(startDate), "day")
+        ) {
+          endDate = dayjs(startDate).add(1, "day").format("YYYY-MM-DD");
+        }
+      }
       setBookedDates({
         start: startDate,
         end: endDate,
@@ -322,6 +333,15 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   const handleBookingComplete = async () => {
     setLoadingState(true);
     setStatusMessage({ type: null, message: "" });
+    // Валидация: начало не раньше сегодняшнего дня
+    if (bookDates.start && dayjs(bookDates.start).isBefore(dayjs(), "day")) {
+      setStatusMessage({
+        type: "error",
+        message: "Дата начала аренды не может быть раньше сегодняшнего дня",
+      });
+      setLoadingState(false);
+      return;
+    }
 
     console.log("=== ИСПРАВЛЕНИЕ UTC v2 ===");
     console.log(
@@ -439,6 +459,10 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           value={bookDates.start || ""}
           onChange={(e) => {
             const newStart = normalizeDate(e.target.value);
+            // Запрет выбора прошлой даты
+            if (newStart && dayjs(newStart).isBefore(dayjs(), "day")) {
+              return; // игнорируем недопустимый выбор
+            }
             setBookedDates((dates) => {
               if (!newStart) return { ...dates, start: newStart };
               if (
@@ -456,6 +480,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           fullWidth
           margin="dense"
           required
+          inputProps={{ min: dayjs().format("YYYY-MM-DD") }}
         />
         <TextField
           label={t("order.returnDate")}

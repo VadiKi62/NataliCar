@@ -107,6 +107,8 @@ const EditOrderModal = ({
   isViewOnly, // <-- режим просмотра (передаётся из BigCalendar для завершённых заказов)
 }) => {
   const { allOrders, fetchAndUpdateOrders, company } = useMainContext();
+  // Сегодня (локально) для ограничения выбора начала аренды
+  const todayStr = dayjs().format("YYYY-MM-DD");
   const locations = company.locations.map((loc) => loc.name);
   const [editedOrder, setEditedOrder] = useState({ ...order });
   // Определяем завершён ли заказ (конец раньше сегодняшнего дня)
@@ -406,6 +408,14 @@ const EditOrderModal = ({
     setIsUpdating(true);
     try {
       const selectedCar = cars.find((c) => c._id === editedOrder.car);
+      // Валидация: дата начала аренды не может быть раньше сегодняшней (локально)
+      if (dayjs(editedOrder.rentalStartDate).isBefore(dayjs(), "day")) {
+        setUpdateMessage(
+          "Дата начала аренды не может быть раньше сегодняшнего дня"
+        );
+        setIsUpdating(false);
+        return;
+      }
       // Собираем локальные (Афины) времена и конвертируем в UTC для БД
       const startDateStr = editedOrder.rentalStartDate.format("YYYY-MM-DD");
       const endDateStr = editedOrder.rentalEndDate.format("YYYY-MM-DD");
@@ -819,6 +829,10 @@ const EditOrderModal = ({
                   onChange={(e) => {
                     if (viewOnly) return;
                     const newStart = dayjs(e.target.value);
+                    // Запрещаем выбор даты раньше сегодняшнего дня
+                    if (newStart.isBefore(dayjs(), "day")) {
+                      return; // игнорируем недопустимый выбор
+                    }
                     setEditedOrder((prev) => {
                       const currentReturn = dayjs(prev.rentalEndDate);
                       // Если новая дата получения делает дату возврата некорректной — не менять дату получения
@@ -839,6 +853,7 @@ const EditOrderModal = ({
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
                   disabled={viewOnly}
+                  inputProps={{ min: todayStr }}
                 />
                 <TextField
                   label={t("order.returnDate")}
