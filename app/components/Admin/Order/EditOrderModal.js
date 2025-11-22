@@ -116,7 +116,15 @@ const EditOrderModal = ({
     () => !!order && dayjs(order.rentalEndDate).isBefore(dayjs(), "day"),
     [order]
   );
-  // Итоговый флаг режима только просмотра
+  // Определяем "текущий" заказ: старт до сегодня, окончание сегодня или позже
+  const isCurrentOrder = useMemo(
+    () =>
+      !!order &&
+      dayjs(order.rentalStartDate).isBefore(dayjs(), "day") &&
+      !dayjs(order.rentalEndDate).isBefore(dayjs(), "day"),
+    [order]
+  );
+  // Итоговый флаг режима только просмотра (для завершённых). Текущий не viewOnly, но часть полей блокируется выборочно.
   const viewOnly = isViewOnly || isCompletedOrder;
   // Флаг: первое открытие модального окна (не запускать автосинхронизацию totalPrice)
   const isFirstOpen = React.useRef(true);
@@ -192,6 +200,14 @@ const EditOrderModal = ({
 
   const handleDelete = async () => {
     if (viewOnly) return; // Блокируем удаление в режиме просмотра
+    // Запрет удаления текущего (идущего) заказа
+    if (
+      dayjs(order.rentalStartDate).isBefore(dayjs(), "day") &&
+      !dayjs(order.rentalEndDate).isBefore(dayjs(), "day")
+    ) {
+      setUpdateMessage("Текущий заказ нельзя удалить");
+      return;
+    }
     const isConfirmed = window.confirm(t("order.sureDelOrder"));
     if (!isConfirmed) return;
 
@@ -408,13 +424,47 @@ const EditOrderModal = ({
     setIsUpdating(true);
     try {
       const selectedCar = cars.find((c) => c._id === editedOrder.car);
-      // Валидация: дата начала аренды не может быть раньше сегодняшней (локально)
-      if (dayjs(editedOrder.rentalStartDate).isBefore(dayjs(), "day")) {
+      // Валидация изменения даты начала: если попытка установить новую прошлую дату
+      const originalStart = dayjs(order.rentalStartDate);
+      if (
+        dayjs(editedOrder.rentalStartDate).isBefore(dayjs(), "day") &&
+        !originalStart.isSame(editedOrder.rentalStartDate, "day")
+      ) {
         setUpdateMessage(
-          "Дата начала аренды не может быть раньше сегодняшнего дня"
+          "Нельзя устанавливать новую дату начала раньше сегодняшнего дня"
         );
         setIsUpdating(false);
         return;
+      }
+      // Валидация для текущего заказа: дата окончания не может быть раньше сегодняшнего дня
+      if (
+        isCurrentOrder &&
+        dayjs(editedOrder.rentalEndDate).isBefore(dayjs(), "day")
+      ) {
+        setUpdateMessage(
+          "Для текущего заказа дата окончания не может быть раньше сегодняшнего дня"
+        );
+        setIsUpdating(false);
+        return;
+      }
+      // Валидация времени окончания: если текущий заказ и дата окончания сегодня - время окончания не может быть в прошлом
+      if (
+        isCurrentOrder &&
+        dayjs(editedOrder.rentalEndDate).isSame(dayjs(), "day")
+      ) {
+        const endDateStr = editedOrder.rentalEndDate.format("YYYY-MM-DD");
+        const attemptedEndTime = dayjs.tz(
+          `${endDateStr} ${dayjs(endTime).format("HH:mm")}`,
+          "YYYY-MM-DD HH:mm",
+          timeZone
+        );
+        if (attemptedEndTime.isBefore(dayjs(), "minute")) {
+          setUpdateMessage(
+            "Для текущего заказа время окончания не может быть в прошлом"
+          );
+          setIsUpdating(false);
+          return;
+        }
       }
       // Собираем локальные (Афины) времена и конвертируем в UTC для БД
       const startDateStr = editedOrder.rentalStartDate.format("YYYY-MM-DD");
@@ -795,14 +845,29 @@ const EditOrderModal = ({
               <Button
                 variant="contained"
                 onClick={handleConfirmationToggle}
-                disabled={isUpdating || viewOnly}
+                disabled={
+                  isUpdating ||
+                  viewOnly ||
+                  (isCurrentOrder && editedOrder?.confirmed) // запрет снять подтверждение для текущего заказа
+                }
+                title={
+                  isCurrentOrder && editedOrder?.confirmed
+                    ? "Нельзя снять подтверждение у текущего текущего заказа"
+                    : ""
+                }
                 sx={{
                   width: "100%",
                   backgroundColor: editedOrder?.confirmed
                     ? "text.green"
                     : "text.red",
-                  opacity: viewOnly ? 0.6 : 1,
-                  cursor: viewOnly ? "not-allowed" : "pointer",
+                  opacity:
+                    viewOnly || (isCurrentOrder && editedOrder?.confirmed)
+                      ? 0.6
+                      : 1,
+                  cursor:
+                    viewOnly || (isCurrentOrder && editedOrder?.confirmed)
+                      ? "not-allowed"
+                      : "pointer",
                 }}
               >
                 {editedOrder?.confirmed
@@ -827,7 +892,7 @@ const EditOrderModal = ({
                     "YYYY-MM-DD"
                   )}
                   onChange={(e) => {
-                    if (viewOnly) return;
+                    if (viewOnly || isCurrentOrder) return; // блокируем изменение для текущих заказов
                     const newStart = dayjs(e.target.value);
                     // Запрещаем выбор даты раньше сегодняшнего дня
                     if (newStart.isBefore(dayjs(), "day")) {
@@ -835,7 +900,6 @@ const EditOrderModal = ({
                     }
                     setEditedOrder((prev) => {
                       const currentReturn = dayjs(prev.rentalEndDate);
-                      // Если новая дата получения делает дату возврата некорректной — не менять дату получения
                       if (
                         currentReturn.isValid() &&
                         newStart.isValid() &&
@@ -843,16 +907,13 @@ const EditOrderModal = ({
                       ) {
                         return prev;
                       }
-                      return {
-                        ...prev,
-                        rentalStartDate: newStart,
-                      };
+                      return { ...prev, rentalStartDate: newStart };
                     });
                   }}
                   sx={{ flex: 1, minHeight: 48 }}
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
-                  disabled={viewOnly}
+                  disabled={viewOnly || isCurrentOrder}
                   inputProps={{ min: todayStr }}
                 />
                 <TextField
@@ -866,15 +927,15 @@ const EditOrderModal = ({
                   onChange={(e) => {
                     if (viewOnly) return;
                     const newReturn = dayjs(e.target.value);
-                    const minReturn = dayjs(editedOrder.rentalStartDate).add(
-                      1,
-                      "day"
-                    );
-                    // Только если новая дата возврата больше даты получения минимум на 1 день
-                    if (
-                      newReturn.isValid() &&
-                      newReturn.isAfter(minReturn.subtract(1, "day"), "day")
-                    ) {
+                    const minReturn = isCurrentOrder
+                      ? dayjs()
+                      : dayjs(editedOrder.rentalStartDate).add(1, "day");
+                    const isValid = isCurrentOrder
+                      ? newReturn.isValid() &&
+                        !newReturn.isBefore(dayjs(), "day")
+                      : newReturn.isValid() &&
+                        newReturn.isAfter(minReturn.subtract(1, "day"), "day");
+                    if (isValid) {
                       setEditedOrder((prev) => ({
                         ...prev,
                         rentalEndDate: newReturn,
@@ -886,9 +947,11 @@ const EditOrderModal = ({
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
                   inputProps={{
-                    min: dayjs(editedOrder.rentalStartDate)
-                      .add(1, "day")
-                      .format("YYYY-MM-DD"),
+                    min: isCurrentOrder
+                      ? dayjs().format("YYYY-MM-DD")
+                      : dayjs(editedOrder.rentalStartDate)
+                          .add(1, "day")
+                          .format("YYYY-MM-DD"),
                   }}
                 />
               </Box>
@@ -897,16 +960,35 @@ const EditOrderModal = ({
                   label={t("order.pickupTime")}
                   type="time"
                   value={dayjs(startTime).format("HH:mm")}
-                  onChange={(e) => setStartTime(dayjs(e.target.value, "HH:mm"))}
+                  onChange={(e) => {
+                    if (isCurrentOrder || viewOnly) return; // блокируем изменение времени начала для текущего заказа
+                    setStartTime(dayjs(e.target.value, "HH:mm"));
+                  }}
                   sx={{ flex: 1 }}
                   size="small"
-                  disabled={viewOnly}
+                  disabled={viewOnly || isCurrentOrder}
                 />
                 <TextField
                   label={t("order.returnTime")}
                   type="time"
                   value={dayjs(endTime).format("HH:mm")}
-                  onChange={(e) => setEndTime(dayjs(e.target.value, "HH:mm"))}
+                  onChange={(e) => {
+                    if (viewOnly) return;
+                    const newVal = dayjs(e.target.value, "HH:mm");
+                    // Если текущий заказ и дата окончания сегодня - запрещаем время в прошлом
+                    if (
+                      isCurrentOrder &&
+                      dayjs(editedOrder.rentalEndDate).isSame(dayjs(), "day")
+                    ) {
+                      const candidate = dayjs()
+                        .hour(newVal.hour())
+                        .minute(newVal.minute());
+                      if (candidate.isBefore(dayjs(), "minute")) {
+                        return; // игнорируем прошлое время
+                      }
+                    }
+                    setEndTime(newVal);
+                  }}
                   sx={{ flex: 1 }}
                   size="small"
                   disabled={viewOnly}
@@ -930,7 +1012,7 @@ const EditOrderModal = ({
                       placeIn: newInputValue,
                     }))
                   }
-                  disabled={viewOnly}
+                  disabled={viewOnly || isCurrentOrder}
                   PaperProps={{
                     sx: {
                       border: "2px solid black !important",
@@ -971,7 +1053,7 @@ const EditOrderModal = ({
                       size="medium"
                       sx={{ width: "25%", alignSelf: "stretch" }}
                       InputLabelProps={{ shrink: true }}
-                      disabled={viewOnly}
+                      disabled={viewOnly || isCurrentOrder}
                     />
                   )}
                 <Autocomplete
@@ -1268,9 +1350,18 @@ const EditOrderModal = ({
               <Button
                 variant="contained"
                 onClick={handleDelete}
-                disabled={isUpdating || viewOnly}
+                disabled={isUpdating || viewOnly || isCurrentOrder}
                 color="error"
-                sx={{ width: "30%" }}
+                sx={{
+                  width: "30%",
+                  opacity: isCurrentOrder ? 0.5 : 1,
+                  cursor: isCurrentOrder ? "not-allowed" : "pointer",
+                }}
+                title={
+                  isCurrentOrder
+                    ? "Текущий заказ нельзя удалить"
+                    : t("order.deleteOrder")
+                }
               >
                 {isUpdating ? (
                   <CircularProgress size={24} color="inherit" />
