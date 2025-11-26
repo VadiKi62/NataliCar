@@ -651,7 +651,18 @@ const BookingModal = ({
                         }}
                         size="small"
                         error={Boolean(timeErrors)}
-                        helperText={timeErrors}
+                        helperText={
+                          timeErrors
+                            ? timeErrors
+                            : timeLimits.minStart
+                            ? `${t("order.minAllowed", {
+                                defaultValue: "Не раньше: ",
+                              })}${timeLimits.minStart}`
+                            : ""
+                        }
+                        FormHelperTextProps={{
+                          sx: { color: "error.main", fontWeight: 600 },
+                        }}
                       />
                     </Box>
                     {/* Колонка возврата */}
@@ -708,7 +719,18 @@ const BookingModal = ({
                         }}
                         size="small"
                         error={Boolean(timeErrors)}
-                        helperText={timeErrors}
+                        helperText={
+                          timeErrors
+                            ? timeErrors
+                            : timeLimits.maxEnd
+                            ? `${t("order.maxAllowed", {
+                                defaultValue: "Не позже: ",
+                              })}${timeLimits.maxEnd}`
+                            : ""
+                        }
+                        FormHelperTextProps={{
+                          sx: { color: "error.main", fontWeight: 600 },
+                        }}
                       />
                     </Box>
                   </Box>

@@ -81,7 +81,10 @@
     "sureDelOrder": "Are you sure you want to delete this order?",
     "changeDates": "Everything is great! Dates have been changed",
     "discount": "Discount",
-    "flightNumber": "Flight No"
+    "flightNumber": "Flight No",
+    "minAllowed": "Not earlier than: ",
+    "maxAllowed": "Not later than: ",
+    "invalidBoundaryInterval": "Invalid interval between boundary orders. Please choose other dates."
   },
   "car": {
     "viewDetails": "View more details",
