@@ -72,12 +72,16 @@ const BookingModal = ({
   const [submittedOrder, setSubmittedOrder] = useState(null);
 
   const [startTime, setStartTime] = useState(() =>
-    // По умолчанию принудительно ставим 14:00 (companyData.defaultStart), игнорируя selectedTimes
     setTimeToDatejs(presetDates?.startDate, null, true)
   );
   const [endTime, setEndTime] = useState(() =>
-    setTimeToDatejs(presetDates?.endDate, selectedTimes?.end)
+    setTimeToDatejs(presetDates?.endDate, null)
   );
+  const [timeLimits, setTimeLimits] = useState({
+    minStart: null,
+    maxEnd: null,
+  });
+  const [timeErrors, setTimeErrors] = useState(null);
   const [orderNumber, setOrderNumber] = useState("");
   // Массив мест из базы (company.locations)
   const placeOptions = company?.locations?.map((loc) => loc.name) || [];
@@ -127,13 +131,89 @@ const BookingModal = ({
     fetchTotalPrice();
   }, [fetchTotalPrice]);
 
+  // Определение граничных заказов и установка дефолтных/смещённых времен
   useEffect(() => {
-    if (presetDates && presetDates.startDate && presetDates.endDate) {
-      // При выборе дат также принудительно ставим дефолтное время начала 14:00
-      setStartTime(setTimeToDatejs(presetDates.startDate, null, true));
-      setEndTime(setTimeToDatejs(presetDates.endDate, selectedTimes?.end));
+    if (!presetDates?.startDate || !presetDates?.endDate || !company) return;
+
+    const diffStart = Number(company.hoursDiffForStart) || 0; // обычно >0
+    const diffEnd = Number(company.hoursDiffForEnd) || 0; // может быть отрицательным
+
+    // previous boundary: selectedTimes.start содержит время окончания предыдущего заказа если он заканчивается в день старта нового
+    const prevEndRaw = selectedTimes?.start; // HH:mm или null
+    // next boundary: selectedTimes.end содержит время начала следующего заказа если он начинается в день окончания нового
+    const nextStartRaw = selectedTimes?.end; // HH:mm или null
+
+    let minStart = null; // нижняя граница для старта
+    let maxEnd = null; // верхняя граница для окончания
+    let startDefault = company.defaultStart; // строка HH:mm
+    let endDefault = company.defaultEnd; // строка HH:mm
+
+    // Если есть предыдущий граничный заказ: старт = (конец предыдущего + diffStart часов)
+    if (prevEndRaw) {
+      const base = dayjs(prevEndRaw, "HH:mm").add(diffStart, "hour");
+      startDefault = base.format("HH:mm");
+      minStart = startDefault; // нельзя раньше этой границы
     }
-  }, [presetDates, car, selectedTimes]);
+
+    // Если есть следующий граничный заказ: окончание = (начало следующего + diffEnd часов)
+    if (nextStartRaw) {
+      const baseNext = dayjs(nextStartRaw, "HH:mm").add(diffEnd, "hour");
+      endDefault = baseNext.format("HH:mm");
+      maxEnd = endDefault; // нельзя позже этой границы
+    }
+
+    // Установка времен
+    setStartTime(setTimeToDatejs(presetDates.startDate, startDefault, true));
+    setEndTime(setTimeToDatejs(presetDates.endDate, endDefault));
+    setTimeLimits({ minStart, maxEnd });
+
+    // Валидация пересечения только если даты начала и окончания ОДИНАКОВЫЕ (same day)
+    // Если даты разные, сравнение только по времени некорректно и не требуется.
+    if (
+      minStart &&
+      maxEnd &&
+      dayjs(presetDates.startDate).isSame(dayjs(presetDates.endDate), "day")
+    ) {
+      const startVal = dayjs(startDefault, "HH:mm");
+      const endVal = dayjs(endDefault, "HH:mm");
+      if (!startVal.isBefore(endVal)) {
+        setTimeErrors(
+          t("order.invalidBoundaryInterval", {
+            defaultValue:
+              "Недопустимый интервал между граничными заказами. Выберите другие даты.",
+          })
+        );
+      } else setTimeErrors(null);
+    } else setTimeErrors(null);
+  }, [presetDates, selectedTimes, company, t]);
+
+  // Клампинг ручного ввода времени старта
+  const handleStartTimeChange = (value) => {
+    const chosen = dayjs(value, "HH:mm");
+    if (timeLimits.minStart) {
+      const min = dayjs(timeLimits.minStart, "HH:mm");
+      if (chosen.isBefore(min)) {
+        setStartTime(
+          setTimeToDatejs(presetDates.startDate, timeLimits.minStart, true)
+        );
+        return;
+      }
+    }
+    setStartTime(setTimeToDatejs(presetDates.startDate, value, true));
+  };
+
+  // Клампинг ручного ввода времени окончания
+  const handleEndTimeChange = (value) => {
+    const chosen = dayjs(value, "HH:mm");
+    if (timeLimits.maxEnd) {
+      const max = dayjs(timeLimits.maxEnd, "HH:mm");
+      if (chosen.isAfter(max)) {
+        setEndTime(setTimeToDatejs(presetDates.endDate, timeLimits.maxEnd));
+        return;
+      }
+    }
+    setEndTime(setTimeToDatejs(presetDates.endDate, value));
+  };
 
   // Проверка формата email происходит только на фронте, в функции validateEmail:
   const validateEmail = (email) => {
@@ -555,9 +635,12 @@ const BookingModal = ({
                         variant="outlined"
                         InputLabelProps={{ shrink: true }}
                         value={startTime.format("HH:mm")}
-                        onChange={(e) =>
-                          setStartTime(dayjs(e.target.value, "HH:mm"))
+                        inputProps={
+                          timeLimits.minStart
+                            ? { min: timeLimits.minStart }
+                            : {}
                         }
+                        onChange={(e) => handleStartTimeChange(e.target.value)}
                         sx={{
                           "& .MuiInputBase-root": { height: { sm: 40 } },
                           "@media (max-width:600px) and (orientation: portrait)":
@@ -567,6 +650,8 @@ const BookingModal = ({
                           "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
                         }}
                         size="small"
+                        error={Boolean(timeErrors)}
+                        helperText={timeErrors}
                       />
                     </Box>
                     {/* Колонка возврата */}
@@ -609,9 +694,10 @@ const BookingModal = ({
                         variant="outlined"
                         InputLabelProps={{ shrink: true }}
                         value={endTime.format("HH:mm")}
-                        onChange={(e) =>
-                          setEndTime(dayjs(e.target.value, "HH:mm"))
+                        inputProps={
+                          timeLimits.maxEnd ? { max: timeLimits.maxEnd } : {}
                         }
+                        onChange={(e) => handleEndTimeChange(e.target.value)}
                         sx={{
                           "& .MuiInputBase-root": { height: { sm: 40 } },
                           "@media (max-width:600px) and (orientation: portrait)":
@@ -621,6 +707,8 @@ const BookingModal = ({
                           "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
                         }}
                         size="small"
+                        error={Boolean(timeErrors)}
+                        helperText={timeErrors}
                       />
                     </Box>
                   </Box>
@@ -1007,8 +1095,8 @@ const BookingModal = ({
                         !name ||
                         !phone ||
                         !presetDates?.startDate ||
-                        !presetDates?.endDate
-                        // email не требуется для активации
+                        !presetDates?.endDate ||
+                        Boolean(timeErrors)
                       }
                       startIcon={
                         isSubmitting ? <CircularProgress size={20} /> : null
