@@ -34,6 +34,15 @@ dayjs.extend(timezone);
 // Set the default timezone
 dayjs.tz.setDefault("Europe/Athens");
 
+// DEBUG: укажите дату вида 'YYYY-MM-DD' и при необходимости конкретный carId,
+// чтобы включить точечные логи только для выбранной машины и даты.
+// Пример: const DEBUG_DATE = '2025-07-14'; const DEBUG_CAR_ID = '670bb226223dd911f0595287';
+// По умолчанию логирование отключено (оба null)
+// const DEBUG_DATE = null;
+// const DEBUG_CAR_ID = null;
+const DEBUG_DATE = "2025-11-30";
+const DEBUG_CAR_ID = "670bb226223dd911f0595286";
+
 const CalendarPicker = ({
   isLoading,
   setBookedDates,
@@ -173,6 +182,32 @@ const CalendarPicker = ({
     setUnavailableDates(unavailable);
     setConfirmedDates(confirmed);
     setStartEndDates(startEnd);
+
+    // Базовая сводка для быстрой проверки
+    if (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId) {
+      console.log("[CalendarPicker] Dates prepared:", {
+        carId,
+        confirmedCount: confirmed?.length || 0,
+        unavailableCount: unavailable?.length || 0,
+        startEndCount: startEnd?.length || 0,
+        overlapCount: transformedStartEndOverlap?.length || 0,
+      });
+    }
+
+    // Точечная диагностика для конкретной даты (если указана DEBUG_DATE)
+    if (DEBUG_DATE && (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)) {
+      const isConf = confirmed?.includes(DEBUG_DATE);
+      const isUnav = unavailable?.includes(DEBUG_DATE);
+      const se = startEnd?.filter((d) => d.date === DEBUG_DATE);
+      const ov = transformedStartEndOverlap?.find((d) => d.date === DEBUG_DATE);
+      console.log(`[CalendarPicker][DEBUG ${DEBUG_DATE}] snapshot`, {
+        carId,
+        inConfirmed: isConf,
+        inUnavailable: isUnav,
+        startEndOnDate: se,
+        overlapOnDate: ov,
+      });
+    }
   }, [orders]);
 
   // ДОБАВИТЬ ЭТОТ useEffect ЗДЕСЬ:
@@ -230,6 +265,25 @@ const CalendarPicker = ({
     );
     // если предыдущая функция нашла что-то, то эта вернет тру, и если нет таких дат, которые начальные и конечные тогда это будет фолс
     const isStartAndEndDateOverlap = Boolean(isStartAndEndDateOverlapInfo);
+
+    // Точечный лог текущей ячейки (если совпадает с DEBUG_DATE)
+    if (
+      DEBUG_DATE &&
+      dateStr === DEBUG_DATE &&
+      (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
+    ) {
+      console.log(`[CalendarPicker][DEBUG ${dateStr}] cell flags`, {
+        carId,
+        isDisabled,
+        isConfirmed,
+        isUnavailable,
+        isStartDate,
+        isEndDate,
+        isStartAndEndDateOverlap,
+        startEndInfo,
+        overlapInfo: isStartAndEndDateOverlapInfo,
+      });
+    }
 
     // тест в консоли для конкретной машины
     // if (carId === "670bb226223dd911f0595287" && isStartAndEndDateOverlap) {
@@ -294,6 +348,13 @@ const CalendarPicker = ({
       isStartAndEndDateOverlapInfo?.endConfirmed ||
       isStartAndEndDateOverlapInfo?.startConfirmed
     ) {
+      if (
+        DEBUG_DATE &&
+        dateStr === DEBUG_DATE &&
+        (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
+      ) {
+        console.log(`[CalendarPicker][DEBUG ${dateStr}] apply FULL RED`);
+      }
       backgroundColor = "primary.red";
       color = "common.white";
     } else if (
@@ -301,6 +362,15 @@ const CalendarPicker = ({
       isStartAndEndDateOverlapInfo?.endPending ||
       isStartAndEndDateOverlapInfo?.startPending
     ) {
+      if (
+        DEBUG_DATE &&
+        dateStr === DEBUG_DATE &&
+        (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
+      ) {
+        console.log(
+          `[CalendarPicker][DEBUG ${dateStr}] apply PENDING background`
+        );
+      }
       backgroundColor = "rgba(194, 209, 224, 0.3)"; // Сделаем неподтвержденные заказы еще бледнее
       color = "common.black";
     }
@@ -371,6 +441,13 @@ const CalendarPicker = ({
     }
 
     if (!isStartDate && isEndDate && !isStartAndEndDateOverlap) {
+      if (
+        DEBUG_DATE &&
+        dateStr === DEBUG_DATE &&
+        (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
+      ) {
+        console.log(`[CalendarPicker][DEBUG ${dateStr}] apply END-HALF (left)`);
+      }
       return (
         <Box
           sx={{

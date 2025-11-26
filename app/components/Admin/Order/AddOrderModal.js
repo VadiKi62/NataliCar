@@ -392,21 +392,46 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     try {
       const response = await addOrderNew(data);
 
-      setStatusMessage({
-        type: "success",
-        message: response.data.message || "Заказ успешно добавлен",
-      });
+      // Унифицированная обработка ответов addOrderNew
+      if (response.status === "success") {
+        const msg = response?.data?.message || "Заказ успешно добавлен";
+        setStatusMessage({ type: "success", message: msg });
+        setUpdateStatus({ type: 201, message: msg });
+        setTimeout(() => {
+          setStatusMessage({ type: null, message: "" });
+          onClose();
+        }, 4000);
+        return;
+      }
 
-      setUpdateStatus({
-        type: 200,
-        message: response.data.message || "Заказ добавлен",
-      });
+      if (response.status === "startEndConflict") {
+        const msg = response?.message || "Конфликт старт/финиш дат";
+        setStatusMessage({ type: "warning", message: msg });
+        setUpdateStatus({ type: 200, message: msg });
+        return;
+      }
 
-      // Закрываем модальное окно с небольшой задержкой для отображения сообщения
-      setTimeout(() => {
-        setStatusMessage({ type: null, message: "" });
-        onClose();
-      }, 5000);
+      if (response.status === "pending") {
+        const msg = response?.message || "Есть неподтвержденные пересечения";
+        setStatusMessage({ type: "warning", message: msg });
+        setUpdateStatus({ type: 202, message: msg });
+        return;
+      }
+
+      if (response.status === "conflict") {
+        const msg = response?.message || "Даты уже заняты и недоступны";
+        setStatusMessage({ type: "error", message: msg });
+        setUpdateStatus({ type: 409, message: msg });
+        return;
+      }
+
+      // status === 'error' или неожиданный статус
+      {
+        const msg = response?.message || "Не удалось добавить заказ";
+        setStatusMessage({ type: "error", message: msg });
+        setUpdateStatus({ type: 400, message: msg });
+        return;
+      }
     } catch (error) {
       console.error("Ошибка при отправке данных:", error);
 

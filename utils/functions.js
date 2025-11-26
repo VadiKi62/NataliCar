@@ -16,6 +16,14 @@ const defaultEndMinute = companyData.defaultEnd.slice(-2);
 const diffStart = companyData.hoursDiffForStart;
 const diffEnd = companyData.hoursDiffForEnd;
 
+// DEBUG: точечное логирование формирования confirmed для конкретной даты/машины
+// Пример: const DEBUG_DATE = '2025-11-30'; const DEBUG_CAR_ID = '670bb226223dd911f0595286';
+// По умолчанию отключено (оба null)
+// const DEBUG_DATE = null;
+// const DEBUG_CAR_ID = null;
+const DEBUG_DATE = "2025-11-30";
+const DEBUG_CAR_ID = "670bb226223dd911f0595286";
+
 export function returnHoursToParseToDayjs(company) {
   const defaultStartHour = company?.defaultStart?.slice(0, 2);
   const defaultStartMinute = company?.defaultStart?.slice(-2);
@@ -117,12 +125,63 @@ export function extractArraysOfStartEndConfPending(orders) {
   const startEnd = [];
 
   orders?.forEach((order) => {
-    const startDate = dayjs(order.rentalStartDate);
-    const endDate = dayjs(order.rentalEndDate);
+    // Нормализуем границы в зоне Афин для работы на уровне дней
+    const startDate = dayjs(order.rentalStartDate).tz(TIMEZONE);
+    const endDate = dayjs(order.rentalEndDate).tz(TIMEZONE);
 
     // Формируем время строго в зоне Афин из UTC-значений БД
     const timeStart = dayjs.utc(order.timeIn).tz(TIMEZONE).format("HH:mm");
     const timeEnd = dayjs.utc(order.timeOut).tz(TIMEZONE).format("HH:mm");
+
+    // DEBUG: диапазон заказа и в каких представлениях находятся даты
+    if (DEBUG_DATE) {
+      const resolvedCarId = order?.carId || order?.car?._id || null;
+      if (!DEBUG_CAR_ID || DEBUG_CAR_ID === resolvedCarId) {
+        const dbgDate = dayjs(DEBUG_DATE);
+        const startDay = startDate.startOf("day");
+        const endDay = endDate.startOf("day");
+        const includesInclusive = dbgDate.isBetween(
+          startDay,
+          endDay,
+          "day",
+          "[]"
+        );
+        const includesExclusiveInner =
+          dbgDate.isAfter(startDay, "day") && dbgDate.isBefore(endDay, "day");
+        // Список внутренних дат по дневной логике (исключая start и end)
+        const innerDays = [];
+        let d = startDay.add(1, "day");
+        while (d.isBefore(endDay, "day")) {
+          innerDays.push(d.format("YYYY-MM-DD"));
+          d = d.add(1, "day");
+        }
+
+        console.log(
+          `[extractArraysOfStartEndConfPending][DEBUG RANGE ${DEBUG_DATE}]`,
+          {
+            orderId: order?._id,
+            carId: resolvedCarId,
+            rentalStartDate_raw: order?.rentalStartDate,
+            rentalEndDate_raw: order?.rentalEndDate,
+            start_local: dayjs(order.rentalStartDate).format(),
+            end_local: dayjs(order.rentalEndDate).format(),
+            start_utc: dayjs(order.rentalStartDate).utc().format(),
+            end_utc: dayjs(order.rentalEndDate).utc().format(),
+            start_TZ: dayjs(order.rentalStartDate).tz(TIMEZONE).format(),
+            end_TZ: dayjs(order.rentalEndDate).tz(TIMEZONE).format(),
+            computed_start_for_loop: startDate
+              .startOf("day")
+              .format("YYYY-MM-DD"),
+            computed_end_for_loop: endDate.startOf("day").format("YYYY-MM-DD"),
+            timeStart,
+            timeEnd,
+            includes_DEBUG_DATE_inclusive: includesInclusive,
+            includes_DEBUG_DATE_as_inner_exclusive: includesExclusiveInner,
+            innerDays,
+          }
+        );
+      }
+    }
 
     // Add start and end dates to special handling array
     startEnd.push({
@@ -140,17 +199,274 @@ export function extractArraysOfStartEndConfPending(orders) {
       orderId: order._id,
     });
 
-    // Handle middle dates
-    let currentDate = startDate.add(1, "day");
-    while (currentDate.isBefore(endDate)) {
+    // Handle middle dates (на уровне дней, игнорируя время в последний день)
+    let currentDate = startDate.startOf("day").add(1, "day");
+    const lastInnerDay = endDate.startOf("day");
+    while (currentDate.isBefore(lastInnerDay, "day")) {
       const dateStr = currentDate.format("YYYY-MM-DD");
 
       if (order.confirmed) {
         confirmed.push(dateStr);
+        // Точечный лог: кто положил дату в confirmed
+        if (DEBUG_DATE && dateStr === DEBUG_DATE) {
+          const resolvedCarId = order?.carId || order?.car?._id || null;
+          if (!DEBUG_CAR_ID || DEBUG_CAR_ID === resolvedCarId) {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG ${dateStr}] add to confirmed by order`,
+              {
+                orderId: order?._id,
+                carId: resolvedCarId,
+                rentalStartDate: dayjs(order.rentalStartDate).format(),
+                rentalEndDate: dayjs(order.rentalEndDate).format(),
+                timeIn: order?.timeIn,
+                timeOut: order?.timeOut,
+                confirmed: order?.confirmed,
+              }
+            );
+          } else {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG ${dateStr}] skipped by car filter`,
+              {
+                orderId: order?._id,
+                resolvedCarId,
+                expectedCarId: DEBUG_CAR_ID,
+                rentalStartDate: dayjs(order.rentalStartDate).format(),
+                rentalEndDate: dayjs(order.rentalEndDate).format(),
+                confirmed: order?.confirmed,
+              }
+            );
+          }
+        }
       } else {
         unavailable.push(dateStr);
       }
       currentDate = currentDate.add(1, "day");
+    }
+
+    // RULE: Окрашивать полным красным конечный день подтвержденного заказа,
+    // если время окончания + |hoursDiffForEnd| >= 24:00 (учёт знака diffEnd)
+    try {
+      const endDayStr = endDate.format("YYYY-MM-DD");
+      const endHour = Number(timeEnd?.slice(0, 2)) || 0;
+      const endMinute = Number(timeEnd?.slice(-2)) || 0;
+      const absDiffEnd = Math.abs(Number(diffEnd) || 0);
+      const totalMinutes = endHour * 60 + endMinute + absDiffEnd * 60;
+      const meetsFullRedCondition = order.confirmed && totalMinutes >= 24 * 60;
+
+      if (meetsFullRedCondition) {
+        confirmed.push(endDayStr);
+        if (DEBUG_DATE && endDayStr === DEBUG_DATE) {
+          const resolvedCarId = order?.carId || order?.car?._id || null;
+          if (!DEBUG_CAR_ID || DEBUG_CAR_ID === resolvedCarId) {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG ${endDayStr}] [RULE] end day marked confirmed (timeEnd + diffStart >= 24h)`,
+              {
+                orderId: order?._id,
+                carId: resolvedCarId,
+                timeEnd,
+                diffEnd,
+                effectiveDiffHours: absDiffEnd,
+                totalMinutes,
+                thresholdMinutes: 24 * 60,
+              }
+            );
+          } else {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG ${endDayStr}] [RULE] skipped by car filter for end-day full-red`,
+              {
+                orderId: order?._id,
+                resolvedCarId,
+                expectedCarId: DEBUG_CAR_ID,
+                timeEnd,
+                diffEnd,
+                effectiveDiffHours: absDiffEnd,
+                totalMinutes,
+                thresholdMinutes: 24 * 60,
+              }
+            );
+          }
+        }
+
+        // Доп. правило: если на следующий день начинается другой заказ той же машины,
+        // то следующий день тоже полностью красный
+        try {
+          const nextDayStr = endDate
+            .startOf("day")
+            .add(1, "day")
+            .format("YYYY-MM-DD");
+          const resolvedCarId = order?.carId || order?.car?._id || null;
+          const isSameCar = (o) => {
+            const id1 = resolvedCarId;
+            const id2 = o?.carId || o?.car?._id || null;
+            if (id1 && id2) return id1 === id2;
+            if (!id1 && !id2) return true; // нет id у обоих — считаем тот же набор
+            return false;
+          };
+          const hasNextDayStart = orders?.some((o) => {
+            if (!isSameCar(o)) return false;
+            const oStart = dayjs(o?.rentalStartDate)
+              .tz(TIMEZONE)
+              .startOf("day");
+            return oStart.isSame(endDate.startOf("day").add(1, "day"), "day");
+          });
+          if (hasNextDayStart) {
+            confirmed.push(nextDayStr);
+            if (!DEBUG_DATE || DEBUG_DATE === nextDayStr) {
+              if (
+                !DEBUG_CAR_ID ||
+                !resolvedCarId ||
+                DEBUG_CAR_ID === resolvedCarId
+              ) {
+                console.log(
+                  `[extractArraysOfStartEndConfPending][DEBUG ${nextDayStr}] [RULE] next day marked confirmed due to adjacent start`,
+                  {
+                    baseOrderId: order?._id,
+                    carId: resolvedCarId,
+                    nextDayStr,
+                  }
+                );
+              } else {
+                console.log(
+                  `[extractArraysOfStartEndConfPending][DEBUG ${nextDayStr}] [RULE] next-day confirm skipped by car filter`,
+                  {
+                    baseOrderId: order?._id,
+                    resolvedCarId,
+                    expectedCarId: DEBUG_CAR_ID,
+                    nextDayStr,
+                  }
+                );
+              }
+            }
+          }
+        } catch (e2) {
+          if (DEBUG_DATE) {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG RULE ERROR next-day]`,
+              { message: e2?.message }
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // Безопасный фолбэк: не ломаем поток при ошибке парсинга времени
+      if (DEBUG_DATE) {
+        console.log(`[extractArraysOfStartEndConfPending][DEBUG RULE ERROR]`, {
+          message: e?.message,
+        });
+      }
+    }
+
+    // RULE: Окрашивать полным красным стартовый день подтвержденного заказа,
+    // если время начала - hoursDiffForStart <= 00:00 (используем diffStart)
+    try {
+      const startDayStr = startDate.format("YYYY-MM-DD");
+      const startHour = Number(timeStart?.slice(0, 2)) || 0;
+      const startMinute = Number(timeStart?.slice(-2)) || 0;
+      const totalMinutesStart =
+        startHour * 60 + startMinute - (Number(diffStart) || 0) * 60;
+      const meetsFullRedStartCondition =
+        order.confirmed && totalMinutesStart <= 0;
+
+      if (meetsFullRedStartCondition) {
+        confirmed.push(startDayStr);
+        if (DEBUG_DATE && startDayStr === DEBUG_DATE) {
+          const resolvedCarId = order?.carId || order?.car?._id || null;
+          if (!DEBUG_CAR_ID || DEBUG_CAR_ID === resolvedCarId) {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG ${startDayStr}] [RULE] start day marked confirmed (timeStart - diffEnd <= 00:00)`,
+              {
+                orderId: order?._id,
+                carId: resolvedCarId,
+                timeStart,
+                diffStart,
+                totalMinutesStart,
+                thresholdMinutes: 0,
+              }
+            );
+          } else {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG ${startDayStr}] [RULE] skipped by car filter for start-day full-red`,
+              {
+                orderId: order?._id,
+                resolvedCarId,
+                expectedCarId: DEBUG_CAR_ID,
+                timeStart,
+                diffStart,
+                totalMinutesStart,
+                thresholdMinutes: 0,
+              }
+            );
+          }
+        }
+
+        // Доп. правило: если в предыдущий день заканчивается другой заказ той же машины,
+        // то предыдущий день тоже полностью красный
+        try {
+          const prevDayStr = startDate
+            .startOf("day")
+            .subtract(1, "day")
+            .format("YYYY-MM-DD");
+          const resolvedCarId = order?.carId || order?.car?._id || null;
+          const isSameCar = (o) => {
+            const id1 = resolvedCarId;
+            const id2 = o?.carId || o?.car?._id || null;
+            if (id1 && id2) return id1 === id2;
+            if (!id1 && !id2) return true;
+            return false;
+          };
+          const hasPrevDayEnd = orders?.some((o) => {
+            if (!isSameCar(o)) return false;
+            const oEnd = dayjs(o?.rentalEndDate).tz(TIMEZONE).startOf("day");
+            return oEnd.isSame(
+              startDate.startOf("day").subtract(1, "day"),
+              "day"
+            );
+          });
+          if (hasPrevDayEnd) {
+            confirmed.push(prevDayStr);
+            if (!DEBUG_DATE || DEBUG_DATE === prevDayStr) {
+              if (
+                !DEBUG_CAR_ID ||
+                !resolvedCarId ||
+                DEBUG_CAR_ID === resolvedCarId
+              ) {
+                console.log(
+                  `[extractArraysOfStartEndConfPending][DEBUG ${prevDayStr}] [RULE] previous day marked confirmed due to adjacent end`,
+                  {
+                    baseOrderId: order?._id,
+                    carId: resolvedCarId,
+                    prevDayStr,
+                  }
+                );
+              } else {
+                console.log(
+                  `[extractArraysOfStartEndConfPending][DEBUG ${prevDayStr}] [RULE] prev-day confirm skipped by car filter`,
+                  {
+                    baseOrderId: order?._id,
+                    resolvedCarId,
+                    expectedCarId: DEBUG_CAR_ID,
+                    prevDayStr,
+                  }
+                );
+              }
+            }
+          }
+        } catch (e3) {
+          if (DEBUG_DATE) {
+            console.log(
+              `[extractArraysOfStartEndConfPending][DEBUG RULE ERROR prev-day]`,
+              { message: e3?.message }
+            );
+          }
+        }
+      }
+    } catch (eStart) {
+      if (DEBUG_DATE) {
+        console.log(
+          `[extractArraysOfStartEndConfPending][DEBUG RULE ERROR start-day]`,
+          { message: eStart?.message }
+        );
+      }
     }
   });
 
