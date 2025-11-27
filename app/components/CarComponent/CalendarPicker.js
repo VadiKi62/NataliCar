@@ -724,11 +724,13 @@ const CalendarPicker = ({
         //   onDateChange({ type: "info", message: t("order.enterEndDate") });
         // }
       } else if (date.isSame(start, "day")) {
-        // Prevent selecting the same date as both start and end
-        setSelectedRange([start, null]);
+        // Повторный клик по дате начала: отменяем выбор и ждём новый первый клик
+        setSelectedRange([null, null]);
         setShowBookButton(false);
+        setSelectedTimes({ start: null, end: null });
+        setBookedDates({ start: null, end: null });
         // if (onDateChange) {
-        //   onDateChange({ type: "info", message: t("order.enterEndDate") });
+        //   onDateChange({ type: "info", message: t("order.chooseStartDate") });
         // }
       } else {
         // Regular behavior: set range with start and end dates
