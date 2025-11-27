@@ -112,7 +112,7 @@
     "noDeposit": "NO DEPOSIT"
   },
   "bookMesssages": {
-    "bookOK": "Booking Confirmed. Thank you for booking with us!",
+    "bookOK": "Booking received. Thank you for booking with us!",
     "bookReceive": "We have received your booking for the",
     "bookDays": "Number of days:",
     "bookPrice": "Total price :",

@@ -44,11 +44,33 @@ const SuccessMessage = ({
         </Box>{" "}
         {t("basic.from")}{" "}
         <Box component="span" sx={{ color: "primary.red", fontWeight: 700 }}>
-          {dayjs(presetDates?.startDate).format("DD.MM.YY")}
+          {dayjs(
+            submittedOrder?.timeIn ||
+              submittedOrder?.rentalStartDate ||
+              presetDates?.startDate
+          ).format("DD.MM.YY")}
+          (
+          {dayjs(
+            submittedOrder?.timeIn ||
+              submittedOrder?.rentalStartDate ||
+              presetDates?.startDate
+          ).format("HH:mm")}
+          )
         </Box>{" "}
         {t("basic.to")}{" "}
         <Box component="span" sx={{ color: "primary.red", fontWeight: 700 }}>
-          {dayjs(presetDates?.endDate).format("DD.MM.YY")}
+          {dayjs(
+            submittedOrder?.timeOut ||
+              submittedOrder?.rentalEndDate ||
+              presetDates?.endDate
+          ).format("DD.MM.YY")}
+          (
+          {dayjs(
+            submittedOrder?.timeOut ||
+              submittedOrder?.rentalEndDate ||
+              presetDates?.endDate
+          ).format("HH:mm")}
+          )
         </Box>
         .
       </Typography>

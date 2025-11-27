@@ -162,19 +162,19 @@ const BookingModal = ({
         !DEBUG_DATE ||
         DEBUG_DATE === presetEndStr ||
         DEBUG_DATE === presetStartStr;
-      console.log("[BookingModal][DEBUG] log gate:", {
-        carId: carIdentifier,
-        car_id: car?._id,
-        car_number: car?.carNumber,
-        presetStartDate: presetStartStr,
-        presetEndDate: presetEndStr,
-        rawStartISO,
-        rawEndISO,
-        DEBUG_CAR_ID,
-        DEBUG_DATE,
-        carMatch,
-        dateMatch,
-      });
+      // console.log("[BookingModal][DEBUG] log gate:", {
+      //   carId: carIdentifier,
+      //   car_id: car?._id,
+      //   car_number: car?.carNumber,
+      //   presetStartDate: presetStartStr,
+      //   presetEndDate: presetEndStr,
+      //   rawStartISO,
+      //   rawEndISO,
+      //   DEBUG_CAR_ID,
+      //   DEBUG_DATE,
+      //   carMatch,
+      //   dateMatch,
+      // });
     } catch {}
     if (
       (!DEBUG_CAR_ID || [car?._id, car?.carNumber].includes(DEBUG_CAR_ID)) &&
