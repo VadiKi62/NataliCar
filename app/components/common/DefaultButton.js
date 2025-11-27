@@ -11,6 +11,7 @@ export default function DefaultButton({
   label,
   children,
   blinking = false,
+  sx: sxProp,
   props,
 }) {
   const theme = useTheme();
@@ -40,12 +41,14 @@ export default function DefaultButton({
           bgcolor: disabled ? "primary.fiolet" : "primary.green",
           opacity: disabled ? 0.7 : 1,
           "&:hover": {
-            color: "white",
+            color: "black",
             blinking: " false",
+            ...(blinking && { backgroundColor: "#00ff00" }),
           },
           ...(blinking && {
             bgcolor: "#00ff00",
-            color: "white",
+            color: "black",
+            // allow parent sx to override text color
             animation: isMobile
               ? "blinkMobile 1.5s ease-in-out infinite" // 1.5 секунды мигания на мобильных
               : "blinkDesktop 1s linear infinite", // Обычное мигание на десктопе
@@ -60,6 +63,8 @@ export default function DefaultButton({
             "50%": { backgroundColor: "#4cff4c", transform: "scale(1.03)" },
             "100%": { backgroundColor: "#00ff00", transform: "scale(1)" },
           },
+          // parent-provided sx overrides defaults
+          ...sxProp,
         }}
         onClick={onClick}
         {...props}

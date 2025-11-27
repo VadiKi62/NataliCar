@@ -49,6 +49,8 @@
     "processing": "Processing...",
     "bookingConfirmed": "Booking confirmed",
     "book": "Book {{model}}",
+    "bookShort": "Book",
+    "bookRange": "Book {{from}} - {{to}}",
     "youBook": "You are booking {{model}} from ",
     "till": "till ",
     "clientInfo": "Client information",

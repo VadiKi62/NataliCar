@@ -49,6 +49,8 @@
     "processing": "Επεξεργασία...",
     "bookingConfirmed": "Η κράτηση επιβεβαιώθηκε",
     "book": "Κράτηση {{model}}",
+    "bookShort": "Κράτηση",
+    "bookRange": "Κράτηση {{from}} - {{to}}",
     "youBook": "Κάνετε κράτηση του {{model}} από ",
     "till": "μέχρι ",
     "clientInfo": "Πληροφορίες πελάτη",

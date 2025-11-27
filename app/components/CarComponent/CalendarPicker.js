@@ -27,6 +27,8 @@ import ClearIcon from "@mui/icons-material/Clear";
 
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import "dayjs/locale/ru";
+import "dayjs/locale/el";
 // Extend dayjs with plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -55,7 +57,7 @@ const CalendarPicker = ({
   discountStart,
   discountEnd,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const isSmallLandscape = useMediaQuery(
     "(max-width:900px) and (orientation: landscape)"
@@ -946,13 +948,20 @@ const CalendarPicker = ({
                 ref={bookButtonRef}
                 onClick={handleBooking}
                 blinking={true}
-                label={`Book ${selectedRange[0]?.format(
-                  "MMM D"
-                )} - ${selectedRange[1]?.format("MMM D")} `}
+                label={`${t("order.bookShort")}\n${selectedRange[0]
+                  ?.locale(i18n.language)
+                  .format("DD MMM")
+                  .replace(/\./g, "")} - ${selectedRange[1]
+                  ?.locale(i18n.language)
+                  .format("DD MMM")
+                  .replace(/\./g, "")}`}
                 relative={true}
                 sx={{
+                  whiteSpace: "pre-line",
+                  textAlign: "center",
                   backgroundColor: "#00ff00", // Ярко-зелёный цвет
-                  color: "white",
+                  color: "#000",
+                  "&:hover": { color: "#000" },
                   fontWeight: "bold",
                   fontSize: "1.2rem",
                   minWidth: "200px",

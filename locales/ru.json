@@ -49,6 +49,8 @@
     "processing": "Обработка...",
     "bookingConfirmed": "Бронирование подтверждено",
     "book": "Бронирование {{model}}",
+    "bookShort": "Забронировать",
+    "bookRange": "Забронировать {{from}} - {{to}}",
     "youBook": "Вы бронируете {{model}} с ",
     "till": "до ",
     "clientInfo": "Информация о клиенте",
