@@ -79,9 +79,12 @@ const PricingDisplay = ({
   discountEnd,
 }) => {
   const seasonDate = selectedDate ? dayjs(selectedDate) : dayjs();
-  // Проверка: действует ли скидка в текущем месяце полностью, частично или не действует
+  // Проверка скидки: для будущих месяцев используем весь месяц,
+  // для текущего месяца — диапазон от сегодня (включительно) до конца месяца.
+  const isCurrentMonth = seasonDate.isSame(dayjs(), "month");
   const monthStart = seasonDate.startOf("month");
   const monthEnd = seasonDate.endOf("month");
+  const rangeStart = isCurrentMonth ? dayjs().startOf("day") : monthStart;
   let discountType = "none"; // 'full', 'partial', 'none'
   if (
     typeof discount === "number" &&
@@ -89,18 +92,20 @@ const PricingDisplay = ({
     discountStart &&
     discountEnd
   ) {
-    // Скидка покрывает весь месяц
+    // Полное покрытие выбранного диапазона
     if (
-      monthStart.isSameOrAfter(discountStart, "day") &&
+      rangeStart.isSameOrAfter(discountStart, "day") &&
       monthEnd.isSameOrBefore(discountEnd, "day")
     ) {
       discountType = "full";
     } else if (
+      // Пересечение выбранного диапазона со скидкой
       monthEnd.isSameOrAfter(discountStart, "day") &&
-      monthStart.isSameOrBefore(discountEnd, "day")
+      rangeStart.isSameOrBefore(discountEnd, "day")
     ) {
-      // Скидка покрывает часть месяца
       discountType = "partial";
+    } else {
+      discountType = "none";
     }
   }
   const { t } = useTranslation();
@@ -131,7 +136,7 @@ const PricingDisplay = ({
         elevation={0}
         sx={{
           padding: { xs: 1.2, sm: 2 }, // Уменьшили отступы для более компактного вида
-          '@media (max-width:900px) and (orientation: landscape)': {
+          "@media (max-width:900px) and (orientation: landscape)": {
             padding: 0.6,
           },
           display: "flex",
@@ -186,9 +191,9 @@ const PricingDisplay = ({
                     sx={{
                       lineHeight: { xs: "0.9rem", sm: "0.9rem" },
                       fontSize: { xs: "0.8rem", sm: "0.9rem" },
-                      '@media (max-width:900px) and (orientation: landscape)': {
-                        fontSize: '0.7rem',
-                        lineHeight: '0.8rem',
+                      "@media (max-width:900px) and (orientation: landscape)": {
+                        fontSize: "0.7rem",
+                        lineHeight: "0.8rem",
                       },
                       mb: 1,
                     }}
@@ -199,9 +204,9 @@ const PricingDisplay = ({
                     sx={{
                       lineHeight: { xs: "1rem", sm: "1.2rem" },
                       fontSize: { xs: "1rem", sm: "1.2rem" },
-                      '@media (max-width:900px) and (orientation: landscape)': {
-                        fontSize: '0.95rem',
-                        lineHeight: '1rem',
+                      "@media (max-width:900px) and (orientation: landscape)": {
+                        fontSize: "0.95rem",
+                        lineHeight: "1rem",
                       },
                     }}
                     color="primary"

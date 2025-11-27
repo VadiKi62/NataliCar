@@ -390,66 +390,70 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
               onDateChange={handleDateChange}
             />
             {/* Информация о дискаунте с логикой как в PricingTiers */}
-            {discount &&
-              discountStart &&
-              discountEnd &&
-              (() => {
-                const monthStart = currentCalendarDate.startOf("month");
-                const monthEnd = currentCalendarDate.endOf("month");
-                let discountType = "none"; // 'full', 'partial', 'none'
+            {(() => {
+              // Логика отображения надписи о скидке:
+              // Для будущих месяцев — как раньше (весь месяц),
+              // для текущего — от сегодня до конца месяца.
+              if (!discount || !discountStart || !discountEnd) return null;
+              const isCurrentMonth = currentCalendarDate.isSame(
+                dayjs(),
+                "month"
+              );
+              const monthStart = currentCalendarDate.startOf("month");
+              const monthEnd = currentCalendarDate.endOf("month");
+              const rangeStart = isCurrentMonth
+                ? dayjs().startOf("day")
+                : monthStart;
+              let discountType = "none"; // 'full', 'partial', 'none'
 
+              if (
+                typeof discount === "number" &&
+                discount > 0 &&
+                discountStart &&
+                discountEnd
+              ) {
                 if (
-                  typeof discount === "number" &&
-                  discount > 0 &&
-                  discountStart &&
-                  discountEnd
+                  rangeStart.isSameOrAfter(discountStart, "day") &&
+                  monthEnd.isSameOrBefore(discountEnd, "day")
                 ) {
-                  // Скидка покрывает весь месяц
-                  if (
-                    monthStart.isSameOrAfter(discountStart, "day") &&
-                    monthEnd.isSameOrBefore(discountEnd, "day")
-                  ) {
-                    discountType = "full";
-                  } else if (
-                    monthEnd.isSameOrAfter(discountStart, "day") &&
-                    monthStart.isSameOrBefore(discountEnd, "day")
-                  ) {
-                    // Скидка покрывает часть месяца
-                    discountType = "partial";
-                  }
+                  discountType = "full";
+                } else if (
+                  monthEnd.isSameOrAfter(discountStart, "day") &&
+                  rangeStart.isSameOrBefore(discountEnd, "day")
+                ) {
+                  discountType = "partial";
+                } else {
+                  discountType = "none";
                 }
+              }
 
-                // Отображаем информацию о скидке только если она действует хотя бы частично
-                if (discountType !== "none") {
-                  let discountText = "";
-                  if (discountType === "full") {
-                    discountText = `${t("order.discount")} ${discount}%`;
-                  } else if (discountType === "partial") {
-                    discountText = `${t("order.discount")} ${discount}% ${t(
+              if (discountType === "none") return null; // НЕ показываем надпись
+
+              const discountText =
+                discountType === "full"
+                  ? `${t("order.discount")} ${discount}%`
+                  : `${t("order.discount")} ${discount}% ${t(
                       "basic.from"
                     )} ${dayjs(discountStart).format("DD.MM")} ${t(
                       "basic.till"
                     )} ${dayjs(discountEnd).format("DD.MM")}`;
-                  }
 
-                  return (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        mt: { xs: 0.5, sm: 0.5 }, // Уменьшили верхний отступ
-                        mb: { xs: 0.5, sm: 0.5 }, // Уменьшили нижний отступ
-                        color: "#d32f2f",
-                        fontWeight: 600,
-                        fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                        textAlign: "center",
-                      }}
-                    >
-                      {discountText}
-                    </Typography>
-                  );
-                }
-                return null;
-              })()}
+              return (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mt: { xs: 0.5, sm: 0.5 },
+                    mb: { xs: 0.5, sm: 0.5 },
+                    color: "#d32f2f",
+                    fontWeight: 600,
+                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                    textAlign: "center",
+                  }}
+                >
+                  {discountText}
+                </Typography>
+              );
+            })()}
             {car?.pricingTiers && (
               <PricingTiers
                 prices={car?.pricingTiers}
