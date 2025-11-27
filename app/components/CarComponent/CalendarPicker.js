@@ -38,10 +38,8 @@ dayjs.tz.setDefault("Europe/Athens");
 // чтобы включить точечные логи только для выбранной машины и даты.
 // Пример: const DEBUG_DATE = '2025-07-14'; const DEBUG_CAR_ID = '670bb226223dd911f0595287';
 // По умолчанию логирование отключено (оба null)
-// const DEBUG_DATE = null;
-// const DEBUG_CAR_ID = null;
-const DEBUG_DATE = "2025-11-30";
-const DEBUG_CAR_ID = "670bb226223dd911f0595286";
+const DEBUG_DATE = null;
+const DEBUG_CAR_ID = null;
 
 const CalendarPicker = ({
   isLoading,
@@ -74,6 +72,8 @@ const CalendarPicker = ({
   const lastClickTimeRef = useRef(0);
   const clickCountRef = useRef(0);
   const bookButtonRef = useRef(null);
+  // DEBUG: чтобы не спамить логами для одной и той же даты
+  const loggedCellsRef = useRef(new Set());
 
   // --- useEffect для вертикального скроллинга всей страницы CarGrid ---
   useEffect(() => {
@@ -217,7 +217,14 @@ const CalendarPicker = ({
     if (onCurrentDateChange) {
       onCurrentDateChange(currentDate);
     }
+    // Сброс накопленных логов при смене текущего месяца
+    loggedCellsRef.current.clear();
   }, [currentDate, onCurrentDateChange]);
+
+  // Также сбрасываем накопленные логи при изменении источников дат
+  useEffect(() => {
+    loggedCellsRef.current.clear();
+  }, [confirmedDates, unavailableDates, startEndDates, startEndOverlapDates]);
 
   const renderDateCell = (date) => {
     // выбранные даты
@@ -272,17 +279,21 @@ const CalendarPicker = ({
       dateStr === DEBUG_DATE &&
       (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
     ) {
-      console.log(`[CalendarPicker][DEBUG ${dateStr}] cell flags`, {
-        carId,
-        isDisabled,
-        isConfirmed,
-        isUnavailable,
-        isStartDate,
-        isEndDate,
-        isStartAndEndDateOverlap,
-        startEndInfo,
-        overlapInfo: isStartAndEndDateOverlapInfo,
-      });
+      const key = `${carId || "no-car"}::${dateStr}`;
+      if (!loggedCellsRef.current.has(key)) {
+        loggedCellsRef.current.add(key);
+        console.log(`[CalendarPicker][DEBUG ${dateStr}] cell flags`, {
+          carId,
+          isDisabled,
+          isConfirmed,
+          isUnavailable,
+          isStartDate,
+          isEndDate,
+          isStartAndEndDateOverlap,
+          startEndInfo,
+          overlapInfo: isStartAndEndDateOverlapInfo,
+        });
+      }
     }
 
     // тест в консоли для конкретной машины
@@ -741,9 +752,33 @@ const CalendarPicker = ({
           end: availableEnd,
         });
         setBookedDates({
-          start: dayjs.utc(range[0].hour(hourStart).minute(minuteStart)),
-          end: dayjs.utc(range[1].hour(hourEnd).minute(minuteEnd)),
+          // FIX: убран преждевременный перевод в UTC, храним локальные (Europe/Athens) даты
+          start: range[0].hour(hourStart).minute(minuteStart),
+          end: range[1].hour(hourEnd).minute(minuteEnd),
         });
+        // Лог: дата возврата из CalendarPicker при бронировании (ограничено DEBUG флагами)
+        if (
+          (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId) &&
+          (!DEBUG_DATE || DEBUG_DATE === range[1].format("YYYY-MM-DD"))
+        ) {
+          try {
+            const returnDateLocal = dayjs.tz(
+              `${range[1].format("YYYY-MM-DD")} ${String(hourEnd).padStart(
+                2,
+                "0"
+              )}:${String(minuteEnd).padStart(2, "0")}`,
+              "YYYY-MM-DD HH:mm",
+              "Europe/Athens"
+            );
+            console.log("[CalendarPicker] Return date selected:", {
+              carId,
+              dateLocal: returnDateLocal.format("YYYY-MM-DD HH:mm"),
+              dateUTC: returnDateLocal.utc().format("YYYY-MM-DD HH:mm"),
+            });
+          } catch (e) {
+            console.log("[CalendarPicker] Return date log error:", e);
+          }
+        }
         setShowBookButton(true);
         console.log("selected time!!!!!!!", selectedTimes);
       }

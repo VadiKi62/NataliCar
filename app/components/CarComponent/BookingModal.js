@@ -42,6 +42,10 @@ import { useSnackbar } from "notistack";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 const TIME_ZONE = "Europe/Athens";
+// DEBUG: ограничение логов по машине и дате (YYYY-MM-DD)
+// Пример: const DEBUG_CAR_ID = "670bb226223dd911f0595286"; const DEBUG_DATE = "2025-11-30";
+const DEBUG_CAR_ID = null;
+const DEBUG_DATE = null;
 
 const BookingModal = ({
   open,
@@ -130,6 +134,108 @@ const BookingModal = ({
   useEffect(() => {
     fetchTotalPrice();
   }, [fetchTotalPrice]);
+
+  // Лог: даты бронирования, отображаемые в BookingModal (start/end + времена)
+  useEffect(() => {
+    const carIdentifier = car?._id || car?.carNumber;
+    // Базовые объекты (могут быть dayjs или Date)
+    const rawStart = presetDates?.startDate
+      ? dayjs(presetDates.startDate)
+      : null;
+    const rawEnd = presetDates?.endDate ? dayjs(presetDates.endDate) : null;
+    // Локальные (Europe/Athens) календарные даты, скорректированные из UTC
+    // FIX: убран повторный вызов utc(); интерпретируем сохранённые даты как локальные Athens
+    const presetStartStr = rawStart
+      ? rawStart.tz(TIME_ZONE).format("YYYY-MM-DD")
+      : null;
+    const presetEndStr = rawEnd
+      ? rawEnd.tz(TIME_ZONE).format("YYYY-MM-DD")
+      : null;
+    // ISO строки для сравнения (сырье)
+    const rawStartISO = rawStart ? rawStart.toISOString() : null;
+    const rawEndISO = rawEnd ? rawEnd.toISOString() : null;
+    // Диагностический пролог: покажем, почему лог мог быть подавлен
+    try {
+      const carMatch =
+        !DEBUG_CAR_ID || [car?._id, car?.carNumber].includes(DEBUG_CAR_ID);
+      const dateMatch =
+        !DEBUG_DATE ||
+        DEBUG_DATE === presetEndStr ||
+        DEBUG_DATE === presetStartStr;
+      console.log("[BookingModal][DEBUG] log gate:", {
+        carId: carIdentifier,
+        car_id: car?._id,
+        car_number: car?.carNumber,
+        presetStartDate: presetStartStr,
+        presetEndDate: presetEndStr,
+        rawStartISO,
+        rawEndISO,
+        DEBUG_CAR_ID,
+        DEBUG_DATE,
+        carMatch,
+        dateMatch,
+      });
+    } catch {}
+    if (
+      (!DEBUG_CAR_ID || [car?._id, car?.carNumber].includes(DEBUG_CAR_ID)) &&
+      (!DEBUG_DATE ||
+        DEBUG_DATE === presetEndStr ||
+        DEBUG_DATE === presetStartStr)
+    ) {
+      try {
+        const startTimeStr = startTime
+          ? dayjs(startTime).format("HH:mm")
+          : null;
+        const endTimeStr = endTime ? dayjs(endTime).format("HH:mm") : null;
+        const localStartCombined =
+          presetStartStr && startTimeStr
+            ? dayjs.tz(
+                `${presetStartStr} ${startTimeStr}`,
+                "YYYY-MM-DD HH:mm",
+                TIME_ZONE
+              )
+            : null;
+        const localCombined =
+          presetEndStr && endTimeStr
+            ? dayjs.tz(
+                `${presetEndStr} ${endTimeStr}`,
+                "YYYY-MM-DD HH:mm",
+                TIME_ZONE
+              )
+            : null;
+        console.log("[BookingModal] Booking dates displayed:", {
+          carId: carIdentifier,
+          presetStartDate: presetStartStr,
+          presetEndDate: presetEndStr,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          startLocal: localStartCombined
+            ? localStartCombined.format("YYYY-MM-DD HH:mm")
+            : null,
+          startUTC: localStartCombined
+            ? localStartCombined.utc().format("YYYY-MM-DD HH:mm")
+            : null,
+          dateLocal: localCombined
+            ? localCombined.format("YYYY-MM-DD HH:mm")
+            : null,
+          dateUTC: localCombined
+            ? localCombined.utc().format("YYYY-MM-DD HH:mm")
+            : null,
+          rawStartISO,
+          rawEndISO,
+        });
+      } catch (e) {
+        console.log("[BookingModal] Return date log error:", e);
+      }
+    }
+  }, [
+    presetDates?.startDate,
+    presetDates?.endDate,
+    startTime,
+    endTime,
+    car?._id,
+    car?.carNumber,
+  ]);
 
   // Определение граничных заказов и установка дефолтных/смещённых времен
   useEffect(() => {
