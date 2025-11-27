@@ -21,6 +21,7 @@ export default function DefaultButton({
     visibility && (
       <MuiButton
         variant="contained"
+        color="inherit"
         aria-label={label}
         size="large"
         sx={{
@@ -38,15 +39,15 @@ export default function DefaultButton({
           minWidth: minWidth,
           zIndex: 4,
           color: "black",
-          bgcolor: disabled ? "primary.fiolet" : "primary.green",
+          backgroundColor: disabled ? "primary.fiolet" : "primary.green",
           opacity: disabled ? 0.7 : 1,
           "&:hover": {
             color: "black",
             blinking: " false",
-            ...(blinking && { backgroundColor: "#00ff00" }),
+            ...(blinking && { backgroundColor: "#00ff00 !important" }),
           },
           ...(blinking && {
-            bgcolor: "#00ff00",
+            backgroundColor: "#00ff00 !important",
             color: "black",
             // allow parent sx to override text color
             animation: isMobile
