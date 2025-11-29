@@ -180,5 +180,13 @@
   "discount": {
     "activeRange": "Έκπτωση {{value}}% από {{from}} έως {{to}}",
     "inactive": "Έκπτωση"
+  },
+  "calendar": {
+    "prevMonth": "Προηγούμενος μήνας",
+    "nextMonth": "Επόμενος μήνας",
+    "monthSelect": "Επιλογή μήνα",
+    "yearSelect": "Επιλογή έτους",
+    "thisMonth": "τρέχων μήνας",
+    "nextMonthLabel": "επόμενος μήνας"
   }
 }

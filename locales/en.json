@@ -179,5 +179,13 @@
   "discount": {
     "activeRange": "Discount {{value}}% from {{from}} to {{to}}",
     "inactive": "Discount"
+  },
+  "calendar": {
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "monthSelect": "Select month",
+    "yearSelect": "Select year",
+    "thisMonth": "this month",
+    "nextMonthLabel": "next month"
   }
 }

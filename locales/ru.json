@@ -179,5 +179,13 @@
   "discount": {
     "activeRange": "Скидка {{value}}% с {{from}} до {{to}}",
     "inactive": "Скидка"
+  },
+  "calendar": {
+    "prevMonth": "Предыдущий месяц",
+    "nextMonth": "Следующий месяц",
+    "monthSelect": "Выберите месяц",
+    "yearSelect": "Выберите год",
+    "thisMonth": "этот месяц",
+    "nextMonthLabel": "следующий месяц"
   }
 }

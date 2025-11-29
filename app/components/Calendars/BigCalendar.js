@@ -21,7 +21,9 @@ import {
   Grid,
   Typography,
   Button,
+  IconButton,
 } from "@mui/material";
+// Используем закрашенные треугольники вместо стандартных иконок
 import dayjs from "dayjs";
 import { useMainContext } from "@app/Context";
 import CarTableRow from "./Row";
@@ -139,6 +141,9 @@ export default function BigCalendar({ cars }) {
     return savedYear !== null ? parseInt(savedYear, 10) : dayjs().year();
   });
 
+  // Режим отображения: полный месяц или диапазон 15-го текущего до 15-го следующего
+  const [viewMode, setViewMode] = useState("full"); // 'full' | 'range15'
+
   // useEffect для сохранения в localStorage:
   useEffect(() => {
     localStorage.setItem("bigCalendar_month", month.toString());
@@ -179,14 +184,25 @@ export default function BigCalendar({ cars }) {
   const [moveMode, setMoveMode] = useState(false);
   const [orderToMove, setOrderToMove] = useState(null);
 
-  const daysInMonth = useMemo(
-    () => dayjs().year(year).month(month).daysInMonth(),
-    [month, year]
-  );
-
   const days = useMemo(() => {
-    const totalDays = daysInMonth;
-    return Array.from({ length: totalDays }, (_, index) => {
+    // Если режим диапазона 15-15 — строим дни между 15 текущего и 15 следующего месяца
+    if (viewMode === "range15") {
+      const start = dayjs().year(year).month(month).date(15);
+      const end = start.add(1, "month").date(15);
+      const totalDays = end.diff(start, "day");
+      return Array.from({ length: totalDays + 1 }, (_, index) => {
+        const date = start.add(index, "day");
+        return {
+          dayjs: date,
+          date: date.date(),
+          weekday: date.format("dd"),
+          isSunday: date.day() === 0,
+        };
+      });
+    }
+    // Иначе — полный месяц
+    const dim = dayjs().year(year).month(month).daysInMonth();
+    return Array.from({ length: dim }, (_, index) => {
       const date = dayjs().year(year).month(month).date(1).add(index, "day");
       return {
         dayjs: date,
@@ -195,7 +211,7 @@ export default function BigCalendar({ cars }) {
         isSunday: date.day() === 0,
       };
     });
-  }, [month, year, daysInMonth]);
+  }, [month, year, viewMode]);
 
   const today = dayjs();
   const todayIndex = days.findIndex((d) => d.dayjs.isSame(today, "day"));
@@ -286,6 +302,7 @@ export default function BigCalendar({ cars }) {
   const handleSelectMonth = (e) => {
     const newMonth = e.target.value;
     setMonth(newMonth);
+    setViewMode("full");
     console.log(
       `Выбран месяц: ${dayjs().month(newMonth).format("MMMM")} (${newMonth})`
     );
@@ -294,7 +311,44 @@ export default function BigCalendar({ cars }) {
   const handleSelectYear = (e) => {
     const newYear = e.target.value;
     setYear(newYear);
+    setViewMode("full");
     console.log(`Выбран год: ${newYear}`);
+  };
+
+  // Переключатели месяца
+  // Логика кнопок:
+  // - если 'full' -> перейти в 'range15' (окно 15-текущее до 15-следующего)
+  // - если 'range15' -> вернуться в 'full' и сдвинуть месяц на +1 (для Next) или -1 (для Prev)
+  const handlePrevMonth = () => {
+    if (viewMode === "full") {
+      setViewMode("range15");
+    } else {
+      // шаг назад на полный предыдущий месяц
+      setViewMode("full");
+      setMonth((m) => {
+        if (m === 0) {
+          setYear((y) => y - 1);
+          return 11;
+        }
+        return m - 1;
+      });
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMode === "full") {
+      setViewMode("range15");
+    } else {
+      // шаг вперёд на полный следующий месяц
+      setViewMode("full");
+      setMonth((m) => {
+        if (m === 11) {
+          setYear((y) => y + 1);
+          return 0;
+        }
+        return m + 1;
+      });
+    }
   };
 
   const ordersByCarIdWithAllorders = useCallback((carId, orders) => {
@@ -569,7 +623,6 @@ export default function BigCalendar({ cars }) {
           <TableHead>
             <TableRow>
               <TableCell
-                title="Выберите месяц и год для просмотра календаря"
                 sx={{
                   position: "sticky",
                   left: 0,
@@ -577,34 +630,135 @@ export default function BigCalendar({ cars }) {
                   zIndex: 5,
                   fontWeight: "bold",
                   minWidth: 120,
+                  // фиксированная высота заголовочной ячейки для двух строк
+                  height: 82,
+                  py: 0,
                 }}
               >
-                <Select
-                  className="bigcalendar-month-select"
-                  value={month}
-                  onChange={handleSelectMonth}
-                  size="small"
-                  sx={{ mx: 1 }}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
+                  }}
                 >
-                  {Array.from({ length: 12 }, (_, index) => (
-                    <MenuItem key={index} value={index}>
-                      {(monthNames[currentLang] || monthNames.en)[index]}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <Select
-                  className="bigcalendar-year-select"
-                  value={year}
-                  onChange={handleSelectYear}
-                  size="small"
-                  sx={{ mx: 1 }}
-                >
-                  {Array.from({ length: 5 }, (_, index) => (
-                    <MenuItem key={index} value={year - 2 + index}>
-                      {year - 2 + index}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  {/* Верхняя строка: год, по центру */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: 40,
+                    }}
+                  >
+                    <Select
+                      className="bigcalendar-year-select"
+                      value={year}
+                      onChange={handleSelectYear}
+                      size="small"
+                      aria-label={i18n.t("calendar.yearSelect")}
+                      sx={{ minWidth: 110, "& .MuiSelect-select": { py: 0.5 } }}
+                    >
+                      {Array.from({ length: 5 }, (_, index) => (
+                        <MenuItem key={index} value={year - 2 + index}>
+                          {year - 2 + index}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </Box>
+                  {/* Нижняя строка: стрелка назад, месяц, стрелка вперёд — по центру */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: 42,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0,
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={handlePrevMonth}
+                        aria-label={i18n.t("calendar.prevMonth")}
+                        sx={{ p: 0.25, mr: 0 }}
+                      >
+                        <Box
+                          component="span"
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 18,
+                            height: 18,
+                            color: "black",
+                            fontSize: 16,
+                            lineHeight: 1,
+                            userSelect: "none",
+                          }}
+                        >
+                          {"\u25C0"}
+                        </Box>
+                      </IconButton>
+                      <Select
+                        className="bigcalendar-month-select"
+                        value={month}
+                        onChange={handleSelectMonth}
+                        size="small"
+                        aria-label={i18n.t("calendar.monthSelect")}
+                        sx={{
+                          minWidth: 130,
+                          "& .MuiSelect-select": { py: 0.5, letterSpacing: 0 },
+                          mx: 0.25,
+                        }}
+                        renderValue={() => {
+                          const months =
+                            monthNames[currentLang] || monthNames.en;
+                          if (viewMode === "range15") {
+                            const currentLabel = months[month];
+                            const nextLabel = months[(month + 1) % 12];
+                            return `${currentLabel}-${nextLabel}`;
+                          }
+                          return months[month];
+                        }}
+                      >
+                        {Array.from({ length: 12 }, (_, index) => (
+                          <MenuItem key={index} value={index}>
+                            {(monthNames[currentLang] || monthNames.en)[index]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <IconButton
+                        size="small"
+                        onClick={handleNextMonth}
+                        aria-label={i18n.t("calendar.nextMonth")}
+                        sx={{ p: 0.25, ml: 0 }}
+                      >
+                        <Box
+                          component="span"
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 18,
+                            height: 18,
+                            color: "black",
+                            fontSize: 16,
+                            lineHeight: 1,
+                            userSelect: "none",
+                          }}
+                        >
+                          {"\u25B6"}
+                        </Box>
+                      </IconButton>
+                    </Box>
+                  </Box>
+                </Box>
               </TableCell>
               {days.map((day, idx) => (
                 <TableCell
