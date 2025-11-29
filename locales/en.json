@@ -175,5 +175,9 @@
     "startTomorrow": "Orders Starting Tomorrow",
     "endToday": "Orders Ending Today",
     "endTomorrow": "Orders Ending Tomorrow"
+  },
+  "discount": {
+    "activeRange": "Discount {{value}}% from {{from}} to {{to}}",
+    "inactive": "Discount"
   }
 }

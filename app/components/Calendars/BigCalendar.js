@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Table,
   TableHead,
@@ -35,6 +36,68 @@ import { changeRentalDates } from "@utils/action";
 import EditCarModal from "@app/components/Admin/Car/EditCarModal";
 
 export default function BigCalendar({ cars }) {
+  // i18n для динамического перевода месяцев и дней недели
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language || "en";
+
+  // Названия месяцев (полные) по языкам проекта
+  const monthNames = useMemo(
+    () => ({
+      en: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ],
+      ru: [
+        "Январь",
+        "Февраль",
+        "Март",
+        "Апрель",
+        "Май",
+        "Июнь",
+        "Июль",
+        "Август",
+        "Сентябрь",
+        "Октябрь",
+        "Ноябрь",
+        "Декабрь",
+      ],
+      el: [
+        "Ιανουάριος",
+        "Φεβρουάριος",
+        "Μάρτιος",
+        "Απρίλιος",
+        "Μάιος",
+        "Ιούνιος",
+        "Ιούλιος",
+        "Αύγουστος",
+        "Σεπτέμβριος",
+        "Οκτώβριος",
+        "Νοέμβριος",
+        "Δεκέμβριος",
+      ],
+    }),
+    []
+  );
+
+  // Двухсимвольные сокращения дней недели (индекс 0 = Sunday) по языкам
+  const weekday2 = useMemo(
+    () => ({
+      en: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+      ru: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+      el: ["Κυ", "Δε", "Τρ", "Τε", "Πέ", "Πα", "Σά"],
+    }),
+    []
+  );
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   // Состояние для хранения ключа последнего снэка
   const snackKeyRef = useRef(0);
@@ -525,7 +588,7 @@ export default function BigCalendar({ cars }) {
                 >
                   {Array.from({ length: 12 }, (_, index) => (
                     <MenuItem key={index} value={index}>
-                      {dayjs().month(index).format("MMMM")}
+                      {(monthNames[currentLang] || monthNames.en)[index]}
                     </MenuItem>
                   ))}
                 </Select>
@@ -573,7 +636,7 @@ export default function BigCalendar({ cars }) {
                     {day.date}
                   </div>
                   <div style={{ color: day.isSunday ? "red" : "inherit" }}>
-                    {day.weekday}
+                    {(weekday2[currentLang] || weekday2.en)[day.dayjs.day()]}
                   </div>
                 </TableCell>
               ))}

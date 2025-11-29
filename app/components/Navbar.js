@@ -143,9 +143,8 @@ export default function NavBar({
   }, [isAdmin]);
 
   useEffect(() => {
-    if (isAdmin && i18n.language !== "ru") {
-      i18n.changeLanguage("ru");
-    }
+    // Админка больше не принудительно переключает язык на русский.
+    // Язык определяется и сохраняется через общий i18n + Context.
   }, [isAdmin, i18n]);
 
   const {
@@ -285,10 +284,12 @@ export default function NavBar({
 
   // Итоговая надпись для кнопки скидки (десктоп / мобильное меню)
   const discountButtonLabel = isDiscountActiveToday()
-    ? `СКИДКА ${selectedDiscount}% с ${formatDiscountDate(
-        discountStartDate
-      )} до ${formatDiscountDate(discountEndDate)}`
-    : "СКИДКА";
+    ? t("discount.activeRange", {
+        value: selectedDiscount,
+        from: formatDiscountDate(discountStartDate),
+        to: formatDiscountDate(discountEndDate),
+      })
+    : t("discount.inactive");
 
   return (
     <>
