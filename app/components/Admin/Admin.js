@@ -140,15 +140,24 @@ function Admin({ children, ...props }) {
         </Button>
       </Box>
 
-      {/* <Navbar
+      <Navbar
         isAdmin={true}
-        isCarInfo={isCarInfo}
-        setIsCarInfo={setIsCarInfo}
-      /> */}
+        // isCarInfo={isCarInfo}
+        // setIsCarInfo={setIsCarInfo}
+      />
       <StyledBox
         scrolled={scrolled}
         isCarInfo={isCars}
         className="admin-topbar"
+        sx={{
+          display: {
+            xs: "flex",
+            // landscape: скрыть легенду, оставить только кнопку "Добавить авто"
+            "@media (max-width:900px) and (orientation: landscape)": isCars
+              ? "flex"
+              : "none",
+          },
+        }}
       >
         <Box
           display="flex"
@@ -169,10 +178,17 @@ function Admin({ children, ...props }) {
           )}
           {(isOrdersCalendars || isOrdersBigCalendar) && (
             <Stack
+              className="legend-calendar-admin"
               direction={{ xs: "column", sm: "row" }}
               spacing={{ xs: 1, sm: 2 }}
               alignItems="center"
               justifyContent="center"
+              sx={{
+                display: "flex",
+                "@media (max-width:900px) and (orientation: landscape)": {
+                  display: "none",
+                },
+              }}
             >
               <LegendCalendarAdmin />
             </Stack>

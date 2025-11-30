@@ -293,7 +293,17 @@ export default function NavBar({
 
   return (
     <>
-      <GradientAppBar ref={headerRef} scrolled={scrolled}>
+      <GradientAppBar
+        ref={headerRef}
+        scrolled={scrolled}
+        sx={{
+          // Явно показываем Navbar на landscape телефоне
+          display: {
+            xs: "flex",
+            "@media (max-width:900px) and (orientation: landscape)": "flex",
+          },
+        }}
+      >
         <Toolbar>
           <Stack
             direction="row-reverse"
@@ -484,6 +494,13 @@ export default function NavBar({
           <StyledBox
             scrolled={scrolled ? "true" : undefined}
             $isCarInfo={isCarInfo}
+            sx={{
+              // Явно показываем StyledBox на landscape телефоне
+              display: {
+                xs: "flex",
+                "@media (max-width:900px) and (orientation: landscape)": "flex",
+              },
+            }}
           >
             <Stack
               direction={{ xs: "column", sm: "row" }}

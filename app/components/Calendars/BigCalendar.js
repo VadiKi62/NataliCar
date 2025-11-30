@@ -415,50 +415,8 @@ export default function BigCalendar({ cars }) {
     setStartEndDates(startEnd);
   }, [allOrders]);
 
-  // Toggle a body class when on small screens in landscape to hide Navbar/legend
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const mql = window.matchMedia(
-      "(max-width: 900px) and (orientation: landscape)"
-    );
-
-    const handleChange = () => {
-      try {
-        if (mql.matches) {
-          document.body.classList.add("hide-navbar-on-landscape-sm");
-        } else {
-          document.body.classList.remove("hide-navbar-on-landscape-sm");
-        }
-      } catch (e) {
-        // ignore in SSR or restricted environments
-      }
-    };
-
-    // initial check
-    handleChange();
-
-    // add listener (support older browsers that use addListener)
-    if (mql.addEventListener) {
-      mql.addEventListener("change", handleChange);
-    } else if (mql.addListener) {
-      mql.addListener(handleChange);
-    }
-
-    return () => {
-      try {
-        if (mql.removeEventListener) {
-          mql.removeEventListener("change", handleChange);
-        } else if (mql.removeListener) {
-          mql.removeListener(handleChange);
-        }
-      } catch (e) {}
-      // ensure cleanup class removed on unmount
-      try {
-        document.body.classList.remove("hide-navbar-on-landscape-sm");
-      } catch (e) {}
-    };
-  }, []);
+  // Отключил добавление класса hide-navbar-on-landscape-sm для landscape,
+  // чтобы Navbar был видим. Если нужно скрывать только легенду — используйте отдельный класс или медиазапрос.
 
   const handleSaveOrder = async (updatedOrder) => {
     setSelectedOrders((prevSelectedOrders) =>
@@ -642,9 +600,27 @@ export default function BigCalendar({ cars }) {
           @media (max-width: 600px) and (orientation: portrait) {
             .bigcalendar-root { padding-top: 56px !important; }
           }
-          /* Индикатор года только на маленьких экранах в ландшафте */
+          /* На горизонтальном телефоне убираем верхний отступ */
           @media (max-width: 900px) and (orientation: landscape) {
+            .bigcalendar-root { padding-top: 38px !important; }
             .year-landscape-indicator { display: flex; }
+            /* Уменьшаем размер шрифта в шапке календаря (дата и день недели) */
+            .bigcalendar-root thead .MuiTableCell-root {
+              font-size: 13px !important;
+              padding-left: 2px !important;
+              padding-right: 2px !important;
+            }
+            .bigcalendar-root thead .MuiTableCell-root > div {
+              font-size: 13px !important;
+            }
+            /* Уменьшаем размер шрифта в названии автомобиля (1-й столбец) */
+            .bigcalendar-root tbody .MuiTableCell-root:first-child {
+              font-size: 12px !important;
+            }
+            .bigcalendar-root tbody .MuiTableCell-root:first-child > div {
+              font-size: 12px !important;
+            }
+          }
           }
           @media (max-width: 900px) and (orientation: portrait) {
             .year-landscape-indicator { display: none; }
@@ -652,44 +628,7 @@ export default function BigCalendar({ cars }) {
           @media (min-width: 901px) { .year-landscape-indicator { display: none; } }
         `}
       </style>
-      {/* Фиксированный индикатор года для горизонтального телефона */}
-      <Box
-        className="year-landscape-indicator"
-        sx={{
-          position: "fixed",
-          top: 6,
-          /* Сдвинуто правее, чтобы быть над полем месяца */
-          left: 110,
-          backgroundColor: "white",
-          border: "1px solid #ccc",
-          borderRadius: "8px",
-          px: 1.2,
-          py: 0.4,
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "black",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-          zIndex: 200,
-          lineHeight: 1.2,
-        }}
-      >
-        {(() => {
-          if (viewMode === "range15") {
-            const start =
-              rangeDirection === "forward"
-                ? dayjs().year(year).month(month).date(15)
-                : dayjs().year(year).month(month).subtract(1, "month").date(15);
-            const end =
-              rangeDirection === "forward"
-                ? start.add(1, "month").date(15)
-                : dayjs().year(year).month(month).date(15);
-            const y1 = start.year();
-            const y2 = end.year();
-            return y1 === y2 ? y1 : `${y1}-${y2}`;
-          }
-          return year;
-        })()}
-      </Box>
+      {/* Индикатор года для landscape удалён. Теперь Select для года всегда отображается в шапке календаря на телефоне (portrait и landscape). */}
       <TableContainer
         sx={{
           maxHeight: "calc(100vh - 80px)",
@@ -736,6 +675,7 @@ export default function BigCalendar({ cars }) {
                       height: 40,
                     }}
                   >
+                    {/* Select для года теперь всегда отображается на телефоне (portrait и landscape) */}
                     <Select
                       className="bigcalendar-year-select"
                       value={year}
