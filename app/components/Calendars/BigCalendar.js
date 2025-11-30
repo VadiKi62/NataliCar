@@ -142,7 +142,32 @@ export default function BigCalendar({ cars }) {
   });
 
   // Режим отображения: полный месяц или диапазон 15-го текущего до 15-го следующего
-  const [viewMode, setViewMode] = useState("full"); // 'full' | 'range15'
+  // Кешируем последний выбранный режим в localStorage
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bigCalendar_viewMode");
+      if (saved === "range15" || saved === "full") return saved;
+    }
+    return "full";
+  }); // 'full' | 'range15'
+  const [rangeDirection, setRangeDirection] = useState("forward"); // 'forward' | 'backward'
+
+  // Определяем портретный телефон для условного отображения (3 буквы в названии месяца в range15)
+  const [isPortraitPhone, setIsPortraitPhone] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(
+      "(max-width: 600px) and (orientation: portrait)"
+    );
+    const handler = () => setIsPortraitPhone(mq.matches);
+    handler();
+    if (mq.addEventListener) mq.addEventListener("change", handler);
+    else if (mq.addListener) mq.addListener(handler);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", handler);
+      else if (mq.removeListener) mq.removeListener(handler);
+    };
+  }, []);
 
   // useEffect для сохранения в localStorage:
   useEffect(() => {
@@ -152,6 +177,15 @@ export default function BigCalendar({ cars }) {
   useEffect(() => {
     localStorage.setItem("bigCalendar_year", year.toString());
   }, [year]);
+
+  // Сохраняем выбранный режим при изменении
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("bigCalendar_viewMode", viewMode);
+      } catch (e) {}
+    }
+  }, [viewMode]);
 
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [startEndDates, setStartEndDates] = useState([]);
@@ -187,8 +221,14 @@ export default function BigCalendar({ cars }) {
   const days = useMemo(() => {
     // Если режим диапазона 15-15 — строим дни между 15 текущего и 15 следующего месяца
     if (viewMode === "range15") {
-      const start = dayjs().year(year).month(month).date(15);
-      const end = start.add(1, "month").date(15);
+      const start =
+        rangeDirection === "forward"
+          ? dayjs().year(year).month(month).date(15)
+          : dayjs().year(year).month(month).subtract(1, "month").date(15);
+      const end =
+        rangeDirection === "forward"
+          ? start.add(1, "month").date(15)
+          : dayjs().year(year).month(month).date(15);
       const totalDays = end.diff(start, "day");
       return Array.from({ length: totalDays + 1 }, (_, index) => {
         const date = start.add(index, "day");
@@ -321,33 +361,27 @@ export default function BigCalendar({ cars }) {
   // - если 'range15' -> вернуться в 'full' и сдвинуть месяц на +1 (для Next) или -1 (для Prev)
   const handlePrevMonth = () => {
     if (viewMode === "full") {
+      setRangeDirection("backward");
       setViewMode("range15");
     } else {
       // шаг назад на полный предыдущий месяц
       setViewMode("full");
-      setMonth((m) => {
-        if (m === 0) {
-          setYear((y) => y - 1);
-          return 11;
-        }
-        return m - 1;
-      });
+      const base = dayjs().year(year).month(month).subtract(1, "month");
+      setMonth(base.month());
+      setYear(base.year());
     }
   };
 
   const handleNextMonth = () => {
     if (viewMode === "full") {
+      setRangeDirection("forward");
       setViewMode("range15");
     } else {
       // шаг вперёд на полный следующий месяц
       setViewMode("full");
-      setMonth((m) => {
-        if (m === 11) {
-          setYear((y) => y + 1);
-          return 0;
-        }
-        return m + 1;
-      });
+      const base = dayjs().year(year).month(month).add(1, "month");
+      setMonth(base.month());
+      setYear(base.year());
     }
   };
 
@@ -603,8 +637,59 @@ export default function BigCalendar({ cars }) {
           .today-column-bg {
             background-color: #ffe082 !important;
           }
+          /* На портретных телефонах увеличиваем верхний отступ,
+             чтобы шапка (год/месяц) не перекрывалась Navbar */
+          @media (max-width: 600px) and (orientation: portrait) {
+            .bigcalendar-root { padding-top: 56px !important; }
+          }
+          /* Индикатор года только на маленьких экранах в ландшафте */
+          @media (max-width: 900px) and (orientation: landscape) {
+            .year-landscape-indicator { display: flex; }
+          }
+          @media (max-width: 900px) and (orientation: portrait) {
+            .year-landscape-indicator { display: none; }
+          }
+          @media (min-width: 901px) { .year-landscape-indicator { display: none; } }
         `}
       </style>
+      {/* Фиксированный индикатор года для горизонтального телефона */}
+      <Box
+        className="year-landscape-indicator"
+        sx={{
+          position: "fixed",
+          top: 6,
+          /* Сдвинуто правее, чтобы быть над полем месяца */
+          left: 110,
+          backgroundColor: "white",
+          border: "1px solid #ccc",
+          borderRadius: "8px",
+          px: 1.2,
+          py: 0.4,
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "black",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+          zIndex: 200,
+          lineHeight: 1.2,
+        }}
+      >
+        {(() => {
+          if (viewMode === "range15") {
+            const start =
+              rangeDirection === "forward"
+                ? dayjs().year(year).month(month).date(15)
+                : dayjs().year(year).month(month).subtract(1, "month").date(15);
+            const end =
+              rangeDirection === "forward"
+                ? start.add(1, "month").date(15)
+                : dayjs().year(year).month(month).date(15);
+            const y1 = start.year();
+            const y2 = end.year();
+            return y1 === y2 ? y1 : `${y1}-${y2}`;
+          }
+          return year;
+        })()}
+      </Box>
       <TableContainer
         sx={{
           maxHeight: "calc(100vh - 80px)",
@@ -658,6 +743,26 @@ export default function BigCalendar({ cars }) {
                       size="small"
                       aria-label={i18n.t("calendar.yearSelect")}
                       sx={{ minWidth: 110, "& .MuiSelect-select": { py: 0.5 } }}
+                      renderValue={() => {
+                        if (viewMode === "range15") {
+                          const start =
+                            rangeDirection === "forward"
+                              ? dayjs().year(year).month(month).date(15)
+                              : dayjs()
+                                  .year(year)
+                                  .month(month)
+                                  .subtract(1, "month")
+                                  .date(15);
+                          const end =
+                            rangeDirection === "forward"
+                              ? start.add(1, "month").date(15)
+                              : dayjs().year(year).month(month).date(15);
+                          const y1 = start.year();
+                          const y2 = end.year();
+                          return y1 === y2 ? `${y1}` : `${y1}-${y2}`;
+                        }
+                        return `${year}`;
+                      }}
                     >
                       {Array.from({ length: 5 }, (_, index) => (
                         <MenuItem key={index} value={year - 2 + index}>
@@ -719,10 +824,20 @@ export default function BigCalendar({ cars }) {
                         renderValue={() => {
                           const months =
                             monthNames[currentLang] || monthNames.en;
+                          const abbr = (name) =>
+                            isPortraitPhone && viewMode === "range15"
+                              ? name.slice(0, 3)
+                              : name;
                           if (viewMode === "range15") {
-                            const currentLabel = months[month];
-                            const nextLabel = months[(month + 1) % 12];
-                            return `${currentLabel}-${nextLabel}`;
+                            if (rangeDirection === "forward") {
+                              const currentLabel = months[month];
+                              const nextLabel = months[(month + 1) % 12];
+                              return `${abbr(currentLabel)}-${abbr(nextLabel)}`;
+                            } else {
+                              const prevLabel = months[(month + 11) % 12];
+                              const currentLabel = months[month];
+                              return `${abbr(prevLabel)}-${abbr(currentLabel)}`;
+                            }
                           }
                           return months[month];
                         }}
