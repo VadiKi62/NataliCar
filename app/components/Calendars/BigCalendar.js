@@ -711,7 +711,11 @@ export default function BigCalendar({ cars }) {
                       onChange={handleSelectYear}
                       size="small"
                       aria-label={i18n.t("calendar.yearSelect")}
-                      sx={{ minWidth: 80, fontSize: 13, "& .MuiSelect-select": { py: 0.2, fontSize: 13 } }}
+                      sx={{
+                        minWidth: 80,
+                        fontSize: 13,
+                        "& .MuiSelect-select": { py: 0.2, fontSize: 13 },
+                      }}
                       renderValue={() => {
                         if (viewMode === "range15") {
                           const start =
@@ -734,7 +738,11 @@ export default function BigCalendar({ cars }) {
                       }}
                     >
                       {Array.from({ length: 5 }, (_, index) => (
-                        <MenuItem key={index} value={year - 2 + index} sx={{ fontSize: 13, py: 0.2 }}>
+                        <MenuItem
+                          key={index}
+                          value={year - 2 + index}
+                          sx={{ fontSize: 13, py: 0.2 }}
+                        >
                           {year - 2 + index}
                         </MenuItem>
                       ))}
@@ -791,7 +799,11 @@ export default function BigCalendar({ cars }) {
                         sx={{
                           minWidth: 80,
                           fontSize: 13,
-                          "& .MuiSelect-select": { py: 0.2, fontSize: 13, letterSpacing: 0 },
+                          "& .MuiSelect-select": {
+                            py: 0.2,
+                            fontSize: 13,
+                            letterSpacing: 0,
+                          },
                           mx: 0.15,
                         }}
                         renderValue={() => {
@@ -816,7 +828,11 @@ export default function BigCalendar({ cars }) {
                         }}
                       >
                         {Array.from({ length: 12 }, (_, index) => (
-                          <MenuItem key={index} value={index} sx={{ fontSize: 13, py: 0.2 }}>
+                          <MenuItem
+                            key={index}
+                            value={index}
+                            sx={{ fontSize: 13, py: 0.2 }}
+                          >
                             {(monthNames[currentLang] || monthNames.en)[index]}
                           </MenuItem>
                         ))}
