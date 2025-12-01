@@ -595,32 +595,60 @@ export default function BigCalendar({ cars }) {
           .today-column-bg {
             background-color: #ffe082 !important;
           }
-          /* На портретных телефонах увеличиваем верхний отступ,
-             чтобы шапка (год/месяц) не перекрывалась Navbar */
           @media (max-width: 600px) and (orientation: portrait) {
             .bigcalendar-root { padding-top: 56px !important; }
           }
-          /* На горизонтальном телефоне убираем верхний отступ */
+          /* Максимально компактные ячейки на горизонтальном телефоне */
           @media (max-width: 900px) and (orientation: landscape) {
             .bigcalendar-root { padding-top: 38px !important; }
             .year-landscape-indicator { display: flex; }
-            /* Уменьшаем размер шрифта в шапке календаря (дата и день недели) */
-            .bigcalendar-root thead .MuiTableCell-root {
-              font-size: 13px !important;
-              padding-left: 2px !important;
-              padding-right: 2px !important;
+            /* Обычные ячейки (не шапка, не первый столбец) — минимальная высота */
+            .bigcalendar-root tbody .MuiTableCell-root:not(:first-child),
+            .bigcalendar-root thead .MuiTableCell-root:not(:first-child) {
+              padding-left: 0 !important;
+              padding-right: 0 !important;
+              padding-top: 0 !important;
+              padding-bottom: 0 !important;
+              min-width: 24px !important;
+              max-width: 32px !important;
+              min-height: 18px !important;
+              max-height: 22px !important;
+              font-size: 10px !important;
+              line-height: 1 !important;
+              border-width: 1px !important;
+              margin: 0 !important;
             }
-            .bigcalendar-root thead .MuiTableCell-root > div {
-              font-size: 13px !important;
-            }
-            /* Уменьшаем размер шрифта в названии автомобиля (1-й столбец) */
-            .bigcalendar-root tbody .MuiTableCell-root:first-child {
+            .bigcalendar-root tbody .MuiTableCell-root:not(:first-child) > div,
+            .bigcalendar-root thead .MuiTableCell-root:not(:first-child) > div {
               font-size: 12px !important;
+              line-height: 1.1 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              min-height: 18px !important;
+              max-height: 22px !important;
+            }
+            /* Первый столбец: увеличить размер шрифта и всегда одна строка */
+            .bigcalendar-root tbody .MuiTableCell-root:first-child {
+              font-size: 15px !important;
+              padding-top: 0 !important;
+              padding-bottom: 0 !important;
+              white-space: nowrap !important;
+              overflow: hidden !important;
+              text-overflow: ellipsis !important;
             }
             .bigcalendar-root tbody .MuiTableCell-root:first-child > div {
-              font-size: 12px !important;
+              font-size: 15px !important;
+              white-space: nowrap !important;
+              overflow: hidden !important;
+              text-overflow: ellipsis !important;
             }
-          }
+            /* Шапка календаря: увеличить размер шрифта для читаемости */
+            .bigcalendar-root thead .MuiTableCell-root {
+              font-size: 16px !important;
+            }
+            .bigcalendar-root thead .MuiTableCell-root > div {
+              font-size: 16px !important;
+            }
           }
           @media (max-width: 900px) and (orientation: portrait) {
             .year-landscape-indicator { display: none; }
@@ -672,17 +700,18 @@ export default function BigCalendar({ cars }) {
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      height: 40,
+                      height: 28,
+                      py: 0.5,
+                      mb: 0.1,
                     }}
                   >
-                    {/* Select для года теперь всегда отображается на телефоне (portrait и landscape) */}
                     <Select
                       className="bigcalendar-year-select"
                       value={year}
                       onChange={handleSelectYear}
                       size="small"
                       aria-label={i18n.t("calendar.yearSelect")}
-                      sx={{ minWidth: 110, "& .MuiSelect-select": { py: 0.5 } }}
+                      sx={{ minWidth: 80, fontSize: 13, "& .MuiSelect-select": { py: 0.2, fontSize: 13 } }}
                       renderValue={() => {
                         if (viewMode === "range15") {
                           const start =
@@ -705,7 +734,7 @@ export default function BigCalendar({ cars }) {
                       }}
                     >
                       {Array.from({ length: 5 }, (_, index) => (
-                        <MenuItem key={index} value={year - 2 + index}>
+                        <MenuItem key={index} value={year - 2 + index} sx={{ fontSize: 13, py: 0.2 }}>
                           {year - 2 + index}
                         </MenuItem>
                       ))}
@@ -717,7 +746,10 @@ export default function BigCalendar({ cars }) {
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      height: 42,
+                      height: 28,
+                      py: 0.5,
+                      mt: 0.5,
+                      mb: 0,
                     }}
                   >
                     <Box
@@ -731,7 +763,7 @@ export default function BigCalendar({ cars }) {
                         size="small"
                         onClick={handlePrevMonth}
                         aria-label={i18n.t("calendar.prevMonth")}
-                        sx={{ p: 0.25, mr: 0 }}
+                        sx={{ p: 0.15, mr: 0 }}
                       >
                         <Box
                           component="span"
@@ -739,10 +771,10 @@ export default function BigCalendar({ cars }) {
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            width: 18,
-                            height: 18,
+                            width: 16,
+                            height: 16,
                             color: "black",
-                            fontSize: 16,
+                            fontSize: 13,
                             lineHeight: 1,
                             userSelect: "none",
                           }}
@@ -757,9 +789,10 @@ export default function BigCalendar({ cars }) {
                         size="small"
                         aria-label={i18n.t("calendar.monthSelect")}
                         sx={{
-                          minWidth: 130,
-                          "& .MuiSelect-select": { py: 0.5, letterSpacing: 0 },
-                          mx: 0.25,
+                          minWidth: 80,
+                          fontSize: 13,
+                          "& .MuiSelect-select": { py: 0.2, fontSize: 13, letterSpacing: 0 },
+                          mx: 0.15,
                         }}
                         renderValue={() => {
                           const months =
@@ -783,7 +816,7 @@ export default function BigCalendar({ cars }) {
                         }}
                       >
                         {Array.from({ length: 12 }, (_, index) => (
-                          <MenuItem key={index} value={index}>
+                          <MenuItem key={index} value={index} sx={{ fontSize: 13, py: 0.2 }}>
                             {(monthNames[currentLang] || monthNames.en)[index]}
                           </MenuItem>
                         ))}
@@ -792,7 +825,7 @@ export default function BigCalendar({ cars }) {
                         size="small"
                         onClick={handleNextMonth}
                         aria-label={i18n.t("calendar.nextMonth")}
-                        sx={{ p: 0.25, ml: 0 }}
+                        sx={{ p: 0.15, ml: 0 }}
                       >
                         <Box
                           component="span"
@@ -800,10 +833,10 @@ export default function BigCalendar({ cars }) {
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            width: 18,
-                            height: 18,
+                            width: 16,
+                            height: 16,
                             color: "black",
-                            fontSize: 16,
+                            fontSize: 13,
                             lineHeight: 1,
                             userSelect: "none",
                           }}
