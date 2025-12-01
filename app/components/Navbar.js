@@ -109,6 +109,51 @@ export default function NavBar({
   isCarInfo = false,
   setIsCarInfo = null,
 }) {
+  // Следим за выходом из полноэкранного режима
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, []);
+
+  // Обработчик выхода из полноэкранного режима
+  const handleExitFullscreen = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+  // Проверка на горизонтальный телефон
+  const [isLandscapePhone, setIsLandscapePhone] = useState(false);
+  useEffect(() => {
+    const checkLandscape = () => {
+      const mq = window.matchMedia(
+        "(max-width: 900px) and (orientation: landscape)"
+      );
+      setIsLandscapePhone(mq.matches);
+    };
+    checkLandscape();
+    window.addEventListener("resize", checkLandscape);
+    window.addEventListener("orientationchange", checkLandscape);
+    return () => {
+      window.removeEventListener("resize", checkLandscape);
+      window.removeEventListener("orientationchange", checkLandscape);
+    };
+  }, []);
+  // Состояние для отслеживания полноэкранного режима (можно расширить при необходимости)
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Обработчик для перехода в полноэкранный режим
+  const handleFullscreen = () => {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    }
+  };
   const headerRef = useRef(null);
   const [languageAnchor, setLanguageAnchor] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -316,6 +361,86 @@ export default function NavBar({
             }}
           >
             <Stack alignItems="center" direction="row-reverse" spacing={2}>
+              {/* Кнопка "Во весь экран" — только на горизонтальном телефоне */}
+              {isLandscapePhone && !isFullscreen && (
+                <IconButton
+                  aria-label="Во весь экран"
+                  onClick={handleFullscreen}
+                  sx={{ ml: 1, color: "inherit" }}
+                >
+                  {/* SVG-иконка полноэкранного режима — четыре угла */}
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2 7V2H7"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M15 2H20V7"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M20 15V20H15"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M7 20H2V15"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </IconButton>
+              )}
+              {isLandscapePhone && isFullscreen && (
+                <IconButton
+                  aria-label="Выйти из полноэкранного"
+                  onClick={handleExitFullscreen}
+                  sx={{ ml: 1, color: "inherit" }}
+                >
+                  {/* SVG-иконка выхода из полноэкранного режима (крестик в квадрате) */}
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect
+                      x="3"
+                      y="3"
+                      width="16"
+                      height="16"
+                      rx="3"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M8 8L14 14"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M14 8L8 14"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </IconButton>
+              )}
               <IconButton
                 edge="start"
                 color="inherit"

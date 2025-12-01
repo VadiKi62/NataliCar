@@ -703,6 +703,10 @@ export default function BigCalendar({ cars }) {
                       height: 28,
                       py: 0.5,
                       mb: 0.1,
+                      // Добавляем вертикальный отступ на горизонтальном телефоне
+                      "@media (max-width:900px) and (orientation: landscape)": {
+                        mt: 2,
+                      },
                     }}
                   >
                     <Select
