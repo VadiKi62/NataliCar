@@ -807,7 +807,11 @@ const CalendarPicker = ({
 
   const headerRender = ({ value }) => {
     const current = value.clone();
-    const month = current.format("MMMM");
+    // Получаем текущий язык из i18n
+    const currentLang = i18n.language || "en";
+    // Локализуем название месяца и делаем первую букву заглавной
+    let month = current.locale(currentLang).format("MMMM");
+    month = month.charAt(0).toUpperCase() + month.slice(1);
     const year = current.year();
 
     // const goToNextMonth = () => {
