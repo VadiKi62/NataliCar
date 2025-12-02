@@ -465,6 +465,9 @@ const BookingModal = ({
         const formattedEndDate = dayjs
           .utc(orderData.rentalEndDate)
           .format("DD.MM.YYYY");
+        // Форматируем время начала и окончания (HH:MM)
+        const formattedStartTime = dayjs(orderData.timeIn).format("HH:mm");
+        const formattedEndTime = dayjs(orderData.timeOut).format("HH:mm");
         let title =
           status === "success"
             ? `Новое бронирование ${orderData.carNumber} ${orderData.carModel}`
@@ -477,7 +480,7 @@ const BookingModal = ({
           emailCompany: company.email,
           email: orderData.email,
           title: title,
-          message: `${statusMessage}\nБронь с ${formattedStartDate} по ${formattedEndDate}. \n Кол-во дней : ${orderData.numberOfDays}  \n Сумма : ${response.data.totalPrice} евро. \n \n Данные машины :   ${orderData.carModel} regNumber : ${car.regNumber} \n \n Данные клиента : \n  Мейл : ${orderData.email}, \n Тел : ${orderData.phone} \n имя: ${orderData.customerName}`,
+          message: `${statusMessage}\nБронь с ${formattedStartDate} (${formattedStartTime}) по ${formattedEndDate} (${formattedEndTime}). \n Кол-во дней : ${orderData.numberOfDays}  \n Сумма : ${response.data.totalPrice} евро. \n \n Данные машины :   ${orderData.carModel} regNumber : ${car.regNumber} \n \n Данные клиента : \n  Мейл : ${orderData.email}, \n Тел : ${orderData.phone} \n имя: ${orderData.customerName}`,
         };
       };
 
