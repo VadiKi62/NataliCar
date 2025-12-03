@@ -64,7 +64,7 @@
     "weContact": "We have got your order and we will contact you shortly to finalize the details.",
     "confirmed": "Confirmed orders",
     "not-confirmed": "Non-confirmed orders",
-    "unavailable-dates": "Unavailable dates",
+    "unavailable-dates": "- Unavailable dates",
     "conflict": "Conflict orders",
     "addOrder": "Add Order ",
     "pickupLocation": "Pick-up location",

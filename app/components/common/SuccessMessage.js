@@ -1,6 +1,9 @@
 import React from "react";
 import { Typography, Box, Button } from "@mui/material";
 import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import "dayjs/locale/ru";
+dayjs.extend(timezone);
 import { useTranslation } from "react-i18next";
 
 const SuccessMessage = ({
@@ -48,13 +51,13 @@ const SuccessMessage = ({
             submittedOrder?.timeIn ||
               submittedOrder?.rentalStartDate ||
               presetDates?.startDate
-          ).format("DD.MM.YY")}
+          ).tz("Europe/Athens").format("DD.MM.YY")}
           (
           {dayjs(
             submittedOrder?.timeIn ||
               submittedOrder?.rentalStartDate ||
               presetDates?.startDate
-          ).format("HH:mm")}
+          ).tz("Europe/Athens").format("HH:mm")}
           )
         </Box>{" "}
         {t("basic.to")}{" "}
@@ -63,13 +66,13 @@ const SuccessMessage = ({
             submittedOrder?.timeOut ||
               submittedOrder?.rentalEndDate ||
               presetDates?.endDate
-          ).format("DD.MM.YY")}
+          ).tz("Europe/Athens").format("DD.MM.YY")}
           (
           {dayjs(
             submittedOrder?.timeOut ||
               submittedOrder?.rentalEndDate ||
               presetDates?.endDate
-          ).format("HH:mm")}
+          ).tz("Europe/Athens").format("HH:mm")}
           )
         </Box>
         .
