@@ -51,13 +51,17 @@ const SuccessMessage = ({
             submittedOrder?.timeIn ||
               submittedOrder?.rentalStartDate ||
               presetDates?.startDate
-          ).tz("Europe/Athens").format("DD.MM.YY")}
+          )
+            .tz("Europe/Athens")
+            .format("DD.MM.YY")}
           (
           {dayjs(
             submittedOrder?.timeIn ||
               submittedOrder?.rentalStartDate ||
               presetDates?.startDate
-          ).tz("Europe/Athens").format("HH:mm")}
+          )
+            .tz("Europe/Athens")
+            .format("HH:mm")}
           )
         </Box>{" "}
         {t("basic.to")}{" "}
@@ -66,13 +70,17 @@ const SuccessMessage = ({
             submittedOrder?.timeOut ||
               submittedOrder?.rentalEndDate ||
               presetDates?.endDate
-          ).tz("Europe/Athens").format("DD.MM.YY")}
+          )
+            .tz("Europe/Athens")
+            .format("DD.MM.YY")}
           (
           {dayjs(
             submittedOrder?.timeOut ||
               submittedOrder?.rentalEndDate ||
               presetDates?.endDate
-          ).tz("Europe/Athens").format("HH:mm")}
+          )
+            .tz("Europe/Athens")
+            .format("HH:mm")}
           )
         </Box>
         .

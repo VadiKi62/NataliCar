@@ -466,8 +466,12 @@ const BookingModal = ({
           .utc(orderData.rentalEndDate)
           .format("DD.MM.YYYY");
         // Форматируем время начала и окончания (HH:MM) в часовом поясе Europe/Athens
-        const formattedStartTime = dayjs.tz(orderData.timeIn, 'Europe/Athens').format("HH:mm");
-        const formattedEndTime = dayjs.tz(orderData.timeOut, 'Europe/Athens').format("HH:mm");
+        const formattedStartTime = dayjs
+          .tz(orderData.timeIn, "Europe/Athens")
+          .format("HH:mm");
+        const formattedEndTime = dayjs
+          .tz(orderData.timeOut, "Europe/Athens")
+          .format("HH:mm");
         let title =
           status === "success"
             ? `Новое бронирование ${orderData.carNumber} ${orderData.carModel}`
