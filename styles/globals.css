@@ -1,3 +1,9 @@
+body,
+#__next,
+#root {
+  background: #fff !important;
+  color: #000 !important;
+}
 /* cleaned malformed duplicate CSS (kept the correct scoped block later in this file) */
 /* @tailwind base;
 @tailwind components;

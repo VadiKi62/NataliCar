@@ -466,11 +466,11 @@ const BookingModal = ({
           .utc(orderData.rentalEndDate)
           .format("DD.MM.YYYY");
         // Форматируем время начала и окончания (HH:MM) в часовом поясе Europe/Athens
-        const formattedStartTime = dayjs
-          .tz(orderData.timeIn, "Europe/Athens")
+        const formattedStartTime = dayjs(orderData.timeIn)
+          .tz("Europe/Athens")
           .format("HH:mm");
-        const formattedEndTime = dayjs
-          .tz(orderData.timeOut, "Europe/Athens")
+        const formattedEndTime = dayjs(orderData.timeOut)
+          .tz("Europe/Athens")
           .format("HH:mm");
         let title =
           status === "success"
