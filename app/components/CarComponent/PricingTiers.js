@@ -165,16 +165,16 @@ const PricingDisplay = ({
               // Скидка действует весь месяц
               priceDisplay = (
                 <>
-                  <span>${discountedPrice}</span>
+                  <span>€{discountedPrice}</span>
                 </>
               );
             } else if (discountType === "partial") {
               // Скидка действует частично
               priceDisplay = (
                 <>
-                  <span>${discountedPrice}</span>
+                  <span>€{discountedPrice}</span>
                   <span style={{ margin: "0 6px" }}> - </span>
-                  <span>${amount}</span>
+                  <span>€{amount}</span>
                   {/* <span style={{ color: '#388e3c', marginLeft: 4 }}>
                     ({discount}% скидка частично)
                   </span> */}
@@ -182,7 +182,7 @@ const PricingDisplay = ({
               );
             } else {
               // Скидка не действует
-              priceDisplay = <>{`$${amount}`}</>;
+              priceDisplay = <>{`€${amount}`}</>;
             }
             return (
               <React.Fragment key={index}>
