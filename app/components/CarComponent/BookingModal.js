@@ -466,6 +466,7 @@ const BookingModal = ({
           .utc(orderData.rentalEndDate)
           .format("DD.MM.YYYY");
         // Форматируем время начала и окончания (HH:MM) в часовом поясе Europe/Athens
+        // Почемуто 18.12.25 не работает()
         const formattedStartTime = dayjs(orderData.timeIn)
           .tz("Europe/Athens")
           .format("HH:mm");
