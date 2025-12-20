@@ -1099,7 +1099,7 @@ const BookingModal = ({
                   <TextField
                     label={
                       <>
-                        <span>{t("order.clientName")}</span>
+                        <span>{t("order.yourName")}</span>
                         <span style={{ color: "red" }}>*</span>
                       </>
                     }
