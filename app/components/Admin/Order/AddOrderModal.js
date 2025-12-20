@@ -396,7 +396,11 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       if (response.status === "success") {
         const msg = response?.data?.message || "Заказ успешно добавлен";
         setStatusMessage({ type: "success", message: msg });
-        setUpdateStatus({ type: 201, message: msg });
+        setUpdateStatus({ type: 200, message: msg }); // type: 200 для обновления календаря
+        // Явный вызов обновления заказов для BigCalendar
+        if (typeof fetchAndUpdateOrders === "function") {
+          fetchAndUpdateOrders();
+        }
         setTimeout(() => {
           setStatusMessage({ type: null, message: "" });
           onClose();

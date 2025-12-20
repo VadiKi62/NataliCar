@@ -204,6 +204,9 @@ export default function BigCalendar({ cars }) {
   const [isMoving, setIsMoving] = useState(false);
   const [selectedMoveOrder, setSelectedMoveOrder] = useState(null);
 
+  // Состояние для принудительной перерисовки
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+
   const handleClose = () => setOpen(false);
 
   const [confirmModal, setConfirmModal] = useState({
@@ -1029,6 +1032,7 @@ export default function BigCalendar({ cars }) {
             console.log("Update status:", status);
             if (status?.type === 200) {
               fetchAndUpdateOrders();
+              setForceUpdateKey((prev) => prev + 1); // триггер перерисовки
             }
           }}
         />
