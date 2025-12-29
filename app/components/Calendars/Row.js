@@ -57,6 +57,7 @@ export default function CarTableRow({
     selected: theme.palette.calendar?.selected || "#1976d2", // Синий для выбранного
     moveHighlight: theme.palette.calendar?.moveHighlight || "#ffeb3b", // Жёлтый для перемещения
     moveHighlightAlpha: "rgba(255, 235, 59, 0.8)", // Полупрозрачный жёлтый
+    cellBorder: theme.palette.divider || "#e0e0e0", // Рамка ячейки
   };
 
   const { ordersByCarId } = useMainContext();
@@ -498,7 +499,7 @@ export default function CarTableRow({
       let backgroundColor = "transparent";
       let color = "inherit";
       let borderRadius = "1px";
-      let border = "1px solid transparent";
+      let border = `1px solid ${colors.cellBorder}`;
       let width;
 
       // Базовая логика определения цвета
