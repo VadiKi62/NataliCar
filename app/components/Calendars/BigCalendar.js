@@ -20,10 +20,10 @@ import {
   Modal,
   Grid,
   Typography,
-  Button,
   IconButton,
   useTheme,
 } from "@mui/material";
+import { ActionButton, CancelButton } from "../ui";
 // Используем закрашенные треугольники вместо стандартных иконок
 import dayjs from "dayjs";
 import { useMainContext } from "@app/Context";
@@ -603,7 +603,7 @@ export default function BigCalendar({ cars }) {
       <TableContainer
         sx={{
           maxHeight: "calc(100vh - 80px)",
-          border: `1px solid ${calendarColors.border || "#ddd"}`,
+          border: `1px solid ${calendarColors.border || theme.palette.divider}`,
           overflowX: "auto", // горизонтальный скролл всегда
           overflowY: "auto",
           // enable smooth scrolling where supported
@@ -728,7 +728,7 @@ export default function BigCalendar({ cars }) {
                             justifyContent: "center",
                             width: 16,
                             height: 16,
-                            color: "text.dark",
+                            color: "text.primary",
                             fontSize: 13,
                             lineHeight: 1,
                             userSelect: "none",
@@ -798,7 +798,7 @@ export default function BigCalendar({ cars }) {
                             justifyContent: "center",
                             width: 16,
                             height: 16,
-                            color: "text.dark",
+                            color: "text.primary",
                             fontSize: 13,
                             lineHeight: 1,
                             userSelect: "none",
@@ -839,10 +839,10 @@ export default function BigCalendar({ cars }) {
                     });
                   }}
                 >
-                  <div style={{ color: day.isSunday ? calendarColors.sunday || "#ff0000" : "inherit" }}>
+                  <div style={{ color: day.isSunday ? calendarColors.sunday || theme.palette.primary.main : "inherit" }}>
                     {day.date}
                   </div>
-                  <div style={{ color: day.isSunday ? calendarColors.sunday || "#ff0000" : "inherit" }}>
+                  <div style={{ color: day.isSunday ? calendarColors.sunday || theme.palette.primary.main : "inherit" }}>
                     {(weekday2[currentLang] || weekday2.en)[day.dayjs.day()]}
                   </div>
                 </TableCell>
@@ -860,7 +860,7 @@ export default function BigCalendar({ cars }) {
                     position: "sticky",
                     left: 0,
                     // Use the same background as the Navbar to ensure visual consistency
-                    backgroundColor: "primary.main1",
+                    backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
                     color: "text.light",
                     zIndex: 3,
                     padding: 0,
@@ -1009,7 +1009,7 @@ export default function BigCalendar({ cars }) {
                   variant="h6"
                   gutterBottom
                   align="center"
-                  sx={{ color: "text.dark" }}
+                  sx={{ color: "text.primary" }}
                 >
                   Заказы, начинающиеся{" "}
                   {headerOrdersModal.date &&
@@ -1146,7 +1146,7 @@ export default function BigCalendar({ cars }) {
                   variant="h6"
                   gutterBottom
                   align="center"
-                  sx={{ color: "text.dark" }}
+                  sx={{ color: "text.primary" }}
                 >
                   Заказы, заканчивающиеся{" "}
                   {headerOrdersModal.date &&
@@ -1280,24 +1280,25 @@ export default function BigCalendar({ cars }) {
             </Grid>
           </Grid>
 
-          <Button
+          <ActionButton
             className="no-print"
             onClick={() => window.print()}
             variant="outlined"
+            color="secondary"
+            size="small"
+            label="ПЕЧАТЬ"
             sx={{ mt: 2, mr: 2 }}
-          >
-            Печать
-          </Button>
-          <Button
+          />
+          <ActionButton
             className="no-print"
             onClick={() =>
               setHeaderOrdersModal({ ...headerOrdersModal, open: false })
             }
-            variant="contained"
+            color="secondary"
+            size="small"
+            label="ЗАКРЫТЬ"
             sx={{ mt: 2 }}
-          >
-            Закрыть
-          </Button>
+          />
         </Box>
       </Modal>
 
@@ -1332,21 +1333,16 @@ export default function BigCalendar({ cars }) {
           </Typography>
 
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-            <Button
-              variant="outlined"
+            <CancelButton
               onClick={() => {
                 setConfirmModal({ open: false, newCar: null, oldCar: null });
                 exitMoveMode();
-                //enqueueSnackbar("Перемещение отменено", { variant: "info" });
               }}
-            >
-              НЕТ
-            </Button>
-            <Button
-              variant="contained"
+              label="НЕТ"
+            />
+            <ActionButton
+              color="success"
               onClick={async () => {
-                // Закрываем модалку и пытаемся сохранить заказ на новом автомобиле,
-                // при этом передаём существующую стоимость и дни (чтобы НЕ пересчитывать их)
                 setConfirmModal({ open: false, newCar: null, oldCar: null });
                 let success = false;
                 try {
@@ -1366,7 +1362,6 @@ export default function BigCalendar({ cars }) {
                     selectedMoveOrder.placeOut || "",
                     confirmModal.newCar._id,
                     confirmModal.newCar.carNumber,
-                    // forward optional extras to preserve original pricing
                     selectedMoveOrder.ChildSeats,
                     selectedMoveOrder.insurance,
                     selectedMoveOrder.franchiseOrder,
@@ -1381,9 +1376,7 @@ export default function BigCalendar({ cars }) {
                     await fetchAndUpdateOrders();
                     showSingleSnackbar(
                       `Заказ сдвинут на ${confirmModal.newCar.model}`,
-                      {
-                        variant: "success",
-                      }
+                      { variant: "success" }
                     );
                     success = true;
                   }
@@ -1395,9 +1388,8 @@ export default function BigCalendar({ cars }) {
                   if (!success) exitMoveMode();
                 }
               }}
-            >
-              ДА
-            </Button>
+              label="ДА"
+            />
           </Box>
         </Box>
       </Modal>
