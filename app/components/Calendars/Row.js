@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { TableCell, Box } from "@mui/material";
+import { TableCell, Box, useTheme } from "@mui/material";
 import dayjs from "dayjs";
 import { useMainContext } from "@app/Context";
 import {
@@ -45,10 +45,19 @@ export default function CarTableRow({
   selectedOrderDates,
   isCarCompatibleForMove,
 }) {
+  const theme = useTheme();
   const [pressTimer, setPressTimer] = useState(null);
   const [isPressing, setIsPressing] = useState(false);
   const [longPressOrder, setLongPressOrder] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+
+  // Цвета из темы для календаря
+  const colors = {
+    myOrder: theme.palette.order?.confirmedMyOrder || colors.myOrder, // Зелёный для my_order
+    selected: theme.palette.calendar?.selected || colors.selected, // Синий для выбранного
+    moveHighlight: theme.palette.calendar?.moveHighlight || colors.moveHighlight, // Жёлтый для перемещения
+    moveHighlightAlpha: colors.moveHighlightAlpha, // Полупрозрачный жёлтый
+  };
 
   const { ordersByCarId } = useMainContext();
   const [unavailableDates, setUnavailableDates] = useState([]);
@@ -298,7 +307,7 @@ export default function CarTableRow({
             );
             if (prevOrder) {
               const prevColor =
-                prevOrder.my_order === true ? "#4CAF50" : "primary.red";
+                prevOrder.my_order === true ? colors.myOrder : "primary.main";
               // console.log(
               //   `[BigCalendar][${dateStr}] EDGE-CASE: Первый день выделенного заказа. Левая половина ${
               //     prevOrder.my_order ? "зелёная" : "красная"
@@ -326,7 +335,7 @@ export default function CarTableRow({
                     sx={{
                       width: "50%",
                       height: "100%",
-                      backgroundColor: "#1976d2", // Синий
+                      backgroundColor: colors.selected, // Синий
                       borderRadius: "50% 0 0 50%",
                     }}
                   />
@@ -345,7 +354,7 @@ export default function CarTableRow({
             );
             if (nextOrder) {
               const nextColor =
-                nextOrder.my_order === true ? "#4CAF50" : "primary.red";
+                nextOrder.my_order === true ? colors.myOrder : "primary.main";
               // console.log(
               //   `[BigCalendar][${dateStr}] EDGE-CASE: Последний день выделенного заказа. Левая половина синяя, правая ${
               //     nextOrder.my_order ? "зелёная" : "красная"
@@ -365,7 +374,7 @@ export default function CarTableRow({
                     sx={{
                       width: "50%",
                       height: "100%",
-                      backgroundColor: "#1976d2", // Синий
+                      backgroundColor: colors.selected, // Синий
                       borderRadius: "0 50% 50% 0",
                     }}
                   />
@@ -425,7 +434,7 @@ export default function CarTableRow({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: "rgba(255, 235, 59, 0.8)",
+                backgroundColor: colors.moveHighlightAlpha,
                 pointerEvents: "none",
                 zIndex: 2,
               }}
@@ -441,7 +450,7 @@ export default function CarTableRow({
                 right: 0,
                 width: "50%",
                 height: "100%",
-                backgroundColor: "rgba(255, 235, 59, 0.8)",
+                backgroundColor: colors.moveHighlightAlpha,
                 pointerEvents: "none",
                 zIndex: 2,
                 borderRadius: "50% 0 0 50%",
@@ -458,7 +467,7 @@ export default function CarTableRow({
                 left: 0,
                 width: "50%",
                 height: "100%",
-                backgroundColor: "rgba(255, 235, 59, 0.8)",
+                backgroundColor: colors.moveHighlightAlpha,
                 pointerEvents: "none",
                 zIndex: 2,
                 borderRadius: "0 50% 50% 0",
@@ -494,8 +503,8 @@ export default function CarTableRow({
 
       // Базовая логика определения цвета
       if (isUnavailable) {
-        backgroundColor = "primary.green";
-        color = "text.dark";
+        backgroundColor = "success.main";
+        color = "text.primary";
       }
       if (isConfirmed) {
         // Получаем заказы для текущей даты
@@ -505,7 +514,7 @@ export default function CarTableRow({
           (order) => order.confirmed && order.my_order
         );
 
-        backgroundColor = hasMyOrder ? "#4CAF50" : "primary.red"; // Зеленый если есть my_order=true, иначе красный
+        backgroundColor = hasMyOrder ? colors.myOrder : "primary.main"; // Зеленый если есть my_order=true, иначе красный
         color = "common.white";
       }
 
@@ -530,15 +539,13 @@ export default function CarTableRow({
         if (backgroundColor === "transparent") {
           if (isFirstMoveDay) {
             // Желтый фон в правой половине первого дня
-            gradientBackground =
-              "linear-gradient(to right, transparent 50%, #ffeb3b 50%)";
+            gradientBackground = `linear-gradient(to right, transparent 50%, ${colors.moveHighlight} 50%)`;
           } else if (isLastMoveDay) {
             // Желтый фон в левой половине последнего дня
-            gradientBackground =
-              "linear-gradient(to right, #ffeb3b 50%, transparent 50%)";
+            gradientBackground = `linear-gradient(to right, ${colors.moveHighlight} 50%, transparent 50%)`;
           } else {
             // Полный желтый фон для средних дней
-            backgroundColor = "#ffeb3b";
+            backgroundColor = colors.moveHighlight;
           }
           isInMoveModeDateRange = true;
         } else {
@@ -588,7 +595,7 @@ export default function CarTableRow({
         }
 
         if (shouldApplyImperativeBlue) {
-          backgroundColor = "#1976d2"; // Синий цвет для выбранного заказа
+          backgroundColor = colors.selected; // Синий цвет для выбранного заказа
           color = "white";
         }
       }
@@ -597,7 +604,7 @@ export default function CarTableRow({
         borderRadius = "50% 0 0 50%";
         width = "50%";
         if (!isPartOfSelectedOrder(dateStr) && !isInMoveModeDateRange) {
-          backgroundColor = "primary.green";
+          backgroundColor = "success.main";
           color = "common.white";
         }
       }
@@ -643,7 +650,7 @@ export default function CarTableRow({
         }
 
         if (!shouldApplyBlueBackground && !isInMoveModeDateRange) {
-          backgroundColor = "primary.green";
+          backgroundColor = "success.main";
           color = "common.white";
         }
       }
@@ -855,7 +862,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: "#ffeb3b",
+                  backgroundColor: colors.moveHighlight,
                   borderRadius: "50% 0 0 50%",
                 }}
               ></Box>
@@ -888,7 +895,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: "#ffeb3b",
+                  backgroundColor: colors.moveHighlight,
                   borderRadius: "0 50% 50% 0",
                 }}
               ></Box>
@@ -971,10 +978,10 @@ export default function CarTableRow({
               justifyContent: "center",
               color: isPartOfSelectedOrder(dateStr)
                 ? "common.white"
-                : "text.red",
+                : "primary.main",
               backgroundColor: isPartOfSelectedOrder(dateStr)
-                ? "#1976d2"
-                : "text.green",
+                ? colors.selected
+                : "success.main",
               cursor:
                 isPastDay && isEndDate && !isStartDate
                   ? "not-allowed"
@@ -1001,7 +1008,7 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: "primary.red",
+                    backgroundColor: "primary.main",
                     borderRadius: "50%",
                   }}
                 />
@@ -1023,7 +1030,7 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: "primary.green",
+                    backgroundColor: "success.main",
                     borderRadius: "50%",
                   }}
                 />
@@ -1137,9 +1144,9 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowLastMoveDay
-                  ? "#ffeb3b"
+                  ? colors.moveHighlight
                   : shouldHighlightLeft
-                  ? "#1976d2"
+                  ? colors.selected
                   : isStartAndEndDateOverlapInfo.endConfirmed
                   ? (() => {
                       // Ищем только заказ, который заканчивается в этот день
@@ -1148,9 +1155,9 @@ export default function CarTableRow({
                           dayjs(order.rentalEndDate).format("YYYY-MM-DD") ===
                             dateStr && order.confirmed === true
                       );
-                      return endingOrder?.my_order ? "#4CAF50" : "primary.red";
+                      return endingOrder?.my_order ? colors.myOrder : "primary.main";
                     })()
-                  : "primary.green",
+                  : "success.main",
                 borderRadius: "0 50% 50% 0",
                 display: "flex",
                 alignItems: "center",
@@ -1163,9 +1170,9 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? "#ffeb3b"
+                  ? colors.moveHighlight
                   : shouldHighlightRight
-                  ? "#1976d2"
+                  ? colors.selected
                   : isStartAndEndDateOverlapInfo.startConfirmed
                   ? (() => {
                       // Ищем только заказ, который начинается в этот день
@@ -1175,10 +1182,10 @@ export default function CarTableRow({
                             dateStr && order.confirmed === true
                       );
                       return startingOrder?.my_order
-                        ? "#4CAF50"
-                        : "primary.red";
+                        ? colors.myOrder
+                        : "primary.main";
                     })()
-                  : "primary.green",
+                  : "success.main",
                 borderRadius: "50% 0 0 50%",
                 display: "flex",
                 alignItems: "center",
@@ -1287,9 +1294,9 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "50% 0 0 50%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? "#ffeb3b"
+                  ? colors.moveHighlight
                   : shouldHighlightRight
-                  ? "#1976d2"
+                  ? colors.selected
                   : startEndInfo.confirmed
                   ? (() => {
                       // Получаем заказ для startEndInfo
@@ -1297,10 +1304,10 @@ export default function CarTableRow({
                         (order) => order._id === startEndInfo.orderId
                       );
                       return orderForStartEnd?.my_order
-                        ? "#4CAF50"
+                        ? colors.myOrder
                         : "primary.main";
                     })()
-                  : "primary.green",
+                  : "success.main",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1413,9 +1420,9 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "0 50% 50% 0",
                 backgroundColor: shouldShowLastMoveDay
-                  ? "#ffeb3b"
+                  ? colors.moveHighlight
                   : shouldHighlightLeft
-                  ? "#1976d2"
+                  ? colors.selected
                   : startEndInfo.confirmed
                   ? (() => {
                       // Получаем заказ для startEndInfo
@@ -1423,10 +1430,10 @@ export default function CarTableRow({
                         (order) => order._id === startEndInfo.orderId
                       );
                       return orderForStartEnd?.my_order
-                        ? "#4CAF50"
+                        ? colors.myOrder
                         : "primary.main";
                     })()
-                  : "primary.green",
+                  : "success.main",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1438,7 +1445,7 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 borderRadius: shouldHighlightRight ? "50% 0 0 50%" : undefined,
-                backgroundColor: shouldHighlightRight ? "#1976d2" : undefined,
+                backgroundColor: shouldHighlightRight ? colors.selected : undefined,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1492,7 +1499,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: "#ffeb3b",
+                  backgroundColor: colors.moveHighlight,
                   borderRadius: "0 50% 50% 0",
                   position: "absolute",
                   left: 0,
@@ -1507,7 +1514,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: "#ffeb3b",
+                  backgroundColor: colors.moveHighlight,
                   borderRadius: "50% 0 0 50%",
                   position: "absolute",
                   right: 0,

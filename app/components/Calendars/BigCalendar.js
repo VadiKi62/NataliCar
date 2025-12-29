@@ -990,7 +990,7 @@ export default function BigCalendar({ cars }) {
         <Box
           id="print-orders-modal"
           sx={{
-            background: "background.paper",
+            background: "background.default",
             p: 3,
             borderRadius: 2,
             minWidth: 800,
