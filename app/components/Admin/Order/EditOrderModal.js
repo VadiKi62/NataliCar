@@ -54,7 +54,6 @@ import {
   Typography,
   Box,
   TextField,
-  Button,
   CircularProgress,
   Divider,
   FormControl,
@@ -65,6 +64,7 @@ import {
   FormControlLabel,
   Autocomplete,
 } from "@mui/material";
+import { ConfirmButton, CancelButton, DeleteButton, ActionButton } from "../../ui";
 import { RenderTextField } from "@app/components/common/Fields";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -843,24 +843,26 @@ const EditOrderModal = ({
             {/* --- КОНЕЦ ВЫБОРА АВТОМОБИЛЯ --- */}
 
             <Box sx={{ mb: 2 }}>
-              <Button
-                variant="contained"
+              <ActionButton
+                fullWidth
                 onClick={handleConfirmationToggle}
                 disabled={
                   isUpdating ||
                   viewOnly ||
-                  (isCurrentOrder && editedOrder?.confirmed) // запрет снять подтверждение для текущего заказа
+                  (isCurrentOrder && editedOrder?.confirmed)
+                }
+                color={editedOrder?.confirmed ? "success" : "primary"}
+                label={
+                  editedOrder?.confirmed
+                    ? t("order.orderConfirmed")
+                    : t("order.orderNotConfirmed")
                 }
                 title={
                   isCurrentOrder && editedOrder?.confirmed
-                    ? "Нельзя снять подтверждение у текущего текущего заказа"
+                    ? "Нельзя снять подтверждение у текущего заказа"
                     : ""
                 }
                 sx={{
-                  width: "100%",
-                  backgroundColor: editedOrder?.confirmed
-                    ? "success.main"
-                    : "error.main",
                   opacity:
                     viewOnly || (isCurrentOrder && editedOrder?.confirmed)
                       ? 0.6
@@ -870,11 +872,7 @@ const EditOrderModal = ({
                       ? "not-allowed"
                       : "pointer",
                 }}
-              >
-                {editedOrder?.confirmed
-                  ? t("order.orderConfirmed")
-                  : t("order.orderNotConfirmed")}
-              </Button>
+              />
             </Box>
 
             <Box sx={{ mb: 1 }}>
@@ -1318,21 +1316,19 @@ const EditOrderModal = ({
                 alignItems: "center",
               }}
             >
-              <Button onClick={onCloseModalEdit} variant="outlined">
-                {t("basic.cancel")}
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                disabled={isUpdating || viewOnly}
+              <CancelButton
+                onClick={onCloseModalEdit}
+                label={t("basic.cancel")}
+              />
+              <ConfirmButton
+                loading={isUpdating}
+                disabled={viewOnly}
                 sx={{ mx: 2, width: "40%" }}
                 onClick={async () => {
                   if (viewOnly) return;
                   setIsUpdating(true);
                   try {
-                    // Сохраняем даты
                     await handleDateUpdate();
-                    // Сохраняем клиента
                     await handleCustomerUpdate();
                     showMessage(t("order.orderUpdated"));
                   } catch (error) {
@@ -1343,18 +1339,13 @@ const EditOrderModal = ({
                     setIsUpdating(false);
                   }
                 }}
-              >
-                {isUpdating ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  t("order.updateOrder")
-                )}
-              </Button>
-              <Button
-                variant="contained"
+                label={t("order.updateOrder")}
+              />
+              <DeleteButton
                 onClick={handleDelete}
-                disabled={isUpdating || viewOnly || isCurrentOrder}
-                color="error"
+                loading={isUpdating}
+                disabled={viewOnly || isCurrentOrder}
+                label={t("order.deleteOrder")}
                 sx={{
                   width: "30%",
                   opacity: isCurrentOrder ? 0.5 : 1,
@@ -1365,13 +1356,7 @@ const EditOrderModal = ({
                     ? "Текущий заказ нельзя удалить"
                     : t("order.deleteOrder")
                 }
-              >
-                {isUpdating ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  t("order.deleteOrder")
-                )}
-              </Button>
+              />
             </Box>
           </>
         )}

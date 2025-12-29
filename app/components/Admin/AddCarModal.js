@@ -4,7 +4,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button,
   TextField,
   Grid,
   Stack,
@@ -22,6 +21,7 @@ import {
   CircularProgress,
   Autocomplete,
 } from "@mui/material";
+import { ConfirmButton, CancelButton } from "../ui";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import PricingTiers from "./Car/PricingTiers";
@@ -571,22 +571,16 @@ const AddCarModal = ({
                   borderColor: "divider",
                 }}
               >
-                <Button
+                <CancelButton
                   onClick={onClose}
                   disabled={loading}
-                  sx={{ py: 1.5, px: 4, minWidth: "140px" }}
-                >
-                  {t("basic.cancel")}
-                </Button>
-                <Button
+                  label={t("basic.cancel")}
+                />
+                <ConfirmButton
                   type="submit"
-                  disabled={loading}
-                  variant="contained"
-                  color="primary"
-                  sx={{ py: 1.5, px: 4, minWidth: "140px" }}
-                >
-                  {t("carPark.addCar")}
-                </Button>
+                  loading={loading}
+                  label={t("carPark.addCar")}
+                />
               </DialogActions>
             </Grid>
           </form>

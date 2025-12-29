@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import { DataGrid } from "@mui/x-data-grid";
-import { Box, Typography, Button, Stack } from "@mui/material";
+import { Box, Typography, Stack } from "@mui/material";
+import { ActionButton } from "../ui";
 import { useTranslation } from "react-i18next";
 
 // Функция для вычисления ширины столбца по максимальной длине данных
@@ -227,47 +228,57 @@ function DataGridOrders({ cars, orders }) {
         }}
         className="no-print"
       >
-        <Button
+        <ActionButton
           variant={filterType === "all" ? "contained" : "outlined"}
+          color="secondary"
+          size="small"
           onClick={() => setFilterType("all")}
-        >
-          {t("table.allOrders")}
-        </Button>
-        <Button
+          label={t("table.allOrders")}
+        />
+        <ActionButton
           variant={filterType === "activeToday" ? "contained" : "outlined"}
+          color="secondary"
+          size="small"
           onClick={() => setFilterType("activeToday")}
-        >
-          {t("table.activOrders")}
-        </Button>
-        <Button
+          label={t("table.activOrders")}
+        />
+        <ActionButton
           variant={filterType === "startingToday" ? "contained" : "outlined"}
+          color="secondary"
+          size="small"
           onClick={() => setFilterType("startingToday")}
-        >
-          {t("table.startToday")}
-        </Button>
-        <Button
+          label={t("table.startToday")}
+        />
+        <ActionButton
           variant={filterType === "startingTomorrow" ? "contained" : "outlined"}
+          color="secondary"
+          size="small"
           onClick={() => setFilterType("startingTomorrow")}
-        >
-          {t("table.startTomorrow")}
-        </Button>
-        <Button
+          label={t("table.startTomorrow")}
+        />
+        <ActionButton
           variant={filterType === "endingToday" ? "contained" : "outlined"}
+          color="secondary"
+          size="small"
           onClick={() => setFilterType("endingToday")}
-        >
-          {t("table.endToday")}
-        </Button>
-        <Button
+          label={t("table.endToday")}
+        />
+        <ActionButton
           variant={filterType === "endingTomorrow" ? "contained" : "outlined"}
+          color="secondary"
+          size="small"
           onClick={() => setFilterType("endingTomorrow")}
-        >
-          {t("table.endTomorrow")}
-        </Button>
+          label={t("table.endTomorrow")}
+        />
       </Stack>
       <Box mb={2} className="no-print" sx={{ textAlign: "right" }}>
-        <Button variant="outlined" onClick={() => window.print()}>
-          {t("table.print") || "Печать"}
-        </Button>
+        <ActionButton
+          variant="outlined"
+          color="secondary"
+          size="small"
+          onClick={() => window.print()}
+          label={t("table.print") || "Печать"}
+        />
       </Box>
       <Box m={0} style={{ height: "100vh", width: "100%" }}>
         <Typography variant="h6">

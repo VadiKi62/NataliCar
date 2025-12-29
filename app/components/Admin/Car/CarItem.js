@@ -12,8 +12,8 @@ import {
   Typography,
   Stack,
   CircularProgress,
-  Button,
 } from "@mui/material";
+import { ConfirmButton, CancelButton, ActionButton } from "../../ui";
 import EditCarModal from "./EditCarModal";
 import DefaultButton from "../../common/DefaultButton";
 import { CldImage } from "next-cloudinary";
@@ -236,42 +236,25 @@ function CarItem({ car, onCarDelete, setUpdateStatus }) {
         )}
         {hovered && (
           <ImageOverlay>
-            <Button
-              variant="contained"
+            <ActionButton
+              color="primary"
+              size="small"
               onClick={() => fileInputRef.current.click()}
-              sx={{
-                color: "white",
-                backgroundColor: "primary.main",
-                mb: 1,
-                p: 1,
-              }}
-            >
-              {t("carPark.carNewPhoto")}
-            </Button>
+              label={t("carPark.carNewPhoto")}
+              sx={{ mb: 1 }}
+            />
             {previewImage && (
               <Stack spacing={1}>
-                <Button
-                  variant="contained"
+                <ConfirmButton
+                  size="small"
                   onClick={handleImageUpload}
-                  sx={{
-                    color: "white",
-                    backgroundColor: "primary.green",
-                    p: 1,
-                  }}
-                >
-                  {t("carPark.savePhoto")}
-                </Button>
-                <Button
-                  variant="contained"
+                  label={t("carPark.savePhoto")}
+                />
+                <CancelButton
+                  size="small"
                   onClick={() => setPreviewImage(null)}
-                  sx={{
-                    color: "white",
-                    backgroundColor: "primary.red",
-                    p: 1,
-                  }}
-                >
-                  {t("basic.cancel")}
-                </Button>
+                  label={t("basic.cancel")}
+                />
               </Stack>
             )}
           </ImageOverlay>

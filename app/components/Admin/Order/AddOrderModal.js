@@ -60,7 +60,6 @@ import {
   Typography,
   Box,
   TextField,
-  Button,
   CircularProgress,
   Divider,
   FormControlLabel,
@@ -69,6 +68,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import { ConfirmButton, CancelButton, ActionButton } from "../../ui";
 import Autocomplete from "@mui/material/Autocomplete";
 
 import dayjs from "dayjs";
@@ -811,16 +811,17 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   const { t } = useTranslation();
 
   const renderConfirmationButton = () => (
-    <Button
-      variant="contained"
-      color={orderDetails.confirmed ? "success" : "error"}
+    <ActionButton
+      fullWidth
+      color={orderDetails.confirmed ? "success" : "primary"}
       onClick={toggleConfirmedStatus}
-      sx={{ width: "100%", mb: 2 }}
-    >
-      {orderDetails.confirmed
-        ? t("order.bookingConfirmed")
-        : t("order.confirmBooking")}
-    </Button>
+      label={
+        orderDetails.confirmed
+          ? t("order.bookingConfirmed")
+          : t("order.confirmBooking")
+      }
+      sx={{ mb: 2 }}
+    />
   );
 
   const isMobile = useMediaQuery("(max-width:600px)"); // true для телефона
@@ -1015,30 +1016,24 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
         {renderStatusMessage()}
 
         <Box sx={{ mt: 2, display: "flex", gap: 2, justifyContent: "center" }}>
-          <Button
-            variant="outlined"
+          <CancelButton
             onClick={onClose}
             disabled={loadingState}
-            sx={{ minWidth: "120px" }}
-          >
-            {t("basic.cancel")}
-          </Button>
-          <Button
-            variant="contained"
+            label={t("basic.cancel")}
+          />
+          <ConfirmButton
             onClick={handleBookingComplete}
+            loading={loadingState}
             disabled={
               !bookDates.start ||
               !bookDates.end ||
               !startTime ||
               !endTime ||
               !orderDetails.customerName ||
-              !orderDetails.phone ||
-              loadingState
+              !orderDetails.phone
             }
-            sx={{ minWidth: "120px" }}
-          >
-            {t("order.CompleteBook")}
-          </Button>
+            label={t("order.CompleteBook")}
+          />
         </Box>
       </Box>
     </Modal>

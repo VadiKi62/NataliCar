@@ -16,7 +16,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  Button,
   Typography,
   Box,
   TextField,
@@ -26,6 +25,7 @@ import {
   MenuItem,
   CircularProgress,
 } from "@mui/material";
+import { ConfirmButton, CancelButton } from "../ui";
 import Autocomplete from "@mui/material/Autocomplete";
 import { useTranslation } from "react-i18next";
 import { addOrderNew } from "@utils/action";
@@ -596,8 +596,8 @@ const BookingModal = ({
                 align="center"
                 sx={{
                   fontSize: { xs: "1.05rem", sm: "1.25rem" },
-                  m: 0,
-                  lineHeight: 1.15,
+                  m: 1,
+                  lineHeight: 1.25,
                 }}
               >
                 {t("order.book", { model: car.model })}
@@ -1207,61 +1207,58 @@ const BookingModal = ({
                     },
                   }}
                 >
-                  <Button
-                    onClick={handleModalClose}
-                    variant="outlined"
-                    sx={{
-                      "@media (max-width:600px) and (orientation: portrait)": {
-                        flexBasis: 0,
-                        flexGrow: 0.7,
-                        minWidth: 0,
-                      },
-                    }}
-                  >
-                    {isSubmitted ? "OK" : t("basic.cancel")}
-                  </Button>
-                  {!isSubmitted && (
-                    <Button
-                      ref={bookButtonRef}
-                      variant="contained"
-                      color="error"
-                      onClick={handleSubmit}
-                      disabled={
-                        isSubmitting ||
-                        !name ||
-                        !phone ||
-                        !presetDates?.startDate ||
-                        !presetDates?.endDate ||
-                        Boolean(timeErrors)
-                      }
-                      startIcon={
-                        isSubmitting ? <CircularProgress size={20} /> : null
-                      }
-                      className="btn-submit-pulse"
+                  {isSubmitted ? (
+                    <ConfirmButton
+                      onClick={handleModalClose}
+                      label="OK"
                       sx={{
-                        fontSize: "1.1rem",
-                        padding: "12px 32px",
-                        minWidth: "200px",
-                        margin: "0 auto",
-                        display: "block",
-                        "&:disabled": {
-                          backgroundColor: "grey.400",
-                          animation: "none",
+                        "@media (max-width:600px) and (orientation: portrait)": {
+                          flexBasis: 0,
+                          flexGrow: 1,
+                          minWidth: 0,
                         },
-                        "@media (max-width:600px) and (orientation: portrait)":
-                          {
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <CancelButton
+                        onClick={handleModalClose}
+                        label={t("basic.cancel")}
+                        sx={{
+                          "@media (max-width:600px) and (orientation: portrait)": {
+                            flexBasis: 0,
+                            flexGrow: 0.7,
+                            minWidth: 0,
+                          },
+                        }}
+                      />
+                      <ConfirmButton
+                        ref={bookButtonRef}
+                        onClick={handleSubmit}
+                        loading={isSubmitting}
+                        pulse={!isSubmitting}
+                        disabled={
+                          !name ||
+                          !phone ||
+                          !presetDates?.startDate ||
+                          !presetDates?.endDate ||
+                          Boolean(timeErrors)
+                        }
+                        label={
+                          isSubmitting
+                            ? t("order.processing") || "Processing..."
+                            : t("order.confirmBooking")
+                        }
+                        sx={{
+                          "@media (max-width:600px) and (orientation: portrait)": {
                             flexBasis: 0,
                             flexGrow: 1.3,
                             minWidth: 0,
                             padding: "12px 20px",
-                            margin: 0,
                           },
-                      }}
-                    >
-                      {isSubmitting
-                        ? t("order.processing") || "Processing..."
-                        : t("order.confirmBooking")}
-                    </Button>
+                        }}
+                      />
+                    </>
                   )}
                 </Box>
               </Box>

@@ -143,6 +143,7 @@ const PricingDisplay = ({
           justifyContent: "space-evenly",
           alignItems: "center",
           backgroundColor: "secondary.light",
+
         }}
       >
         <Stack
@@ -194,6 +195,7 @@ const PricingDisplay = ({
                       "@media (max-width:900px) and (orientation: landscape)": {
                         fontSize: "0.7rem",
                         lineHeight: "0.8rem",
+                        color: "text.inverse", // Светлый текст для тёмного фона
                       },
                       mb: 1,
                     }}
@@ -208,6 +210,7 @@ const PricingDisplay = ({
                         fontSize: "0.95rem",
                         lineHeight: "1rem",
                       },
+                      color: "text.inverse", // Светлый текст для тёмного фона
                     }}
                     color="primary"
                   >

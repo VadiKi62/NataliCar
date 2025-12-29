@@ -4,7 +4,6 @@ import {
   Grid,
   DialogActions,
   MenuItem,
-  Button,
   Typography,
   Checkbox,
   FormControlLabel,
@@ -21,6 +20,7 @@ import {
   Stack,
   Autocomplete,
 } from "@mui/material";
+import { ConfirmButton, CancelButton } from "../../ui";
 import Snackbar from "@app/components/common/Snackbar";
 import { styled } from "@mui/material/styles";
 import PricingTiersTable from "./PricingTiers";
@@ -459,23 +459,16 @@ const EditCarModal = ({
                 borderColor: "divider",
               }}
             >
-              <Button
+              <CancelButton
                 onClick={onClose}
-                variant="outlined"
                 disabled={isLoading}
-                sx={{ py: 1.5, px: 4, minWidth: "140px" }}
-              >
-                {t("basic.cancel")}
-              </Button>
-              <Button
+                label={t("basic.cancel")}
+              />
+              <ConfirmButton
                 onClick={handleSave}
-                variant="contained"
-                color="primary"
-                disabled={isLoading}
-                sx={{ py: 1.5, px: 4, minWidth: "140px" }}
-              >
-                {t("basic.save")}
-              </Button>
+                loading={isLoading}
+                label={t("basic.save")}
+              />
             </DialogActions>
           </Grid>
         </Grid>
