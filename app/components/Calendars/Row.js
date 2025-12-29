@@ -53,10 +53,10 @@ export default function CarTableRow({
 
   // Цвета из темы для календаря
   const colors = {
-    myOrder: theme.palette.order?.confirmedMyOrder || colors.myOrder, // Зелёный для my_order
-    selected: theme.palette.calendar?.selected || colors.selected, // Синий для выбранного
-    moveHighlight: theme.palette.calendar?.moveHighlight || colors.moveHighlight, // Жёлтый для перемещения
-    moveHighlightAlpha: colors.moveHighlightAlpha, // Полупрозрачный жёлтый
+    myOrder: theme.palette.order?.confirmedMyOrder || "#4CAF50", // Зелёный для my_order
+    selected: theme.palette.calendar?.selected || "#1976d2", // Синий для выбранного
+    moveHighlight: theme.palette.calendar?.moveHighlight || "#ffeb3b", // Жёлтый для перемещения
+    moveHighlightAlpha: "rgba(255, 235, 59, 0.8)", // Полупрозрачный жёлтый
   };
 
   const { ordersByCarId } = useMainContext();
