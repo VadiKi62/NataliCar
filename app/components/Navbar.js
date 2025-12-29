@@ -93,7 +93,7 @@ const Logo = styled(Typography)(({ theme }) => ({
 }));
 
 const LanguageSwitcher = styled(IconButton)(({ theme }) => ({
-  color: theme.palette.text?.black || theme.palette.text?.light,
+  color: theme.palette.text?.light || "#ffffff",
   display: "flex",
   alignItems: "center",
 }));

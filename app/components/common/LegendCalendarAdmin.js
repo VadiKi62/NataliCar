@@ -1,27 +1,35 @@
 import React from "react";
-import { Box, Typography, Stack } from "@mui/material";
+import { Box, Typography, Stack, useTheme } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Легенда календаря для админки и клиентской части
+ * Использует цвета из темы для согласованности
+ */
 function LegendCalendarAdmin({ client }) {
   const { t } = useTranslation();
-  console.log("LegendCalendarAdmin rendered, client:", client);
+  const theme = useTheme();
+
+  // Получаем цвета из темы
+  const orderColors = theme.palette.order || {};
+
   return (
     <Stack
-      //className="legend-calendar-admin"
-      spacing={{ xs: 1, sm: 2 }} // Adjust spacing between items based on screen size
-      direction={"row"} // Stack items vertically on small screens, horizontally on larger screens
+      spacing={{ xs: 1, sm: 2 }}
+      direction="row"
       justifyContent="center"
       alignItems="center"
       display={{ xs: "none", sm: "flex" }}
-      width={"100%"}
+      width="100%"
       sx={{ color: "text.main", mb: client ? 0 : 10 }}
     >
+      {/* Подтверждённые заказы */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          mb: { xs: 11, sm: 0 }, // Adjust bottom margin on small screens
+          mb: { xs: 11, sm: 0 },
           paddingLeft: 5,
           paddingBottom: client ? 0 : 1,
         }}
@@ -32,11 +40,11 @@ function LegendCalendarAdmin({ client }) {
             display: "inline-block",
             width: "20px",
             height: "20px",
-            backgroundColor: "primary.red",
+            backgroundColor: orderColors.confirmed || "primary.red",
             marginRight: "10px",
           }}
         />
-        {/* Зелёный квадратик прямо справа от красного перед текстом (только админка) */}
+        {/* Зелёный квадратик для заказов компании (только админка) */}
         {!client && (
           <Box
             component="span"
@@ -44,8 +52,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              // Точно такой цвет, как у зелёных подтверждённых заказов (my_order=true) в Row.js
-              backgroundColor: "#4CAF50",
+              backgroundColor: orderColors.confirmedMyOrder || "ui.success",
               marginRight: "10px",
             }}
           />
@@ -58,19 +65,18 @@ function LegendCalendarAdmin({ client }) {
             color: "text.light",
           }}
         >
-          {/* На главной странице (client=true) показываем "Недоступные даты", в админке - "Подтвержденные заказы" */}
           {client ? t("order.unavailable-dates") : t("order.confirmed")}
         </Typography>
       </Box>
 
-      {/* Закомментировано для главной страницы - показываем только в админке */}
+      {/* Неподтверждённые заказы (только админка) */}
       {!client && (
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            mb: { xs: 1, sm: 0 }, // Adjust bottom margin on small screens
+            mb: { xs: 1, sm: 0 },
             paddingBottom: 1,
           }}
         >
@@ -80,7 +86,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: "primary.green",
+              backgroundColor: orderColors.pending || "primary.green",
               marginRight: "10px",
             }}
           />
@@ -97,47 +103,45 @@ function LegendCalendarAdmin({ client }) {
         </Box>
       )}
 
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          mb: { xs: 1, sm: 0 }, // Adjust bottom margin on small screens
-          paddingBottom: client ? 0 : 1,
-        }}
-      >
-        {!client && (
-          <>
-            <Box
-              component="span"
-              sx={{
-                position: "relative",
-                display: "inline-block",
-                width: "20px",
-                height: "22px",
-                backgroundColor: "text.green",
-                marginRight: "10px",
-                color: "text.red",
-                justifyContent: "center",
-                alignItems: "center",
-                display: "flex",
-              }}
-            >
-              1
-            </Box>
-            <Typography
-              component="span"
-              variant="body2"
-              sx={{
-                fontSize: "clamp(7px, calc(0.8rem + 1vw), 16px)",
-                color: "text.light",
-              }}
-            >
-              {t("order.conflict")}
-            </Typography>
-          </>
-        )}
-      </Box>
+      {/* Конфликтующие заказы (только админка) */}
+      {!client && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mb: { xs: 1, sm: 0 },
+            paddingBottom: 1,
+          }}
+        >
+          <Box
+            component="span"
+            sx={{
+              position: "relative",
+              display: "flex",
+              width: "20px",
+              height: "22px",
+              backgroundColor: orderColors.conflict || "text.green",
+              marginRight: "10px",
+              color: "text.red",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            1
+          </Box>
+          <Typography
+            component="span"
+            variant="body2"
+            sx={{
+              fontSize: "clamp(7px, calc(0.8rem + 1vw), 16px)",
+              color: "text.light",
+            }}
+          >
+            {t("order.conflict")}
+          </Typography>
+        </Box>
+      )}
     </Stack>
   );
 }

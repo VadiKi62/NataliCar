@@ -123,7 +123,7 @@ function Admin({ children, ...props }) {
           top: 10,
           right: 10,
           zIndex: 1000,
-          backgroundColor: "white",
+          backgroundColor: "background.default",
           borderRadius: 1,
           boxShadow: 2,
         }}
