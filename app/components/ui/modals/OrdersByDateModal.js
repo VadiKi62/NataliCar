@@ -10,6 +10,8 @@ import {
   TableRow,
   TableCell,
   Grid,
+  Divider,
+  Paper
 } from "@mui/material";
 import dayjs from "dayjs";
 import ModalLayout from "./ModalLayout";
@@ -84,67 +86,102 @@ const OrdersByDateModal = ({
   };
 
   return (
-    <ModalLayout
-      open={open}
-      onClose={onClose}
-      size="fullWidth"
-      showCloseButton={true}
+<ModalLayout
+  open={open}
+  onClose={onClose}
+  size="fullWidth"
+  showCloseButton
+>
+
+    <Grid     
+    sx={{
+      maxWidth: 1000,
+      py: 2,
+    }} container spacing={3} >
+      {/* НАЧИНАЮЩИЕСЯ ЗАКАЗЫ */}
+      <Grid item xs={12} >
+        <Paper
+          elevation={2}
+          sx={{
+            p: 3,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <Typography
+            variant="h6"
+            align="center"
+            sx={{ fontWeight: 600, mb: 1 }}
+          >
+            Заказы, начинающиеся {date && date.format("DD.MM.YY")}
+          </Typography>
+
+          <Divider sx={{ mb: 2 }} />
+
+          {renderOrdersTable(
+            startedOrders,
+            "Нет заказов, начинающихся в эту дату"
+          )}
+        </Paper>
+      </Grid>
+
+      {/* ЗАКАНЧИВАЮЩИЕСЯ ЗАКАЗЫ */}
+      <Grid item xs={12}>
+        <Paper
+          elevation={2}
+          sx={{
+            p: 3,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <Typography
+            variant="h6"
+            align="center"
+            sx={{ fontWeight: 600, mb: 1 }}
+          >
+            Заказы, заканчивающиеся {date && date.format("DD.MM.YY")}
+          </Typography>
+
+          <Divider sx={{ mb: 2 }} />
+
+          {renderOrdersTable(
+            endedOrders,
+            "Нет заказов, заканчивающихся в эту дату"
+          )}
+        </Paper>
+      </Grid>
+    </Grid>
+
+    {/* КНОПКИ */}
+    <Box
+      sx={{
+        mt: 4,
+        display: "flex",
+        justifyContent: "center",
+        gap: 2,
+      }}
     >
-      <Box id="print-orders-modal">
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            {/* Заказы, начинающиеся */}
-            <Box sx={{ mb: 4 }}>
-              <Typography
-                variant="h6"
-                gutterBottom
-                align="center"
-                sx={{ color: "text.primary", fontWeight: 600 }}
-              >
-                Заказы, начинающиеся {date && date.format("DD.MM.YY")}
-              </Typography>
-              {renderOrdersTable(
-                startedOrders,
-                "Нет заказов, начинающихся в эту дату"
-              )}
-            </Box>
+      <ActionButton
+        variant="outlined"
+        color="warning"
+        size="small"
+        onClick={onClose}
+        label="ЗАКРЫТЬ"
+      />
 
-            {/* Заказы, заканчивающиеся */}
-            <Box>
-              <Typography
-                variant="h6"
-                gutterBottom
-                align="center"
-                sx={{ color: "text.primary", fontWeight: 600 }}
-              >
-                Заказы, заканчивающиеся {date && date.format("DD.MM.YY")}
-              </Typography>
-              {renderOrdersTable(
-                endedOrders,
-                "Нет заказов, заканчивающихся в эту дату"
-              )}
-            </Box>
-          </Grid>
-        </Grid>
+      <ActionButton
+        color="secondary"
+        size="small"
+        onClick={() => window.print()}
+        label="ПЕЧАТЬ"
+      />
 
-        {/* Кнопки */}
-        <Box sx={{ mt: 3, display: "flex", gap: 2 }} className="no-print">
-          <ActionButton
-            onClick={() => window.print()}
-            variant="outlined"
-            color="secondary"
-            size="small"
-            label="ПЕЧАТЬ"
-          />
-          <ActionButton
-            onClick={onClose}
-            color="secondary"
-            size="small"
-            label="ЗАКРЫТЬ"
-          />
-        </Box>
-      </Box>
-    </ModalLayout>
+  </Box>
+</ModalLayout>
+
   );
 };
 

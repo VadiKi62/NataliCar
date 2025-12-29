@@ -7,7 +7,7 @@ import { keyframes } from "@mui/system";
 // Анимация пульсации с градиентом
 const bookPulse = keyframes`
   0% {
-    background: linear-gradient(135deg, #0b6b5f 0%, #0a5c2f 100%);
+    background: linear-gradient(135deg, #0b6b5f 0%, rgba(0, 180, 150, 0.55) 100%);
     box-shadow:
       0 0 18px rgba(0, 140, 120, 0.45),
       0 0 32px rgba(0, 120, 60, 0.35);
@@ -15,15 +15,15 @@ const bookPulse = keyframes`
   }
 
   50% {
-    background: linear-gradient(135deg, #0f8a6f 0%, #008989 100%);
+    background: linear-gradient(135deg, rgba(0, 137, 137, 0.55) 0%, #008989 100%);
     box-shadow:
       0 0 28px rgba(0, 180, 150, 0.55),
-      0 0 45px rgba(180, 40, 40, 0.45);
+      0 0 45px rgba(0, 180, 150, 0.45);
     transform: scale(1.04);
   }
 
   100% {
-    background: linear-gradient(135deg, #0b6b5f 0%, #0a5c2f 100%);
+    background: linear-gradient(135deg, rgba(0, 137, 137, 0.55) 0%, rgba(0, 137, 137, 0.95) 100%);
     box-shadow:
       0 0 18px rgba(0, 140, 120, 0.45),
       0 0 32px rgba(0, 120, 60, 0.35);

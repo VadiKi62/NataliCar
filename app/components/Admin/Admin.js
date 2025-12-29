@@ -1,35 +1,35 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
-import { unstable_noStore } from "next/cache";
-import { DataGrid } from "@mui/x-data-grid";
-import DataGridCars from "./DataGridCars";
-import Item from "./Order/Item";
-import {
-  Grid,
-  Container,
-  CircularProgress,
-  Box,
-  Stack,
-  Button,
-} from "@mui/material";
-import { Element, scroller } from "react-scroll";
-import { signOut } from "next-auth/react";
+/**
+ * @deprecated Этот компонент устарел. 
+ * Используйте новую структуру:
+ * - AdminView.js (основной контейнер с lazy loading)
+ * - AdminTopBar.js (верхняя панель)
+ * - sections/CarsSection.js, BigCalendarSection.js, etc.
+ * - hooks/useAdminState.js (хук для состояния)
+ * 
+ * Этот файл оставлен для обратной совместимости.
+ */
 
-import { fetchAllCars } from "@utils/action";
+import React, { useState, Suspense } from "react";
+import { unstable_noStore } from "next/cache";
+import Item from "./Order/Item";
+import { Grid, Box, Stack, Button } from "@mui/material";
+import { signOut } from "next-auth/react";
+import { styled } from "@mui/system";
+import { useTranslation } from "react-i18next";
+
 import DefaultButton from "../common/DefaultButton";
 import AddCarModal from "./AddCarModal";
 import { useMainContext } from "@app/Context";
 import Snackbar from "@app/components/common/Snackbar";
 import Loading from "@app/loading";
 import Error from "@app/error";
-import { styled } from "@mui/system";
 import Navbar from "@app/components/Navbar";
 import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 import AddOrderModal from "./Order/AddOrderModal";
 import Cars from "./Car/Cars";
 import DataGridOrders from "@app/components/Admin/DataGridOrders";
 import BigCalendar from "@app/components/Calendars/BigCalendar";
-import { useTranslation } from "react-i18next";
 
 const StyledBox = styled("div")(({ theme, scrolled, isCarInfo }) => ({
   zIndex: 996,
@@ -40,10 +40,12 @@ const StyledBox = styled("div")(({ theme, scrolled, isCarInfo }) => ({
   display: "flex",
   justifyContent: "center",
   paddingTop: theme.spacing(2),
-  backgroundColor: !isCarInfo ? theme.palette.primary.main1 : "transparent",
-  // boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+  backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
 }));
 
+/**
+ * @deprecated Используйте AdminView + секции вместо этого компонента
+ */
 function Admin({ children, ...props }) {
   unstable_noStore();
   const {
@@ -120,8 +122,8 @@ function Admin({ children, ...props }) {
       <Box
         sx={{
           position: "fixed",
-          top: 10,
-          right: 10,
+          top: 40,
+          right: 40,
           zIndex: 1000,
           backgroundColor: "background.default",
           borderRadius: 1,

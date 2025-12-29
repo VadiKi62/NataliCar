@@ -1,24 +1,8 @@
-"use client";
-import React, { Suspense } from "react";
-import { Box } from "@mui/material";
-import Feed from "@app/components/Feed";
-import Admin from "@app/components/Admin/Admin";
+import DataLoader from "@app/components/Admin/DataLoader";
 
-import { fetchAllCars, reFetchAllOrders } from "@utils/action";
-
-async function pageOrders() {
-  const carsData = await fetchAllCars();
-  const ordersData = await reFetchAllOrders();
-
-  return (
-    <Suspense>
-      <Feed cars={carsData} orders={ordersData} isAdmin={true} isMain={false}>
-        <Box sx={{ my: 3 }}>
-          <Admin isOrdersTable={true} />
-        </Box>
-      </Feed>
-    </Suspense>
-  );
+/**
+ * /admin/orders-table - страница таблицы заказов
+ */
+export default function PageOrdersTable() {
+  return <DataLoader viewType="orders-table" />;
 }
-
-export default pageOrders;

@@ -70,16 +70,22 @@ export const MainContextProvider = ({
   }, [i18n]);
 
   const [company, setCompany] = useState(companyData);
-  const [companyLoading, setCompanyLoading] = useState(true);
+  // Если companyData передана с сервера - не грузим повторно
+  const [companyLoading, setCompanyLoading] = useState(!companyData);
   const [companyError, setCompanyError] = useState(null);
 
-  // Глобальная загрузка компании из MongoDB
+  // Загрузка компании ТОЛЬКО если она не была передана с сервера
   useEffect(() => {
+    // Если данные уже есть - не делаем повторный запрос
+    if (companyData) {
+      setCompanyLoading(false);
+      return;
+    }
+
     async function loadCompany() {
       setCompanyLoading(true);
       setCompanyError(null);
       try {
-        // id компании можно вынести в .env или оставить хардкод
         const companyId = "679903bd10e6c8a8c0f027bc";
         const { fetchCompany } = await import("@utils/action");
         const freshCompany = await fetchCompany(companyId);
@@ -91,7 +97,7 @@ export const MainContextProvider = ({
       }
     }
     loadCompany();
-  }, []);
+  }, [companyData]);
   const [scrolled, setScrolled] = useState(false);
   const [cars, setCars] = useState(carsData || []);
   const [allOrders, setAllOrders] = useState(ordersData || []);
