@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Box, Typography } from "@mui/material";
 
-function DataGridOrders({ session, cars, orders }) {
+function DataGridCars({ session, cars, orders }) {
   const [carData, setCarData] = useState(
     cars.map((car, index) => ({
       id: index + 1, // unique identifier for DataGrid
@@ -158,4 +158,4 @@ function DataGridOrders({ session, cars, orders }) {
   );
 }
 
-export default DataGridOrders;
+export default DataGridCars;

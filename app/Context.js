@@ -116,7 +116,7 @@ export const MainContextProvider = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  const fetchAndUpdateOrders = async () => {
+  const fetchAndUpdateOrders = useCallback(async () => {
     setIsLoading(true);
     try {
       const newOrdersData = await reFetchAllOrders();
@@ -127,9 +127,9 @@ export const MainContextProvider = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const resubmitCars = async (callback) => {
+  const resubmitCars = useCallback(async (callback) => {
     setIsLoading(true);
     try {
       const newCarsData = await fetchAllCars();
@@ -145,9 +145,9 @@ export const MainContextProvider = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const updateCarInContext = async (updatedCar) => {
+  const updateCarInContext = useCallback(async (updatedCar) => {
     try {
       const newCar = await updateCar(updatedCar);
       setCars((prevCars) =>
@@ -167,9 +167,9 @@ export const MainContextProvider = ({
         message: error.message || "Car WAS NOT successfully",
       });
     }
-  };
+  }, []);
 
-  const deleteCarInContext = async (carId) => {
+  const deleteCarInContext = useCallback(async (carId) => {
     try {
       const response = await fetch(`/api/car/delete/${carId}`, {
         method: "DELETE",
@@ -193,7 +193,7 @@ export const MainContextProvider = ({
         errorMessage: error.message || "An unexpected error occurred",
       };
     }
-  };
+  }, []);
   const ordersByCarId = useCallback(
     (carId) => {
       return allOrders?.filter((order) => order.car === carId);
@@ -234,7 +234,7 @@ export const MainContextProvider = ({
     [
       cars,
       arrayOfAvailableClasses,
-      arrayOfAvailableTransmissions, // Добавляем в зависимости
+      arrayOfAvailableTransmissions,
       error,
       ordersByCarId,
       updateStatus,
@@ -242,13 +242,16 @@ export const MainContextProvider = ({
       isLoading,
       scrolled,
       selectedClass,
-      selectedTransmission, // Добавляем в зависимости
+      selectedTransmission,
       lang,
-      setLang,
-      changeLanguage, // Добавляем в зависимости
+      changeLanguage,
       company,
       companyLoading,
       companyError,
+      fetchAndUpdateOrders,
+      resubmitCars,
+      updateCarInContext,
+      deleteCarInContext,
     ]
   );
 
