@@ -7,6 +7,7 @@ import {
   Select,
   MenuItem,
   useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 const SelectedFieldClass = ({
@@ -18,36 +19,49 @@ const SelectedFieldClass = ({
   required = false,
   isLoading = false,
 }) => {
+  const theme = useTheme();
   // detect small landscape phones
   const isLandscapeSmall = useMediaQuery(
     "(max-width:900px) and (orientation: landscape)"
   );
 
+  // Цвета для тёмного фона
+  const darkBg = theme.palette.backgroundDark1 || {};
+  const textColor = darkBg.text || "#ffffff";
+  const accentColor = darkBg.secondary || "#4dd4d4"; // Светло-бирюзовый для акцентов
+
   return (
     <FormControl
-      fullWidth={false} // Отключаем fullWidth для лучшего контроля ширины
+      fullWidth={false}
       required={required}
       sx={{
         mt: 1,
-        minWidth: { xs: 160, sm: 280 }, // Минимальная ширина для адаптивности
-        maxWidth: { xs: 180, sm: 300 }, // Максимальная ширина
+        minWidth: { xs: 160, sm: 280 },
+        maxWidth: { xs: 180, sm: 300 },
         "& .MuiInputBase-root": {
-          color: "white", // Text color inside the input field
-          fontSize: { xs: "0.85rem", sm: "1rem" }, // Меньший размер текста на мобильных
+          color: textColor,
+          fontSize: { xs: "0.85rem", sm: "1rem" },
         },
         "& .MuiInputLabel-root": {
-          color: "white", // Label color
-          fontSize: { xs: "0.75rem", sm: "1rem" }, // Меньший размер шрифта на мобильных
+          color: textColor,
+          fontSize: { xs: "0.75rem", sm: "1rem" },
+        },
+        "& .MuiInputLabel-root.Mui-focused": {
+          color: accentColor, // Бирюзовый при фокусе
         },
         "& .MuiSelect-icon": {
-          color: "white", // Arrow icon color
+          color: textColor,
         },
         "& .MuiOutlinedInput-notchedOutline": {
-          borderColor: "white", // Border color on focus
+          borderColor: darkBg.textSecondary || "#b0b0b0",
+        },
+        "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+          borderColor: accentColor, // Бирюзовый при hover
         },
         "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
           {
-            borderColor: "white", // Border color when focused
+            borderColor: accentColor, // Бирюзовый при фокусе
+            borderWidth: 2,
           },
       }}
       disabled={isLoading}

@@ -49,7 +49,7 @@ function LegendCalendarAdmin({ client }) {
             display: "inline-block",
             width: "20px",
             height: "20px",
-            backgroundColor: darkBgColors.primary || "#ff6b6b", // Светло-красный для тёмного фона
+            backgroundColor: theme.palette.primary.main || "#ff6b6b", // Светло-красный для тёмного фона
             marginRight: "10px",
           }}
         />
@@ -96,7 +96,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: darkBgColors.accent || "#ffb347", // Светло-оранжевый для тёмного фона
+              backgroundColor: theme.palette.primary|| "#890000", 
               marginRight: "10px",
             }}
           />
