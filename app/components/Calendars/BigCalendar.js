@@ -23,7 +23,7 @@ import {
   IconButton,
   useTheme,
 } from "@mui/material";
-import { ActionButton, CancelButton, ConfirmModal, OrdersByDateModal } from "../ui";
+import { ActionButton, CancelButton, ConfirmModal, OrdersByDateModal, ModalLayout } from "../ui";
 // Используем закрашенные треугольники вместо стандартных иконок
 import dayjs from "dayjs";
 import { useMainContext } from "@app/Context";
@@ -990,97 +990,71 @@ export default function BigCalendar({ cars }) {
         getRegNumberByCarNumber={getRegNumberByCarNumber}
       />
 
-      {/* ИСПРАВЛЕННОЕ модальное окно подтверждения перемещения */}
-      <Modal
+      {/* Модальное окно подтверждения перемещения */}
+      <ModalLayout
         open={confirmModal.open}
         onClose={() => {
           setConfirmModal({ open: false, newCar: null, oldCar: null });
           exitMoveMode();
         }}
-        sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "center",
-          paddingTop: "10vh", // отступ сверху, регулируй по вкусу
-        }}
+        title="Подтверждение перемещения"
+        size="small"
+        centerVertically={false}
       >
-        <Box
-          sx={{
-            backgroundColor: "background.paper",
-            boxShadow: 24,
-            p: 3,
-            minWidth: 400,
-            borderRadius: 1,
-            maxWidth: "90vw",
-          }}
-        >
-          <Typography sx={{ mb: 3, color: "black" }}>
-            Вы хотите сдвинуть заказ с автомобиля {confirmModal.oldCar?.model} (
-            {confirmModal.oldCar?.regNumber}) на автомобиль{" "}
-            {confirmModal.newCar?.model} ({confirmModal.newCar?.regNumber})?
-          </Typography>
+        <Typography sx={{ mb: 3, color: "text.primary" }}>
+          Вы хотите сдвинуть заказ с автомобиля{" "}
+          <strong>{confirmModal.oldCar?.model}</strong> ({confirmModal.oldCar?.regNumber})
+          на автомобиль <strong>{confirmModal.newCar?.model}</strong> ({confirmModal.newCar?.regNumber})?
+        </Typography>
 
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-            <CancelButton
-              onClick={() => {
-                setConfirmModal({ open: false, newCar: null, oldCar: null });
-                exitMoveMode();
-              }}
-              label="НЕТ"
-            />
-            <ActionButton
-              color="success"
-              onClick={async () => {
-                setConfirmModal({ open: false, newCar: null, oldCar: null });
-                let success = false;
-                try {
-                  const result = await changeRentalDates(
-                    selectedMoveOrder._id,
-                    new Date(selectedMoveOrder.rentalStartDate),
-                    new Date(selectedMoveOrder.rentalEndDate),
-                    new Date(
-                      selectedMoveOrder.timeIn ||
-                        selectedMoveOrder.rentalStartDate
-                    ),
-                    new Date(
-                      selectedMoveOrder.timeOut ||
-                        selectedMoveOrder.rentalEndDate
-                    ),
-                    selectedMoveOrder.placeIn || "",
-                    selectedMoveOrder.placeOut || "",
-                    confirmModal.newCar._id,
-                    confirmModal.newCar.carNumber,
-                    selectedMoveOrder.ChildSeats,
-                    selectedMoveOrder.insurance,
-                    selectedMoveOrder.franchiseOrder,
-                    selectedMoveOrder.numberOrder ||
-                      selectedMoveOrder.orderNumber,
-                    selectedMoveOrder.insuranceOrder,
-                    selectedMoveOrder.totalPrice,
-                    selectedMoveOrder.numberOfDays
-                  );
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <CancelButton
+            onClick={() => {
+              setConfirmModal({ open: false, newCar: null, oldCar: null });
+              exitMoveMode();
+            }}
+            label="НЕТ"
+          />
+          <ActionButton
+            color="success"
+            onClick={async () => {
+              setConfirmModal({ open: false, newCar: null, oldCar: null });
+              let success = false;
+              try {
+                const result = await changeRentalDates(
+                  selectedMoveOrder._id,
+                  new Date(selectedMoveOrder.rentalStartDate),
+                  new Date(selectedMoveOrder.rentalEndDate),
+                  new Date(selectedMoveOrder.timeIn || selectedMoveOrder.rentalStartDate),
+                  new Date(selectedMoveOrder.timeOut || selectedMoveOrder.rentalEndDate),
+                  selectedMoveOrder.placeIn || "",
+                  selectedMoveOrder.placeOut || "",
+                  confirmModal.newCar._id,
+                  confirmModal.newCar.carNumber,
+                  selectedMoveOrder.ChildSeats,
+                  selectedMoveOrder.insurance,
+                  selectedMoveOrder.franchiseOrder,
+                  selectedMoveOrder.numberOrder || selectedMoveOrder.orderNumber,
+                  selectedMoveOrder.insuranceOrder,
+                  selectedMoveOrder.totalPrice,
+                  selectedMoveOrder.numberOfDays
+                );
 
-                  if (result?.status === 201 || result?.status === 202) {
-                    await fetchAndUpdateOrders();
-                    showSingleSnackbar(
-                      `Заказ сдвинут на ${confirmModal.newCar.model}`,
-                      { variant: "success" }
-                    );
-                    success = true;
-                  }
-                } catch (error) {
-                  showSingleSnackbar(`Ошибка перемещения: ${error.message}`, {
-                    variant: "error",
-                  });
-                } finally {
-                  if (!success) exitMoveMode();
+                if (result?.status === 201 || result?.status === 202) {
+                  await fetchAndUpdateOrders();
+                  showSingleSnackbar(`Заказ сдвинут на ${confirmModal.newCar.model}`, { variant: "success" });
+                  success = true;
                 }
-              }}
-              label="ДА"
-            />
-          </Box>
+              } catch (error) {
+                showSingleSnackbar(`Ошибка перемещения: ${error.message}`, { variant: "error" });
+              } finally {
+                if (!success) exitMoveMode();
+              }
+            }}
+            label="ДА"
+          />
         </Box>
-      </Modal>
+      </ModalLayout>
 
       {isEditCarOpen && selectedCarForEdit && (
         <EditCarModal
