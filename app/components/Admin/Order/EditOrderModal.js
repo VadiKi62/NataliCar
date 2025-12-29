@@ -670,7 +670,8 @@ const EditOrderModal = ({
           pt: { xs: 1, md: 2 },
           maxHeight: "99vh",
           overflow: "auto",
-          border: isConflictOrder ? "4px solid #FF0000" : "none",
+          border: isConflictOrder ? "4px solid" : "none",
+          borderColor: isConflictOrder ? "error.main" : "transparent",
           animation: isConflictOrder ? "pulse 2s infinite" : "none",
           // Центрирование убрано, Paper теперь не центрируется явно
         }}
@@ -708,7 +709,7 @@ const EditOrderModal = ({
             >
               <Typography variant="body1">
                 {t("order.daysNumber")}{" "}
-                <span style={{ color: "red", fontWeight: 700 }}>
+                <span style={{ color: "#990606", fontWeight: 700 }}>
                   {editedOrder?.numberOfDays}
                 </span>{" "}
                 | {t("order.price")}
@@ -739,7 +740,7 @@ const EditOrderModal = ({
                     letterSpacing: 1,
                     width: "5ch",
                     paddingRight: 0,
-                    color: "red",
+                    color: "#990606",
                   },
                   maxLength: 4,
                   inputMode: "numeric",
@@ -756,7 +757,7 @@ const EditOrderModal = ({
                         paddingLeft: 0,
                         paddingRight: 0,
                         letterSpacing: 0,
-                        color: "red",
+                        color: "#990606",
                         display: "inline-block",
                       }}
                     >
@@ -773,7 +774,7 @@ const EditOrderModal = ({
                     padding: "8px 8px 8px 12px",
                     width: "5ch",
                     boxSizing: "content-box",
-                    color: "red",
+                    color: "#990606",
                     fontSize: 18,
                   },
                 }}
@@ -807,7 +808,7 @@ const EditOrderModal = ({
             <Divider
               sx={{
                 my: 1.5,
-                borderColor: editedOrder?.my_order ? "#4caf50" : "#f44336",
+                borderColor: editedOrder?.my_order ? "success.main" : "error.main",
                 borderWidth: 2,
               }}
             />
@@ -858,8 +859,8 @@ const EditOrderModal = ({
                 sx={{
                   width: "100%",
                   backgroundColor: editedOrder?.confirmed
-                    ? "text.green"
-                    : "text.red",
+                    ? "success.main"
+                    : "error.main",
                   opacity:
                     viewOnly || (isCurrentOrder && editedOrder?.confirmed)
                       ? 0.6
@@ -1015,7 +1016,8 @@ const EditOrderModal = ({
                   disabled={viewOnly || isCurrentOrder}
                   PaperProps={{
                     sx: {
-                      border: "2px solid black !important",
+                      border: "2px solid",
+                      borderColor: "text.primary",
                       borderRadius: 1,
                       boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
                       backgroundColor: "background.paper",
@@ -1075,7 +1077,8 @@ const EditOrderModal = ({
                   disabled={viewOnly}
                   PaperProps={{
                     sx: {
-                      border: "2px solid black !important",
+                      border: "2px solid",
+                      borderColor: "text.primary",
                       borderRadius: 1,
                       boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
                       backgroundColor: "background.paper",
@@ -1215,7 +1218,7 @@ const EditOrderModal = ({
             {/* <Divider
               sx={{
                 my: 2,
-                borderColor: editedOrder?.my_order ? "#4caf50" : "#f44336",
+                borderColor: editedOrder?.my_order ? "success.main" : "error.main",
                 borderWidth: 2,
               }}
             /> */}
@@ -1229,7 +1232,7 @@ const EditOrderModal = ({
                   label={
                     <>
                       <span>{t("order.clientName")}</span>
-                      <span style={{ color: "red" }}>*</span>
+                      <span style={{ color: "#990606" }}>*</span>
                     </>
                   }
                   value={editedOrder.customerName || ""}
@@ -1256,7 +1259,7 @@ const EditOrderModal = ({
                     label={
                       <>
                         <span>{t("order.phone")}</span>
-                        <span style={{ color: "red" }}>*</span>
+                        <span style={{ color: "#990606" }}>*</span>
                       </>
                     }
                     value={editedOrder.phone || ""}
@@ -1284,7 +1287,7 @@ const EditOrderModal = ({
                         {t("order.email")}
                         <span
                           style={{
-                            color: "green",
+                            color: "#4CAF50",
                             fontWeight: 500,
                             marginLeft: 8,
                           }}

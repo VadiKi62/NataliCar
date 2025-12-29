@@ -460,9 +460,9 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     if (!statusMessage.message) return null;
 
     const colorMap = {
-      success: "green",
-      error: "red",
-      warning: "orange",
+      success: "success.main",
+      error: "error.main",
+      warning: "warning.main",
     };
 
     return (
@@ -579,7 +579,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           }
           PaperProps={{
             sx: {
-              border: "2px solid black !important",
+                      border: "2px solid var(--color-text-primary) !important",
               borderRadius: 1,
               boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
               backgroundColor: "background.paper",
@@ -637,7 +637,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           }
           PaperProps={{
             sx: {
-              border: "2px solid black !important",
+                      border: "2px solid var(--color-text-primary) !important",
               borderRadius: 1,
               boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
               backgroundColor: "background.paper",
@@ -765,7 +765,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
         label={
           <>
             <span>{t("order.clientName")}</span>
-            <span style={{ color: "red" }}>*</span>
+            <span style={{ color: "#990606" }}>*</span>
           </>
         }
         value={orderDetails.customerName}
@@ -778,7 +778,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           label={
             <>
               <span>{t("order.phone")}</span>
-              <span style={{ color: "red" }}>*</span>
+              <span style={{ color: "#990606" }}>*</span>
             </>
           }
           value={orderDetails.phone}
@@ -792,7 +792,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
               {t("order.email")}
               <span
                 style={{
-                  color: "green",
+                  color: "#4CAF50",
                   fontWeight: 500,
                   marginLeft: 8,
                 }}
@@ -901,7 +901,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
             mt: 1,
             fontWeight: 400,
             fontSize: "1.05rem",
-            color: "black",
+            color: "text.primary",
             display: "flex",
             gap: 2,
             alignItems: "center",
@@ -960,7 +960,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
                     fontSize: 18,
                     textAlign: "right",
                     letterSpacing: 1,
-                    color: "red",
+                    color: "error.main",
                     paddingRight: 0,
                   },
                   maxLength: 4,
@@ -977,7 +977,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
                     padding: "8px 8px 8px 12px",
                     width: "6ch",
                     boxSizing: "content-box",
-                    color: "red",
+                    color: "error.main",
                     fontSize: 18,
                   },
                   "& .MuiInputAdornment-root": {
@@ -997,7 +997,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
                         paddingLeft: 0,
                         paddingRight: 0,
                         letterSpacing: 0,
-                        color: "red",
+                        color: "error.main",
                         display: "inline-block",
                       }}
                     >

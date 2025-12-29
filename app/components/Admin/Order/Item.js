@@ -38,7 +38,7 @@ const StyledCarItem = styled(Paper)(({ theme }) => ({
   zIndex: 22,
   display: "flex",
   justifyContent: "center",
-  bgColor: "black",
+  backgroundColor: "background.paper",
   alignItems: "center",
   alignContent: "center",
   flexDirection: "column",
@@ -147,8 +147,8 @@ function Item({
                 height="100%"
               >
                 <CircularProgress />
-                <CircularProgress sx={{ color: "primary.green" }} />
-                <CircularProgress sx={{ color: "primary.red" }} />
+              <CircularProgress sx={{ color: "success.main" }} />
+              <CircularProgress sx={{ color: "error.main" }} />
               </Box>
             ) : (
               <>

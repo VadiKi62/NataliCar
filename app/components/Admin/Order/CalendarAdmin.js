@@ -104,7 +104,7 @@ const CalendarAdmin = ({
       let backgroundColor = "transparent";
       let color = "inherit";
       let borderRadius = "1px";
-      let border = "1px solid green";
+      let border = "1px solid transparent";
       let width;
 
       if (isUnavailable) {
