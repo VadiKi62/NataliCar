@@ -42,7 +42,12 @@ export default function AdminTopBar({ viewType, onAddCarClick }) {
   const { scrolled } = useMainContext();
 
   const isCars = viewType === "cars";
-  const isCalendarView = viewType === "orders-calendar" || viewType === "orders-big-calendar";
+  const isOrdersCalendar = viewType === "orders-calendar"; // Календари по машинам
+  const isBigCalendar = viewType === "orders-big-calendar"; // Большой календарь (легенда встроена)
+
+  // Показываем TopBar только для Cars и OrdersCalendar
+  // BigCalendar имеет встроенную легенду
+  const showTopBar = isCars || isOrdersCalendar;
 
   return (
     <>
@@ -59,58 +64,58 @@ export default function AdminTopBar({ viewType, onAddCarClick }) {
         </Button>
       </LogoutBox>
 
-      {/* TopBar */}
-      <StyledTopBar
-        scrolled={scrolled}
-        className="admin-topbar"
-        sx={{
-          display: {
-            xs: "flex",
-            "@media (max-width:900px) and (orientation: landscape)": isCars
-              ? "flex"
-              : "none",
-          },
-          // Прячем если не cars и не calendar views
-          ...(!(isCars || isCalendarView) && { display: "none" }),
-        }}
-      >
-        <Box
-          display="flex"
-          alignItems="center"
-          width="100%"
-          justifyContent="center"
+      {/* TopBar - только для Cars и OrdersCalendar */}
+      {showTopBar && (
+        <StyledTopBar
+          scrolled={scrolled}
+          className="admin-topbar"
+          sx={{
+            display: {
+              xs: "flex",
+              "@media (max-width:900px) and (orientation: landscape)": isCars
+                ? "flex"
+                : "none",
+            },
+          }}
         >
-          {isCars && onAddCarClick && (
-            <DefaultButton
-              onClick={onAddCarClick}
-              minWidth="600px"
-              padding={scrolled ? 0 : 1.5}
-              relative
-              sx={{ width: "100%" }}
-            >
-              {t("carPark.addCar")}
-            </DefaultButton>
-          )}
-          
-          {isCalendarView && (
-            <Stack
-              className="legend-calendar-admin"
-              direction={{ xs: "column", sm: "row" }}
-              spacing={{ xs: 1, sm: 2 }}
-              alignItems="center"
-              justifyContent="center"
-              sx={{
-                display: "flex",
-                "@media (max-width:900px) and (orientation: landscape)": {
-                  display: "none",
-                },
-              }}
-            >
-              <LegendCalendarAdmin />
-            </Stack>
-          )}
-        </Box>
-      </StyledTopBar>
+          <Box
+            display="flex"
+            alignItems="center"
+            width="100%"
+            justifyContent="center"
+          >
+            {isCars && onAddCarClick && (
+              <DefaultButton
+                onClick={onAddCarClick}
+                minWidth="600px"
+                padding={scrolled ? 0 : 1.5}
+                relative
+                sx={{ width: "100%" }}
+              >
+                {t("carPark.addCar")}
+              </DefaultButton>
+            )}
+            
+            {isOrdersCalendar && (
+              <Stack
+                className="legend-calendar-admin"
+                direction={{ xs: "column", sm: "row" }}
+                spacing={{ xs: 1, sm: 2 }}
+                alignItems="center"
+                justifyContent="center"
+                sx={{
+                  display: "flex",
+                  "@media (max-width:900px) and (orientation: landscape)": {
+                    display: "none",
+                  },
+                }}
+              >
+                <LegendCalendarAdmin />
+              </Stack>
+            )}
+          </Box>
+        </StyledTopBar>
+      )}
     </>
   );
 }

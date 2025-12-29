@@ -119,7 +119,7 @@ function Admin({ children, ...props }) {
   return (
     <Suspense fallback={<Loading />}>
       {/* Кнопка выхода */}
-      <Box
+      {/* <Box
         sx={{
           position: "fixed",
           top: 40,
@@ -140,7 +140,7 @@ function Admin({ children, ...props }) {
         >
           Выйти
         </Button>
-      </Box>
+      </Box> */}
 
       <Navbar
         isAdmin={true}
@@ -178,7 +178,8 @@ function Admin({ children, ...props }) {
               {t("carPark.addCar")}
             </DefaultButton>
           )}
-          {(isOrdersCalendars || isOrdersBigCalendar) && (
+          {/* Легенда только для OrdersCalendars (по машинам), НЕ для BigCalendar */}
+          {isOrdersCalendars && !isOrdersBigCalendar && (
             <Stack
               className="legend-calendar-admin"
               direction={{ xs: "column", sm: "row" }}

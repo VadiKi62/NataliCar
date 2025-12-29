@@ -37,8 +37,9 @@ import AddOrderModal from "@app/components/Admin/Order/AddOrderModal";
 import { useSnackbar } from "notistack";
 import { changeRentalDates } from "@utils/action";
 import EditCarModal from "@app/components/Admin/Car/EditCarModal";
+import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 
-export default function BigCalendar({ cars }) {
+export default function BigCalendar({ cars, showLegend = true }) {
   // Получаем тему для использования цветов
   const theme = useTheme();
   const calendarColors = theme.palette.calendar || {};
@@ -589,24 +590,45 @@ export default function BigCalendar({ cars }) {
     <Box
       className="bigcalendar-root"
       sx={{
+        display: "flex",
+        flexDirection: "column",
         overflowX: "auto",
         overflowY: "hidden",
-        // on small (portrait) phones give a small top gap so the table header doesn't touch the navbar
-        pt: { xs: "26px", sm: 10 },
+        // Учитываем высоту Navbar (~64px) + небольшой отступ
+        pt: { xs: 8, sm: 9 },
         maxWidth: "100vw",
         zIndex: 100,
-        height: "calc(100vh - 10px)",
+        height: "100vh",
       }}
     >
+      {/* Легенда календаря - встроена в BigCalendar */}
+      {showLegend && (
+        <Box
+          className="bigcalendar-legend"
+          sx={{
+            display: { xs: "none", sm: "flex" },
+            justifyContent: "center",
+            alignItems: "center",
+            py: 0.5,
+            px: 2,
+            flexShrink: 0,
+            "@media (max-width:900px) and (orientation: landscape)": {
+              display: "none",
+            },
+          }}
+        >
+          <LegendCalendarAdmin embedded />
+        </Box>
+      )}
+      
       {/* Стили перенесены в globals.css для использования CSS переменных */}
-      {/* Индикатор года для landscape удалён. Теперь Select для года всегда отображается в шапке календаря на телефоне (portrait и landscape). */}
       <TableContainer
         sx={{
-          maxHeight: "calc(100vh - 80px)",
+          flex: 1,
+          minHeight: 0, // Важно для flex контейнера
           border: `1px solid ${calendarColors.border || theme.palette.divider}`,
-          overflowX: "auto", // горизонтальный скролл всегда
+          overflowX: "auto",
           overflowY: "auto",
-          // enable smooth scrolling where supported
           scrollBehavior: "smooth",
         }}
       >
