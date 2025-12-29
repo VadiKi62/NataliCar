@@ -25,9 +25,9 @@ function LegendCalendarAdmin({ client }) {
         mb: client ? 0 : 10,
         py: 1.5,
         px: 2,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        backgroundColor: "#1a1a1a",
         borderRadius: 2,
-        backdropFilter: "blur(4px)",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
       }}
     >
       {/* Подтверждённые заказы */}
