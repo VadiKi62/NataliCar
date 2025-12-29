@@ -7,3 +7,6 @@ export { default as ActionButton } from "./ActionButton";
 // Переэкспорт GradientBookButton из common
 export { default as GradientBookButton } from "../common/GradientBookButton";
 
+// Модальные компоненты
+export { ModalLayout, ConfirmModal, OrdersByDateModal } from "./modals";
+
