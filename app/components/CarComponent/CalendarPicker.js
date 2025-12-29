@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import DefaultButton from "../common/DefaultButton";
+import GradientBookButton from "../common/GradientBookButton";
 import {
   functionToretunrStartEndOverlap,
   getConfirmedAndUnavailableStartEndDates,
@@ -944,10 +945,9 @@ const CalendarPicker = ({
                 mt: 1,
               }}
             >
-              <DefaultButton
+              <GradientBookButton
                 ref={bookButtonRef}
                 onClick={handleBooking}
-                blinking={true}
                 label={`${t("order.bookShort")}\n${selectedRange[0]
                   ?.locale(i18n.language)
                   .format("DD MMM")
@@ -955,14 +955,8 @@ const CalendarPicker = ({
                   ?.locale(i18n.language)
                   .format("DD MMM")
                   .replace(/\./g, "")}`}
-                relative={true}
-                className="btn-book-pulse"
                 sx={{
-                  whiteSpace: "pre-line",
-                  textAlign: "center",
                   fontSize: "1.2rem",
-                  minWidth: "200px",
-                  display: "block",
                 }}
               />
             </Box>

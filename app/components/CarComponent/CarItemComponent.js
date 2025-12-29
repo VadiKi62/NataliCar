@@ -300,8 +300,6 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
                     // responsive font: computed from image width (stickerFont) or fallback clamp
                     fontSize: stickerFont || "clamp(0.6rem, 2vw, 1rem)",
                     boxShadow: 2,
-                    border: "2px solid",
-                    borderColor: "warning.main",
                     textTransform: "uppercase",
                     pointerEvents: "none",
                     lineHeight: 1,
