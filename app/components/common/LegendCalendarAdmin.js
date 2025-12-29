@@ -21,7 +21,14 @@ function LegendCalendarAdmin({ client }) {
       alignItems="center"
       display={{ xs: "none", sm: "flex" }}
       width="100%"
-      sx={{ color: "text.main", mb: client ? 0 : 10 }}
+      sx={{
+        mb: client ? 0 : 10,
+        py: 1.5,
+        px: 2,
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        borderRadius: 2,
+        backdropFilter: "blur(4px)",
+      }}
     >
       {/* Подтверждённые заказы */}
       <Box
@@ -40,7 +47,7 @@ function LegendCalendarAdmin({ client }) {
             display: "inline-block",
             width: "20px",
             height: "20px",
-            backgroundColor: orderColors.confirmed || "primary.red",
+            backgroundColor: orderColors.confirmed || "primary.main",
             marginRight: "10px",
           }}
         />
@@ -52,7 +59,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: orderColors.confirmedMyOrder || "ui.success",
+              backgroundColor: orderColors.confirmedMyOrder || "success.main",
               marginRight: "10px",
             }}
           />
@@ -61,8 +68,9 @@ function LegendCalendarAdmin({ client }) {
           component="span"
           variant="body2"
           sx={{
-            fontSize: "clamp(7px, calc(0.8rem + 1vw), 16px)",
-            color: "text.light",
+            fontSize: "clamp(10px, calc(0.8rem + 1vw), 16px)",
+            color: "#ffffff",
+            fontWeight: 500,
           }}
         >
           {client ? t("order.unavailable-dates") : t("order.confirmed")}
@@ -86,7 +94,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: orderColors.pending || "primary.green",
+              backgroundColor: orderColors.pending || "warning.main",
               marginRight: "10px",
             }}
           />
@@ -94,8 +102,9 @@ function LegendCalendarAdmin({ client }) {
             component="span"
             variant="body2"
             sx={{
-              fontSize: "clamp(7px, calc(0.8rem + 1vw), 16px)",
-              color: "text.light",
+              fontSize: "clamp(10px, calc(0.8rem + 1vw), 16px)",
+              color: "#ffffff",
+              fontWeight: 500,
             }}
           >
             {t("order.not-confirmed")}
@@ -121,9 +130,9 @@ function LegendCalendarAdmin({ client }) {
               display: "flex",
               width: "20px",
               height: "22px",
-              backgroundColor: orderColors.conflict || "text.green",
+              backgroundColor: orderColors.conflict || "#e7c475",
               marginRight: "10px",
-              color: "text.red",
+              color: "error.main",
               justifyContent: "center",
               alignItems: "center",
             }}
@@ -134,8 +143,9 @@ function LegendCalendarAdmin({ client }) {
             component="span"
             variant="body2"
             sx={{
-              fontSize: "clamp(7px, calc(0.8rem + 1vw), 16px)",
-              color: "text.light",
+              fontSize: "clamp(10px, calc(0.8rem + 1vw), 16px)",
+              color: "#ffffff",
+              fontWeight: 500,
             }}
           >
             {t("order.conflict")}

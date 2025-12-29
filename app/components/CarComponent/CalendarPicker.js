@@ -340,15 +340,11 @@ const CalendarPicker = ({
         <Box
           sx={{
             ...baseStyles,
-            backgroundColor: "text.green",
-            color: "white",
-            border: "1px solid green",
-            // Add !important to ensure these styles take precedence
-            "& *": {
-              backgroundColor: "text.green !important",
-              color: "white !important",
-              border: "1px solid green !important",
-            },
+            backgroundColor: "secondary.main", // Бирюзовый из темы
+            color: "#ffffff",
+            borderRadius: "4px",
+            fontWeight: "bold",
+            boxShadow: "0 2px 8px rgba(0, 137, 137, 0.4)",
           }}
         >
           {date.date()}
@@ -368,7 +364,7 @@ const CalendarPicker = ({
       ) {
         console.log(`[CalendarPicker][DEBUG ${dateStr}] apply FULL RED`);
       }
-      backgroundColor = "primary.red";
+      backgroundColor = "primary.main";
       color = "common.white";
     } else if (
       isUnavailable ||
@@ -384,8 +380,8 @@ const CalendarPicker = ({
           `[CalendarPicker][DEBUG ${dateStr}] apply PENDING background`
         );
       }
-      backgroundColor = "rgba(194, 209, 224, 0.3)"; // Сделаем неподтвержденные заказы еще бледнее
-      color = "common.black";
+      backgroundColor = "warning.light"; // Ожидающие заказы - светлый amber
+      color = "text.primary";
     }
 
     if (isConfirmed || isUnavailable) {
@@ -438,8 +434,8 @@ const CalendarPicker = ({
                 height: "100%",
                 borderRadius: "50% 0 0 50%",
                 backgroundColor: startEndInfo.confirmed
-                  ? "primary.red"
-                  : "rgba(194, 209, 224, 0.3)", // Сделаем неподтвержденные заказы еще бледнее
+                  ? "primary.main"
+                  : "warning.light", // Ожидающие заказы - светлый amber
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -482,8 +478,8 @@ const CalendarPicker = ({
                 height: "100%",
                 borderRadius: "0 50% 50% 0",
                 backgroundColor: startEndInfo.confirmed
-                  ? "primary.red"
-                  : "rgba(194, 209, 224, 0.3)", // Сделаем неподтвержденные заказы еще бледнее
+                  ? "primary.main"
+                  : "warning.light", // Ожидающие заказы - светлый amber
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
