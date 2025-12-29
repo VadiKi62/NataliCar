@@ -62,6 +62,42 @@ export const palette = {
     error: "#890000", // Primary
     info: "#008989", // Secondary/Complementary
   },
+  // ============================================
+  // КОНТРАСТНЫЕ ФОНЫ С ПРЕДОПРЕДЕЛЁННЫМИ ЦВЕТАМИ
+  // ============================================
+  // Тёмный фон #1 - для навигации, легенды
+  backgroundDark1: {
+    bg: "#1a1a1a",
+    text: "#ffffff",
+    textSecondary: "#b0b0b0",
+    primary: "#ff6b6b", // Светло-красный на тёмном фоне
+    secondary: "#4dd4d4", // Светло-бирюзовый
+    accent: "#ffb347", // Светло-оранжевый
+    success: "#5cd85c", // Светло-зелёный
+    warning: "#ffd93d", // Жёлтый
+  },
+  // Тёмный фон #2 - бирюзовый/тёмный акцентный
+  backgroundDark2: {
+    bg: "#005c5c", // Тёмно-бирюзовый
+    text: "#ffffff",
+    textSecondary: "#a0d4d4",
+    primary: "#ff8a8a", // Светло-красный (контрастный)
+    secondary: "#ffffff",
+    accent: "#ffd700", // Золотой
+    success: "#90ee90", // Светло-зелёный
+    warning: "#ffeb3b",
+  },
+  // Светлый фон - для карточек, модалей
+  backgroundLight: {
+    bg: "#ffffff",
+    text: "#1a1a1a",
+    textSecondary: "#616161",
+    primary: "#890000", // Тёмно-красный
+    secondary: "#008989", // Бирюзовый
+    accent: "#894500", // Коричнево-оранжевый
+    success: "#008900", // Зелёный
+    warning: "#894500",
+  },
 };
 
 // ============================================
@@ -444,6 +480,10 @@ export const lightTheme = createTheme({
     analogous: palette.analogous,
     triadic: palette.triadic,
     neutral: palette.neutral,
+    // Контрастные фоны с предопределёнными цветами
+    backgroundDark1: palette.backgroundDark1,
+    backgroundDark2: palette.backgroundDark2,
+    backgroundLight: palette.backgroundLight,
   },
   typography,
   shape: {
@@ -537,6 +577,10 @@ export const darkTheme = createTheme({
     analogous: palette.analogous,
     triadic: palette.triadic,
     neutral: palette.neutral,
+    // Контрастные фоны
+    backgroundDark1: palette.backgroundDark1,
+    backgroundDark2: palette.backgroundDark2,
+    backgroundLight: palette.backgroundLight,
   },
   typography,
   shape: {

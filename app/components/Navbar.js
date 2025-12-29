@@ -55,7 +55,8 @@ const StyledBox = styled(Box, {
   display: "flex",
   justifyContent: "center",
   py: theme.spacing(1),
-  backgroundColor: "#1a1a1a", // Тёмный фон для навигации
+  backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
+  color: theme.palette.backgroundDark1?.text || "#ffffff",
   // можно использовать $isCarInfo для стилей, если нужно
 }));
 
@@ -70,7 +71,8 @@ const GradientAppBar = styled(AppBar, {
   }),
   willChange: "height, background-color",
   height: scrolled ? 52 : 60,
-  backgroundColor: "#1a1a1a", // Тёмный фон для AppBar
+  backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
+  color: theme.palette.backgroundDark1?.text || "#ffffff",
   boxShadow: "none",
   backdropFilter: scrolled ? "blur(10px)" : "none",
 }));

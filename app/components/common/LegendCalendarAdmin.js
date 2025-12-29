@@ -12,6 +12,8 @@ function LegendCalendarAdmin({ client }) {
 
   // Получаем цвета из темы
   const orderColors = theme.palette.order || {};
+  // Светлые цвета для тёмного фона
+  const darkBgColors = theme.palette.backgroundDark1 || {};
 
   return (
     <Stack
@@ -25,7 +27,7 @@ function LegendCalendarAdmin({ client }) {
         mb: client ? 0 : 10,
         py: 1.5,
         px: 2,
-        backgroundColor: "#1a1a1a",
+        backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
         borderRadius: 2,
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
       }}
@@ -47,7 +49,7 @@ function LegendCalendarAdmin({ client }) {
             display: "inline-block",
             width: "20px",
             height: "20px",
-            backgroundColor: orderColors.confirmed || "primary.main",
+            backgroundColor: darkBgColors.primary || "#ff6b6b", // Светло-красный для тёмного фона
             marginRight: "10px",
           }}
         />
@@ -59,7 +61,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: orderColors.confirmedMyOrder || "success.main",
+              backgroundColor: darkBgColors.success || "#5cd85c", // Светло-зелёный для тёмного фона
               marginRight: "10px",
             }}
           />
@@ -69,7 +71,7 @@ function LegendCalendarAdmin({ client }) {
           variant="body2"
           sx={{
             fontSize: "clamp(10px, calc(0.8rem + 1vw), 16px)",
-            color: "#ffffff",
+            color: darkBgColors.text || "#ffffff",
             fontWeight: 500,
           }}
         >
@@ -94,7 +96,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: orderColors.pending || "warning.main",
+              backgroundColor: darkBgColors.accent || "#ffb347", // Светло-оранжевый для тёмного фона
               marginRight: "10px",
             }}
           />
@@ -130,11 +132,12 @@ function LegendCalendarAdmin({ client }) {
               display: "flex",
               width: "20px",
               height: "22px",
-              backgroundColor: orderColors.conflict || "#e7c475",
+              backgroundColor: darkBgColors.warning || "#ffd93d", // Жёлтый для конфликтов
               marginRight: "10px",
-              color: "error.main",
+              color: "#1a1a1a", // Тёмный текст на жёлтом
               justifyContent: "center",
               alignItems: "center",
+              fontWeight: "bold",
             }}
           >
             1
