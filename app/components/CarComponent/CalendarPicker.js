@@ -960,39 +960,13 @@ const CalendarPicker = ({
                   .format("DD MMM")
                   .replace(/\./g, "")}`}
                 relative={true}
+                className="btn-book-pulse"
                 sx={{
                   whiteSpace: "pre-line",
                   textAlign: "center",
-                  backgroundColor: "#00ff00", // Ярко-зелёный цвет
-                  color: "#000",
-                  "&:hover": { color: "#000" },
-                  fontWeight: "bold",
                   fontSize: "1.2rem",
                   minWidth: "200px",
-                  boxShadow: "0 0 20px #00ff00",
-                  animation: "bookButtonPulse 1.2s infinite",
                   display: "block",
-                  "&:hover": {
-                    backgroundColor: "#00c853",
-                    animation: "none",
-                  },
-                  "@keyframes bookButtonPulse": {
-                    "0%": {
-                      backgroundColor: "#00ff00",
-                      boxShadow: "0 0 20px #00ff00",
-                      transform: "scale(1)",
-                    },
-                    "50%": {
-                      backgroundColor: "#4cff4c",
-                      boxShadow: "0 0 40px #4cff4c",
-                      transform: "scale(1.08)",
-                    },
-                    "100%": {
-                      backgroundColor: "#00ff00",
-                      boxShadow: "0 0 20px #00ff00",
-                      transform: "scale(1)",
-                    },
-                  },
                 }}
               />
             </Box>

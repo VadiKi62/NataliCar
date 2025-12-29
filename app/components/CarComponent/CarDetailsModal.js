@@ -174,7 +174,7 @@ const CarDetailsModal = ({ open, onClose, car }) => {
             position: "sticky",
             top: 0,
             zIndex: 5,
-            bgcolor: "#ffffff", // делаем фон полностью непрозрачным
+            bgcolor: "background.default",
             py: 1,
             mb: 2,
             borderBottom: "1px solid",

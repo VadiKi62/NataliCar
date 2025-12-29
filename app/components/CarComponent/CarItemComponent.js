@@ -289,8 +289,8 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
                     top: 12,
                     left: 12,
                     zIndex: 2,
-                    bgcolor: "#ffe066",
-                    color: "#333",
+                    bgcolor: "calendar.today",
+                    color: "text.primary",
                     width: "32%", // увеличили ширину, чтобы поместилась надпись
                     minWidth: 110,
                     px: "3%", // увеличили горизонтальные отступы
@@ -300,7 +300,8 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
                     // responsive font: computed from image width (stickerFont) or fallback clamp
                     fontSize: stickerFont || "clamp(0.6rem, 2vw, 1rem)",
                     boxShadow: 2,
-                    border: "2px solid #ffd700",
+                    border: "2px solid",
+                    borderColor: "warning.main",
                     textTransform: "uppercase",
                     pointerEvents: "none",
                     lineHeight: 1,
@@ -444,7 +445,7 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
                   sx={{
                     mt: { xs: 0.5, sm: 0.5 },
                     mb: { xs: 0.5, sm: 0.5 },
-                    color: "#d32f2f",
+                    color: "error.main",
                     fontWeight: 600,
                     fontSize: { xs: "0.85rem", sm: "0.9rem" },
                     textAlign: "center",

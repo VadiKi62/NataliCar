@@ -1237,22 +1237,15 @@ const BookingModal = ({
                       startIcon={
                         isSubmitting ? <CircularProgress size={20} /> : null
                       }
+                      className="btn-submit-pulse"
                       sx={{
-                        backgroundColor: "primary.red",
-                        color: "white",
-                        fontWeight: "bold",
                         fontSize: "1.1rem",
                         padding: "12px 32px",
                         minWidth: "200px",
                         margin: "0 auto",
-                        animation: "bookButtonPulse 1.5s ease-in-out infinite",
                         display: "block",
-                        "&:hover": {
-                          backgroundColor: "#d32f2f",
-                          animation: "none",
-                        },
                         "&:disabled": {
-                          backgroundColor: "#grey.400",
+                          backgroundColor: "grey.400",
                           animation: "none",
                         },
                         "@media (max-width:600px) and (orientation: portrait)":
@@ -1263,23 +1256,6 @@ const BookingModal = ({
                             padding: "12px 20px",
                             margin: 0,
                           },
-                        "@keyframes bookButtonPulse": {
-                          "0%": {
-                            backgroundColor: "primary.red",
-                            boxShadow: "0 0 10px rgba(211, 47, 47, 0.7)",
-                            transform: "scale(1)",
-                          },
-                          "50%": {
-                            backgroundColor: "#ff5252",
-                            boxShadow: "0 0 20px rgba(255, 82, 82, 0.9)",
-                            transform: "scale(1.05)",
-                          },
-                          "100%": {
-                            backgroundColor: "primary.red",
-                            boxShadow: "0 0 10px rgba(211, 47, 47, 0.7)",
-                            transform: "scale(1)",
-                          },
-                        },
                       }}
                     >
                       {isSubmitting
