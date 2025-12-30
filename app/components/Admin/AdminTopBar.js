@@ -11,7 +11,7 @@ import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 const StyledTopBar = styled(Box)(({ theme, scrolled }) => ({
   zIndex: 996,
   position: "fixed",
-  top: scrolled ? 40 : 50,
+  top: scrolled ? 10 : 20,
   left: 0,
   width: "100%",
   display: "flex",

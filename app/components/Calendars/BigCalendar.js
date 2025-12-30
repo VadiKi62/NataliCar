@@ -588,14 +588,14 @@ export default function BigCalendar({ cars, showLegend = true }) {
 
   return (
     <Box
-      className="bigcalendar-root"
+
       sx={{
         display: "flex",
         flexDirection: "column",
         overflowX: "auto",
         overflowY: "hidden",
         // Учитываем высоту Navbar (~64px) + небольшой отступ
-        pt: { xs: 8, sm: 9 },
+        pt: 4.5,
         maxWidth: "100vw",
         zIndex: 100,
         height: "100vh",
