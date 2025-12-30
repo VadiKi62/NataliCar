@@ -21,7 +21,7 @@ const Section = styled("section")(({ theme }) => ({
   padding: theme.spacing(5),
   borderTop: `1px solid ${theme.palette.secondary.complement}`,
   textAlign: "center",
-  background: theme.palette.primary.main,
+  background: theme.palette.secondary.main,
   backdropFilter: "blur(60px)",
   color: theme.palette.text.dark,
 }));
@@ -131,6 +131,8 @@ function Footer() {
             target="_blank"
             rel="noopener noreferrer"
             sx={{
+              backgroundColor: "primary.main",
+              color: "secondary.contrastText",
               "&:hover": {
                 color: "white",
               },

@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
-import { ThemeProvider, CssBaseline } from "@mui/material";
+import React, { useState, useEffect, Suspense } from "react";
+import { ThemeProvider } from "@mui/material";
 import darkTheme from "@theme";
 import { I18nextProvider } from "react-i18next";
 import { unstable_noStore } from "next/cache";
@@ -11,10 +11,7 @@ import { Box } from "@mui/material";
 import i from "@locales/i18n";
 import { MainContextProvider } from "../Context";
 
-import CarGrid from "./CarGrid";
-import CarPage from "@app/components/CarPage";
 import ScrollButton from "./common/ScrollButton";
-// import BrowserLanguageInfo from "./common/BrowserLanguageInfo"; // Компонент для показа информации о языке
 import Navbar from "@app/components/Navbar";
 import Footer from "@app/components/Footer";
 
@@ -51,11 +48,8 @@ function Feed({ children, ...props }) {
             <Box component="main" sx={{ pt: mainPt }}>
               {children}
             </Box>
-            {shouldShowFooter && <Footer />}{" "}
-            {/* Footer не отобразится, если isAdmin === true */}
+            {shouldShowFooter && <Footer />}
             <ScrollButton />
-            {/* <BrowserLanguageInfo /> */}{" "}
-            {/* Показывает информацию о языке браузера только в development */}
           </MainContextProvider>
         </I18nextProvider>
       </ThemeProvider>
