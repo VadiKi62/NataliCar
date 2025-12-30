@@ -882,15 +882,15 @@ export default function BigCalendar({ cars, showLegend = true }) {
                     position: "sticky",
                     left: 0,
                     // Use the same background as the Navbar to ensure visual consistency
-                    backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
-                    color: "text.light",
+                    backgroundColor: "secondary.main",
+                    color: "backgroundLight.bg",
                     zIndex: 3,
-                    padding: 0,
+                    padding: "0, 0, 0, 5px",
                     minWidth: 120,
                     cursor: "pointer",
                     "&:hover": {
                       // slightly different shade on hover but staying within primary palette
-                      backgroundColor: "primary.main",
+                      backgroundColor: "secondary.dark",
                     },
                   }}
                 >
