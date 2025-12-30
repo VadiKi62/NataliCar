@@ -1,5 +1,6 @@
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
+import { revalidatePath } from "next/cache";
 
 export const DELETE = async (request, { params }) => {
   try {
@@ -9,10 +10,16 @@ export const DELETE = async (request, { params }) => {
     // Delete the car
     await Car.findByIdAndDelete(carId);
 
+    // Инвалидируем кеш для списка машин
+    revalidatePath("/api/car/all");
+    revalidatePath("/api/car/models");
+    revalidatePath(`/api/car/${carId}`);
+
     return new Response(
       JSON.stringify({ message: `Car with id ${carId} deleted successfully` }),
       {
         status: 200,
+        headers: { "Content-Type": "application/json" },
       }
     );
   } catch (error) {

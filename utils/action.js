@@ -73,6 +73,7 @@ export const fetchAll = async () => {
 };
 
 // Fetch all cars using fetch
+// Используем кеширование для статических данных (revalidate: 600 секунд = 10 минут)
 export const fetchAllCars = async () => {
   try {
     const apiUrl = API_URL ? `${API_URL}/api/car/all` : `/api/car/all`;
@@ -81,8 +82,8 @@ export const fetchAllCars = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-      cache: "no-store",
-      next: { cache: "no-store" },
+      // Кеширование: данные обновляются каждые 10 минут
+      next: { revalidate: 600 },
     });
     if (!response.ok) {
       const body = await response.text().catch(() => "<no body>");
@@ -515,17 +516,22 @@ export async function getConfirmedOrders(orderIds) {
   }
 }
 
+// Fetch company with caching (revalidate: 3600 секунд = 1 час)
 export async function fetchCompany(companyId) {
   try {
-    const response = await fetch(`${API_URL}/api/company/${companyId}`, {
+    const apiUrl = API_URL 
+      ? `${API_URL}/api/company/${companyId}` 
+      : `/api/company/${companyId}`;
+    const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
+      // Кеширование: данные обновляются каждый час
+      next: { revalidate: 3600 },
     });
 
     if (response.status === 404) {
-      // return companyData;
       throw new Error("Company not found");
     }
 
