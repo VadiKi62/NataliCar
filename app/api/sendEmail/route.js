@@ -2,32 +2,129 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
-// Email signature constants
-const EMAIL_SIGNATURE_HTML = `<hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:30px 0;" />
-
-<div style="font-size:14px;color:#ccc;line-height:1.6;">
-
-  <strong style="color:#e2b543;">BBQR Support</strong><br/>
-
-  Smart QR menus & waiter call system for restaurants<br/><br/>
-
-  🌐 <a href="https://www.bbqr.site" style="color:#2896bb;text-decoration:none;">www.bbqr.site</a><br/>
-
-  ✉️ <a href="mailto:support@bbqr.site" style="color:#2896bb;text-decoration:none;">support@bbqr.site</a>
-
+// Email signature constants (using theme colors)
+const EMAIL_SIGNATURE_HTML = `
+<div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
+  <div style="text-align: center; font-size: 13px; color: #616161; line-height: 1.8;">
+    <div style="margin-bottom: 8px;">
+      <strong style="color: #890000; font-size: 14px;">BBQR Support</strong>
+    </div>
+    <div style="color: #757575; margin-bottom: 12px;">
+      Smart QR menus & waiter call system for restaurants
+    </div>
+    <div style="margin-top: 16px;">
+      <a href="https://www.bbqr.site" style="color: #008989; text-decoration: none; margin: 0 12px;">
+        🌐 www.bbqr.site
+      </a>
+      <span style="color: #bdbdbd;">|</span>
+      <a href="mailto:support@bbqr.site" style="color: #008989; text-decoration: none; margin: 0 12px;">
+        ✉️ support@bbqr.site
+      </a>
+    </div>
+  </div>
 </div>`;
 
 const EMAIL_SIGNATURE_TEXT = `--
 
 BBQR Support
-
 Smart QR menus & waiter call system for restaurants
 
-
-
 Website: https://www.bbqr.site
-
 Email: support@bbqr.site`;
+
+// Helper function to create beautiful HTML email template
+function createEmailHTML(title, message) {
+  // Theme colors
+  const colors = {
+    primary: "#890000",      // Тёмно-красный
+    secondary: "#008989",    // Бирюзовый
+    background: "#ffffff",    // Белый фон
+    text: "#1a1a1a",         // Тёмный текст
+    textSecondary: "#616161", // Серый текст
+    border: "#e0e0e0",       // Светлая граница
+    accent: "#894500",       // Коричнево-оранжевый
+  };
+
+  // Format message - preserve line breaks and structure
+  const formattedMessage = message
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return '<div style="height: 8px;"></div>'; // Spacing for empty lines
+      
+      // Check if line is a label (ends with :)
+      if (trimmed.endsWith(':')) {
+        return `<div style="margin: 16px 0 8px 0;"><strong style="color: ${colors.primary}; font-size: 15px;">${trimmed}</strong></div>`;
+      }
+      
+      // Check if line contains key information (dates, prices, etc.)
+      if (trimmed.includes('Бронь') || trimmed.includes('Сумма') || trimmed.includes('дней')) {
+        return `<div style="margin: 8px 0; padding: 8px 12px; background-color: #f5f5f5; border-left: 3px solid ${colors.secondary}; border-radius: 4px;"><span style="color: ${colors.text}; line-height: 1.6;">${trimmed}</span></div>`;
+      }
+      
+      // Regular text
+      return `<div style="margin: 8px 0; color: ${colors.text}; line-height: 1.6;">${trimmed}</div>`;
+    })
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <!-- Email Container -->
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <!-- Main Content Card -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: ${colors.background}; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%); padding: 30px 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">
+                ${title}
+              </h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <div style="text-align: center; max-width: 520px; margin: 0 auto;">
+                ${formattedMessage}
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Signature -->
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              ${EMAIL_SIGNATURE_HTML}
+            </td>
+          </tr>
+          
+        </table>
+        
+        <!-- Footer -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; margin-top: 20px;">
+          <tr>
+            <td style="text-align: center; padding: 20px; color: ${colors.textSecondary}; font-size: 12px;">
+              <p style="margin: 0;">© ${new Date().getFullYear()} Natali Cars. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
 
 // SMTP transporter with lazy initialization
 let transporter = null;
@@ -72,15 +169,11 @@ export async function POST(request) {
       );
     }
 
-    // Prepare message with signature
+    // Prepare text message with signature
     const messageWithSignature = `${message}\n\n${EMAIL_SIGNATURE_TEXT}`;
     
-    // Prepare HTML message with signature (convert newlines to <br>)
-    const htmlMessage = message
-      .split('\n')
-      .map(line => line.trim() ? `<p>${line}</p>` : '<br/>')
-      .join('');
-    const htmlMessageWithSignature = `${htmlMessage}${EMAIL_SIGNATURE_HTML}`;
+    // Prepare beautiful HTML email with theme colors and centered layout
+    const htmlEmail = createEmailHTML(title, message);
 
     // Determine recipients: always send to company email, optionally to customer email
     const recipients = email && email.trim() 
@@ -96,13 +189,10 @@ export async function POST(request) {
       replyTo: SMTP_USER,
       subject: title,
       text: messageWithSignature,
-      html: htmlMessageWithSignature,
+      html: htmlEmail,
     };
 
     const info = await emailTransporter.sendMail(mailOptions);
-
-    console.log("Email sent:", info.response);
-    console.log("Message ID:", info.messageId);
 
     return NextResponse.json(
       { 
