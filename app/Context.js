@@ -7,6 +7,7 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import {
   fetchAllCars,
@@ -69,20 +70,41 @@ export const MainContextProvider = ({
     };
   }, [i18n]);
 
-  const [company, setCompany] = useState(companyData);
-  // Если companyData передана с сервера - не грузим повторно
+  // Стабилизируем companyData с помощью useRef
+  const companyDataRef = useRef(companyData);
+  const hasLoadedCompanyRef = useRef(false);
+  
+  // Обновляем ref только если companyData действительно изменилась (по ID)
+  useEffect(() => {
+    if (companyData && companyData._id !== companyDataRef.current?._id) {
+      companyDataRef.current = companyData;
+      hasLoadedCompanyRef.current = true;
+    }
+  }, [companyData?._id]);
+
+  const [company, setCompany] = useState(companyDataRef.current || companyData);
   const [companyLoading, setCompanyLoading] = useState(!companyData);
   const [companyError, setCompanyError] = useState(null);
 
   // Загрузка компании ТОЛЬКО если она не была передана с сервера
+  // Используем ref для предотвращения повторных загрузок
   useEffect(() => {
-    // Если данные уже есть - не делаем повторный запрос
-    if (companyData) {
+    // Если данные уже есть или уже загружались - не делаем повторный запрос
+    if (companyData || hasLoadedCompanyRef.current) {
       setCompanyLoading(false);
+      if (companyData) {
+        setCompany(companyData);
+      }
+      return;
+    }
+
+    // Предотвращаем повторные вызовы
+    if (hasLoadedCompanyRef.current) {
       return;
     }
 
     async function loadCompany() {
+      hasLoadedCompanyRef.current = true;
       setCompanyLoading(true);
       setCompanyError(null);
       try {
@@ -90,18 +112,74 @@ export const MainContextProvider = ({
         const { fetchCompany } = await import("@utils/action");
         const freshCompany = await fetchCompany(companyId);
         setCompany(freshCompany);
+        companyDataRef.current = freshCompany;
       } catch (err) {
         setCompanyError(err.message || "Ошибка загрузки компании");
+        hasLoadedCompanyRef.current = false; // Разрешаем повторную попытку при ошибке
       } finally {
         setCompanyLoading(false);
       }
     }
     loadCompany();
-  }, [companyData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Пустой массив зависимостей - загружаем только один раз при монтировании
   const [scrolled, setScrolled] = useState(false);
-  const [cars, setCars] = useState(carsData || []);
-  const [allOrders, setAllOrders] = useState(ordersData || []);
+  
+  // Стабилизируем начальные данные с помощью useRef
+  const initialCarsRef = useRef(carsData);
+  const initialOrdersRef = useRef(ordersData);
+  
+  // Обновляем refs только если данные действительно изменились (по длине или ID первого элемента)
+  useEffect(() => {
+    if (carsData && carsData.length > 0) {
+      const carsChanged = 
+        !initialCarsRef.current || 
+        initialCarsRef.current.length !== carsData.length ||
+        initialCarsRef.current[0]?._id !== carsData[0]?._id;
+      if (carsChanged) {
+        initialCarsRef.current = carsData;
+      }
+    }
+  }, [carsData?.length, carsData?.[0]?._id]);
+  
+  useEffect(() => {
+    if (ordersData && ordersData.length > 0) {
+      const ordersChanged = 
+        !initialOrdersRef.current || 
+        initialOrdersRef.current.length !== ordersData.length ||
+        initialOrdersRef.current[0]?._id !== ordersData[0]?._id;
+      if (ordersChanged) {
+        initialOrdersRef.current = ordersData;
+      }
+    }
+  }, [ordersData?.length, ordersData?.[0]?._id]);
+  
+  const [cars, setCars] = useState(initialCarsRef.current || []);
+  const [allOrders, setAllOrders] = useState(initialOrdersRef.current || []);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Синхронизируем state с пропсами только если данные действительно изменились
+  useEffect(() => {
+    if (carsData && carsData.length > 0) {
+      const carsChanged = 
+        cars.length !== carsData.length ||
+        cars[0]?._id !== carsData[0]?._id;
+      if (carsChanged) {
+        setCars(carsData);
+      }
+    }
+  }, [carsData?.length, carsData?.[0]?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  useEffect(() => {
+    if (ordersData && ordersData.length > 0) {
+      const ordersChanged = 
+        allOrders.length !== ordersData.length ||
+        allOrders[0]?._id !== ordersData[0]?._id;
+      if (ordersChanged) {
+        setAllOrders(ordersData);
+      }
+    }
+  }, [ordersData?.length, ordersData?.[0]?._id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [error, setError] = useState(null);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [selectedClass, setSelectedClass] = useState("All");

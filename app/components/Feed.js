@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useMemo } from "react";
 import { ThemeProvider } from "@mui/material";
 import darkTheme from "@theme";
 import { I18nextProvider } from "react-i18next";
@@ -22,9 +22,14 @@ function Feed({ children, ...props }) {
 
   // Quick fix: reduce main top padding for admin pages so content sits directly
   // under the fixed AppBar / admin topbar. Use a safe default (64px).
-  const mainPt = props.isAdmin
-    ? { xs: "0px", md: "0px" }
-    : { xs: "110px", md: "90px" };
+  // Мемоизируем mainPt, чтобы не пересоздавать объект при каждом рендере
+  const mainPt = useMemo(
+    () =>
+      props.isAdmin
+        ? { xs: "0px", md: "0px" }
+        : { xs: "110px", md: "90px" },
+    [props.isAdmin]
+  );
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -34,14 +39,32 @@ function Feed({ children, ...props }) {
     }
   }, []);
 
+  // Мемоизируем пропсы для Context, чтобы предотвратить ненужные ре-рендеры
+  const contextProps = useMemo(
+    () => ({
+      carsData: props.cars,
+      ordersData: props.orders,
+      companyData: props.company,
+    }),
+    // Используем только примитивные значения для сравнения
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      props.cars?.length,
+      props.cars?.[0]?._id,
+      props.orders?.length,
+      props.orders?.[0]?._id,
+      props.company?._id,
+    ]
+  );
+
   return (
     <Suspense fallback={<Loading />}>
       <ThemeProvider theme={darkTheme}>
         <I18nextProvider i18n={i}>
           <MainContextProvider
-            carsData={props.cars}
-            ordersData={props.orders}
-            companyData={props.company}
+            carsData={contextProps.carsData}
+            ordersData={contextProps.ordersData}
+            companyData={contextProps.companyData}
           >
             <Navbar isMain={props.isMain} isAdmin={props.isAdmin} />
             {/* main paddingTop keeps content below fixed Navbar + filters; responsive values */}
