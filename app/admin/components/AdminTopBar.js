@@ -52,7 +52,7 @@ export default function AdminTopBar({ viewType, onAddCarClick }) {
   return (
     <>
       {/* Кнопка выхода */}
-      <LogoutBox className="admin-logout-box">
+      {/* <LogoutBox className="admin-logout-box">
         <Button
           variant="contained"
           color="error"
@@ -62,7 +62,7 @@ export default function AdminTopBar({ viewType, onAddCarClick }) {
         >
           {t("basic.logout") || "Выйти"}
         </Button>
-      </LogoutBox>
+      </LogoutBox> */}
 
       {/* TopBar - только для Cars и OrdersCalendar */}
       {showTopBar && (

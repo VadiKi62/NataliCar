@@ -5,10 +5,8 @@ import { useTranslation } from "react-i18next";
 /**
  * Легенда календаря для админки и клиентской части
  * Использует цвета из темы для согласованности
- * @param {boolean} client - режим клиента (упрощённая легенда)
- * @param {boolean} embedded - встроен в другой компонент (без внешних отступов)
  */
-function LegendCalendarAdmin({ client, embedded = false }) {
+function LegendCalendarAdmin({ client }) {
   const { t } = useTranslation();
   const theme = useTheme();
 
@@ -26,12 +24,12 @@ function LegendCalendarAdmin({ client, embedded = false }) {
       display={{ xs: "none", sm: "flex" }}
       width="100%"
       sx={{
-        mb: embedded ? 0 : (client ? 0 : 10),
-        py: embedded ? 1 : 1.5,
+        mb: client ? 0 : 2,
+        py: 1.5,
         px: 2,
         backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
-        borderRadius: embedded ? 1 : 2,
-        boxShadow: embedded ? "none" : "0 4px 12px rgba(0, 0, 0, 0.3)",
+        borderRadius: 2,
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
       }}
     >
       {/* Подтверждённые заказы */}

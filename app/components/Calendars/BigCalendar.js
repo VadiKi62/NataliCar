@@ -617,7 +617,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
             },
           }}
         >
-          <LegendCalendarAdmin embedded />
+          <LegendCalendarAdmin />
         </Box>
       )}
       

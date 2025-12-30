@@ -17,20 +17,28 @@ export default function DefaultButton({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // Цвета из темы для мерцающей кнопки
+  const blinkColors = {
+    main: theme.palette.triadic?.green || "#008900",
+    light: theme.palette.triadic?.greenLight || "#33a033",
+    text: theme.palette.neutral?.black || "#0a0a0a",
+  };
+
   return (
     visibility && (
       <MuiButton
         variant="contained"
-        color="inherit"
         aria-label={label}
         size="large"
         sx={{
           p: 3,
           m: 1,
+          backgroundColor: "secondary.main",
           fontSize: "1.3rem",
           fontWeight: 500,
           position: relative ? "relative" : "absolute",
           lineHeight: "1.5rem",
+          textTransform: "uppercase",
           top: relative ? 0 : 5,
           left: relative ? 0 : 5,
           borderRadius: "15px",
@@ -38,31 +46,31 @@ export default function DefaultButton({
           marginBottom: 1,
           minWidth: minWidth,
           zIndex: 4,
-          color: "black",
-          backgroundColor: disabled ? "primary.fiolet" : "primary.green",
+          // Белый текст на бирюзовом фоне (secondary.main = #008989)
+          color: "secondary.contrastText",
           opacity: disabled ? 0.7 : 1,
           "&:hover": {
-            color: "black",
-            blinking: " false",
-            ...(blinking && { backgroundColor: "#00ff00 !important" }),
+            backgroundColor: "secondary.dark",
+            color: "secondary.contrastText",
+            animation: "none",
           },
+          // Стили для мерцающей кнопки
           ...(blinking && {
-            backgroundColor: "#00ff00 !important",
-            color: "black",
-            // allow parent sx to override text color
+            backgroundColor: blinkColors.main,
+            color: blinkColors.text,
             animation: isMobile
-              ? "blinkMobile 1.5s ease-in-out infinite" // 1.5 секунды мигания на мобильных
-              : "blinkDesktop 1s linear infinite", // Обычное мигание на десктопе
+              ? "blinkMobile 1.5s ease-in-out infinite"
+              : "blinkDesktop 1s linear infinite",
           }),
           "@keyframes blinkMobile": {
-            "0%": { transform: "scale(1)", backgroundColor: "#00ff00" }, // Ярко-зеленый фон, убрали opacity
-            "50%": { transform: "scale(1.02)", backgroundColor: "#32ff32" }, // Еще более яркий зеленый, убрали opacity
-            "100%": { transform: "scale(1)", backgroundColor: "#00ff00" }, // Ярко-зеленый фон, убрали opacity
+            "0%": { transform: "scale(1)", backgroundColor: blinkColors.main },
+            "50%": { transform: "scale(1.02)", backgroundColor: blinkColors.light },
+            "100%": { transform: "scale(1)", backgroundColor: blinkColors.main },
           },
           "@keyframes blinkDesktop": {
-            "0%": { backgroundColor: "#00ff00", transform: "scale(1)" },
-            "50%": { backgroundColor: "#4cff4c", transform: "scale(1.03)" },
-            "100%": { backgroundColor: "#00ff00", transform: "scale(1)" },
+            "0%": { backgroundColor: blinkColors.main, transform: "scale(1)" },
+            "50%": { backgroundColor: blinkColors.light, transform: "scale(1.03)" },
+            "100%": { backgroundColor: blinkColors.main, transform: "scale(1)" },
           },
           // parent-provided sx overrides defaults
           ...sxProp,

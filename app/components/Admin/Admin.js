@@ -119,11 +119,11 @@ function Admin({ children, ...props }) {
   return (
     <Suspense fallback={<Loading />}>
       {/* Кнопка выхода */}
-      {/* <Box
+      <Box
         sx={{
           position: "fixed",
-          top: 40,
-          right: 40,
+          top: 0,
+          right: 0,
           zIndex: 1000,
           backgroundColor: "background.default",
           borderRadius: 1,
@@ -140,7 +140,7 @@ function Admin({ children, ...props }) {
         >
           Выйти
         </Button>
-      </Box> */}
+      </Box>
 
       <Navbar
         isAdmin={true}
@@ -150,7 +150,7 @@ function Admin({ children, ...props }) {
       <StyledBox
         scrolled={scrolled}
         isCarInfo={isCars}
-        className="admin-topbar"
+        // className="admin-topbar"
         sx={{
           display: {
             xs: "flex",
@@ -181,7 +181,6 @@ function Admin({ children, ...props }) {
           {/* Легенда только для OrdersCalendars (по машинам), НЕ для BigCalendar */}
           {isOrdersCalendars && !isOrdersBigCalendar && (
             <Stack
-              className="legend-calendar-admin"
               direction={{ xs: "column", sm: "row" }}
               spacing={{ xs: 1, sm: 2 }}
               alignItems="center"
