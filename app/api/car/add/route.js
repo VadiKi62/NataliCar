@@ -77,6 +77,10 @@ export const GET = async (request) => {
     // Add new cars to the database
     const newCars = await Car.create(initialCarsData);
 
+    // Инвалидируем кеш для списка машин
+    revalidatePath("/api/car/all");
+    revalidatePath("/api/car/models");
+
     return new Response(JSON.stringify({ success: true, data: newCars }), {
       status: 201,
       headers: {
