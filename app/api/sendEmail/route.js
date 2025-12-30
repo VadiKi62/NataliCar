@@ -29,53 +29,38 @@ Website: https://www.bbqr.site
 
 Email: support@bbqr.site`;
 
-// Validate environment variables
-const GMAIL_USER = process.env.GMAIL_USER;
-const GMAIL_APP_PASS = process.env.GMAIL_APP_PASS;
+// SMTP transporter with lazy initialization
+let transporter = null;
 
-if (!GMAIL_USER || !GMAIL_APP_PASS) {
-  console.error("Missing email credentials in environment variables:");
-  console.error("GMAIL_USER:", GMAIL_USER ? "✓ Set" : "✗ Missing");
-  console.error("GMAIL_APP_PASS:", GMAIL_APP_PASS ? "✓ Set" : "✗ Missing");
-}
+function getTransporter() {
+  if (!transporter) {
+    const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS } =
+      process.env;
 
-// Create transporter using environment variables from .env (lines 16-20)
-// Only create transporter if credentials are available
-const transporter = GMAIL_USER && GMAIL_APP_PASS
-  ? nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_APP_PASS,
-      },
-    })
-  : null;
-
-// Verify transporter only if it was created
-if (transporter) {
-  transporter.verify(function (error, success) {
-    if (error) {
-      console.error("Email server verification error:", error);
-    } else {
-      console.log("Email server is ready to send messages");
+    if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+      throw new Error(
+        "Missing SMTP configuration. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS in environment variables."
+      );
     }
-  });
-} else {
-  console.warn("Email transporter not initialized - missing credentials");
+
+    transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT || 465),
+      secure: SMTP_SECURE === "true",
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      },
+    });
+  }
+
+  return transporter;
 }
 
 export async function POST(request) {
   try {
-    // Check if transporter is initialized
-    if (!transporter) {
-      return NextResponse.json(
-        { 
-          error: "Email service not configured. Missing GMAIL_USER or GMAIL_APP_PASS environment variables.",
-          details: "Please check your .env file and ensure GMAIL_USER and GMAIL_APP_PASS are set."
-        },
-        { status: 500 }
-      );
-    }
+    // Get transporter (will throw if config is missing)
+    const emailTransporter = getTransporter();
 
     const body = await request.json();
     const { email, emailCompany, title, message } = body;
@@ -102,16 +87,19 @@ export async function POST(request) {
       ? [emailCompany, email.trim()] 
       : [emailCompany];
 
+    // Get SMTP_USER for from/replyTo
+    const { SMTP_USER } = process.env;
+
     const mailOptions = {
-      from: `Natali Cars <${process.env.GMAIL_USER}>`,
+      from: `Natali Cars <${SMTP_USER}>`,
       to: recipients,
-      replyTo: process.env.GMAIL_USER,
+      replyTo: SMTP_USER,
       subject: title,
       text: messageWithSignature,
       html: htmlMessageWithSignature,
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await emailTransporter.sendMail(mailOptions);
 
     console.log("Email sent:", info.response);
     console.log("Message ID:", info.messageId);
@@ -129,7 +117,7 @@ export async function POST(request) {
     return NextResponse.json(
       { 
         error: error.message,
-        details: error.stack,
+        details: process.env.NODE_ENV === "development" ? error.stack : undefined,
       }, 
       { status: 500 }
     );
