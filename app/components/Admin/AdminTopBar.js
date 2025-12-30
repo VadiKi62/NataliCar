@@ -42,8 +42,8 @@ export default function AdminTopBar({ viewType, onAddCarClick }) {
   const { scrolled } = useMainContext();
 
   const isCars = viewType === "cars";
-  const isOrdersCalendar = viewType === "orders-calendar"; // Календари по машинам
-  const isBigCalendar = viewType === "orders-big-calendar"; // Большой календарь (легенда встроена)
+  const isOrdersCalendar = viewType === "orders-calendar";
+  const isBigCalendar = viewType === "orders-big-calendar";
 
   // Показываем TopBar только для Cars и OrdersCalendar
   // BigCalendar имеет встроенную легенду
@@ -51,19 +51,6 @@ export default function AdminTopBar({ viewType, onAddCarClick }) {
 
   return (
     <>
-      {/* Кнопка выхода */}
-      {/* <LogoutBox className="admin-logout-box">
-        <Button
-          variant="contained"
-          color="error"
-          size="small"
-          onClick={() => signOut({ callbackUrl: "/" })}
-          sx={{ m: 1 }}
-        >
-          {t("basic.logout") || "Выйти"}
-        </Button>
-      </LogoutBox> */}
-
       {/* TopBar - только для Cars и OrdersCalendar */}
       {showTopBar && (
         <StyledTopBar

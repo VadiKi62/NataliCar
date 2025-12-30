@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
-import AdminLoader from "@app/admin/components/AdminLoader";
-import AdminTopBar from "@app/admin/components/AdminTopBar";
-import AdminNotifications from "@app/admin/components/AdminNotifications";
-import { useAdminState } from "@app/admin/hooks/useAdminState";
+import AdminLoader from "./AdminLoader";
+import AdminTopBar from "./AdminTopBar";
+import AdminNotifications from "./AdminNotifications";
+import { useAdminState } from "./hooks/useAdminState";
 
 // Lazy-loaded секции для уменьшения initial bundle
 const CarsSection = dynamic(
-  () => import("@app/admin/sections/CarsSection"),
+  () => import("./sections/CarsSection"),
   { 
     loading: () => <AdminLoader message="Загрузка автомобилей..." />,
     ssr: false 
@@ -19,7 +19,7 @@ const CarsSection = dynamic(
 );
 
 const OrdersCalendarSection = dynamic(
-  () => import("@app/admin/sections/OrdersCalendarSection"),
+  () => import("./sections/OrdersCalendarSection"),
   { 
     loading: () => <AdminLoader message="Загрузка календарей..." />,
     ssr: false 
@@ -27,7 +27,7 @@ const OrdersCalendarSection = dynamic(
 );
 
 const BigCalendarSection = dynamic(
-  () => import("@app/admin/sections/BigCalendarSection"),
+  () => import("./sections/BigCalendarSection"),
   { 
     loading: () => <AdminLoader message="Загрузка большого календаря..." />,
     ssr: false 
@@ -35,7 +35,7 @@ const BigCalendarSection = dynamic(
 );
 
 const OrdersTableSection = dynamic(
-  () => import("@app/admin/sections/OrdersTableSection"),
+  () => import("./sections/OrdersTableSection"),
   { 
     loading: () => <AdminLoader message="Загрузка таблицы заказов..." />,
     ssr: false 

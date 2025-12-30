@@ -1,5 +1,5 @@
 // Экспорт секций для lazy loading
-// Использование: dynamic(() => import('@/app/admin/sections').then(m => m.CarsSection))
+// Использование: dynamic(() => import('@app/components/Admin/sections').then(m => m.CarsSection))
 
 export { default as CarsSection } from "./CarsSection";
 export { default as OrdersCalendarSection } from "./OrdersCalendarSection";
