@@ -1,17 +1,21 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
-import AdminLoader from "./AdminLoader";
-import AdminTopBar from "./AdminTopBar";
-import AdminNotifications from "./AdminNotifications";
-import { useAdminState } from "./hooks/useAdminState";
 
-// Lazy-loaded секции для уменьшения initial bundle
+// Shared components from new structure
+import { AdminLoader, AdminNotifications, AdminTopBar } from "@app/admin/shared";
+import { useCars } from "@app/admin/features/cars";
+
+// ─────────────────────────────────────────────────────────────
+// LAZY-LOADED FEATURE SECTIONS
+// Reduces initial bundle size by loading features on demand
+// ─────────────────────────────────────────────────────────────
+
 const CarsSection = dynamic(
-  () => import("./sections/CarsSection"),
+  () => import("@app/admin/features/cars/CarsSection"),
   { 
     loading: () => <AdminLoader message="Загрузка автомобилей..." />,
     ssr: false 
@@ -19,15 +23,15 @@ const CarsSection = dynamic(
 );
 
 const OrdersCalendarSection = dynamic(
-  () => import("./sections/OrdersCalendarSection"),
+  () => import("@app/admin/features/orders/OrdersCalendarSection"),
   { 
     loading: () => <AdminLoader message="Загрузка календарей..." />,
     ssr: false 
   }
 );
 
-const BigCalendarSection = dynamic(
-  () => import("./sections/BigCalendarSection"),
+const CalendarSection = dynamic(
+  () => import("@app/admin/features/calendar/CalendarSection"),
   { 
     loading: () => <AdminLoader message="Загрузка большого календаря..." />,
     ssr: false 
@@ -35,15 +39,52 @@ const BigCalendarSection = dynamic(
 );
 
 const OrdersTableSection = dynamic(
-  () => import("./sections/OrdersTableSection"),
+  () => import("@app/admin/features/orders/OrdersTableSection"),
   { 
     loading: () => <AdminLoader message="Загрузка таблицы заказов..." />,
     ssr: false 
   }
 );
 
+// ─────────────────────────────────────────────────────────────
+// FEATURE CONFIG
+// Maps viewType to feature component and metadata
+// ─────────────────────────────────────────────────────────────
+
+const FEATURES = {
+  cars: {
+    component: CarsSection,
+    feature: "cars",
+  },
+  "orders-calendar": {
+    component: OrdersCalendarSection,
+    feature: "orders-calendar",
+  },
+  "orders-big-calendar": {
+    component: CalendarSection,
+    feature: "calendar",
+  },
+  calendar: {
+    component: CalendarSection,
+    feature: "calendar",
+  },
+  "orders-table": {
+    component: OrdersTableSection,
+    feature: "orders-table",
+  },
+  table: {
+    component: OrdersTableSection,
+    feature: "orders-table",
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+// ADMIN VIEW - Main entry point
+// ─────────────────────────────────────────────────────────────
+
 /**
- * AdminView - контейнер админки с lazy-loaded секциями
+ * AdminView - контейнер админки с lazy-loaded feature секциями
+ * 
  * @param {object} props
  * @param {object} props.company - данные компании
  * @param {array} props.cars - массив машин
@@ -58,49 +99,45 @@ export default function AdminView({ company, cars, orders, viewType }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// ADMIN VIEW CONTENT - Thin orchestrator
+// Reads viewType and renders appropriate feature
+// ─────────────────────────────────────────────────────────────
+
 /**
- * AdminViewContent - внутренний компонент с доступом к useAdminState
- * (должен быть внутри MainContextProvider из Feed)
+ * AdminViewContent - внутренний компонент-оркестратор
+ * Без бизнес-логики, только выбор feature для отображения
  */
 function AdminViewContent({ viewType }) {
-  const {
-    updateStatus,
-    closeNotification,
-    openAddCarModal,
-  } = useAdminState();
+  // Get cars feature hook for add car modal
+  const { notification, closeNotification, openAddModal } = useCars();
 
-  const renderSection = () => {
-    switch (viewType) {
-      case "cars":
-        return <CarsSection />;
-      case "orders-calendar":
-        return <OrdersCalendarSection />;
-      case "orders-big-calendar":
-      case "calendar":
-        return <BigCalendarSection />;
-      case "orders-table":
-      case "table":
-        return <OrdersTableSection />;
-      default:
-        return <CarsSection />;
-    }
-  };
+  // Memoize feature config lookup
+  const featureConfig = useMemo(
+    () => FEATURES[viewType] || FEATURES.cars,
+    [viewType]
+  );
+
+  const FeatureComponent = featureConfig.component;
 
   return (
     <>
+      {/* Top bar with feature-specific actions */}
       <AdminTopBar
-        viewType={viewType}
-        onAddCarClick={viewType === "cars" ? openAddCarModal : undefined}
+        feature={featureConfig.feature}
+        onAddClick={viewType === "cars" ? openAddModal : undefined}
       />
       
+      {/* Feature section with lazy loading */}
       <Box sx={{ my: 3 }}>
         <Suspense fallback={<AdminLoader />}>
-          {renderSection()}
+          <FeatureComponent />
         </Suspense>
       </Box>
       
+      {/* Global notifications */}
       <AdminNotifications
-        status={updateStatus}
+        notification={notification}
         onClose={closeNotification}
       />
     </>
