@@ -35,16 +35,19 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import AcUnitIcon from "@mui/icons-material/AcUnit";
 import SpeedIcon from "@mui/icons-material/Speed";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ScrollingCalendar from "../Calendars/ScrollingCalendar";
+import { lazy, Suspense } from "react";
 import { fetchCar } from "@utils/action";
 import { fetchOrdersByCar } from "@utils/action";
-import BookingModal from "./BookingModal";
 import TimeToLeaveIcon from "@mui/icons-material/TimeToLeave";
-import CalendarPicker from "./CalendarPicker";
 import { useMainContext } from "@app/Context";
-import PricingTiers from "@app/components/CarComponent/PricingTiers";
-import CarDetails from "./CarDetails";
-import CarDetailsModal from "./CarDetailsModal";
+import { CircularProgress } from "@mui/material";
+
+// Lazy load тяжелых компонентов для улучшения производительности
+const BookingModal = lazy(() => import("./BookingModal"));
+const CalendarPicker = lazy(() => import("./CalendarPicker"));
+const PricingTiers = lazy(() => import("@app/components/CarComponent/PricingTiers"));
+const CarDetails = lazy(() => import("./CarDetails"));
+const CarDetailsModal = lazy(() => import("./CarDetailsModal"));
 
 import { CldImage } from "next-cloudinary";
 import { useTranslation } from "react-i18next";
@@ -145,7 +148,8 @@ const ExpandButton = styled(IconButton)(({ theme, expanded }) => ({
   }),
 }));
 
-function CarItemComponent({ car, discount, discountStart, discountEnd }) {
+// Мемоизируем компонент для предотвращения ненужных ре-рендеров
+const CarItemComponent = React.memo(function CarItemComponent({ car, discount, discountStart, discountEnd }) {
   const { t } = useTranslation();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   // Для хранения id последнего снэка
@@ -371,10 +375,13 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
                 </>
               )}
             </CarImage>
-            <CarDetails car={car} />
+            <Suspense fallback={<CircularProgress size={24} />}>
+              <CarDetails car={car} />
+            </Suspense>
           </Box>
           <Box className="calendar-wrapper">
-            <CalendarPicker
+            <Suspense fallback={<CircularProgress size={24} />}>
+              <CalendarPicker
               carId={car._id}
               isLoading={isLoading}
               orders={carOrders}
@@ -387,7 +394,8 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
               discountStart={discountStart}
               discountEnd={discountEnd}
               onDateChange={handleDateChange}
-            />
+              />
+            </Suspense>
             {/* Информация о дискаунте с логикой как в PricingTiers */}
             {(() => {
               // Логика отображения надписи о скидке:
@@ -454,34 +462,60 @@ function CarItemComponent({ car, discount, discountStart, discountEnd }) {
               );
             })()}
             {car?.pricingTiers && (
-              <PricingTiers
-                prices={car?.pricingTiers}
-                selectedDate={currentCalendarDate}
-                discount={discount}
-                discountStart={discountStart}
-                discountEnd={discountEnd}
-              />
+              <Suspense fallback={<CircularProgress size={24} />}>
+                <PricingTiers
+                  prices={car?.pricingTiers}
+                  selectedDate={currentCalendarDate}
+                  discount={discount}
+                  discountStart={discountStart}
+                  discountEnd={discountEnd}
+                />
+              </Suspense>
             )}
           </Box>
         </MediaRow>
       </Wrapper>
-      <BookingModal
-        fetchAndUpdateOrders={fetchAndUpdateOrders}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        car={car}
-        orders={carOrders}
-        presetDates={{ startDate: bookDates?.start, endDate: bookDates?.end }}
-        isLoading={isLoading}
-        selectedTimes={selectedTimes}
-      />
-      <CarDetailsModal
-        open={detailsModalOpen}
-        onClose={() => setDetailsModalOpen(false)}
-        car={car}
-      />
+      {modalOpen && (
+        <Suspense fallback={<CircularProgress size={24} />}>
+          <BookingModal
+            fetchAndUpdateOrders={fetchAndUpdateOrders}
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            car={car}
+            orders={carOrders}
+            presetDates={{ startDate: bookDates?.start, endDate: bookDates?.end }}
+            isLoading={isLoading}
+            selectedTimes={selectedTimes}
+          />
+        </Suspense>
+      )}
+      {detailsModalOpen && (
+        <Suspense fallback={<CircularProgress size={24} />}>
+          <CarDetailsModal
+            open={detailsModalOpen}
+            onClose={() => setDetailsModalOpen(false)}
+            car={car}
+          />
+        </Suspense>
+      )}
     </StyledCarItem>
   );
-}
+}, (prevProps, nextProps) => {
+  // Кастомная функция сравнения для оптимизации
+  // Сравниваем только примитивные значения для производительности
+  const carChanged = prevProps.car?._id !== nextProps.car?._id;
+  const discountChanged = prevProps.discount !== nextProps.discount;
+  
+  // Для dayjs объектов сравниваем через valueOf (timestamp)
+  const discountStartChanged = 
+    prevProps.discountStart?.valueOf() !== nextProps.discountStart?.valueOf();
+  const discountEndChanged = 
+    prevProps.discountEnd?.valueOf() !== nextProps.discountEnd?.valueOf();
+  
+  // Возвращаем true если ничего не изменилось (не нужно ре-рендерить)
+  return !carChanged && !discountChanged && !discountStartChanged && !discountEndChanged;
+});
+
+CarItemComponent.displayName = "CarItemComponent";
 
 export default CarItemComponent;

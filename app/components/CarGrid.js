@@ -1,10 +1,9 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Grid, Container, CircularProgress } from "@mui/material";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Grid, Container } from "@mui/material";
 import { styled } from "@mui/material/styles";
 
 import { useMainContext } from "../Context";
-import Feed from "./Feed";
 import CarItemComponent from "./CarComponent/CarItemComponent";
 
 const Section = styled("section")(({ theme }) => ({
@@ -15,34 +14,34 @@ const Section = styled("section")(({ theme }) => ({
 import dayjs from "dayjs";
 
 function CarGrid() {
-  const { cars, company, selectedClass, selectedTransmission } =
-    useMainContext(); // Добавляем selectedTransmission
-  const [filteredCars, setFilteredCars] = useState(cars);
+  const { cars, selectedClass, selectedTransmission } = useMainContext();
 
   // --- Состояния для скидки ---
   const [discount, setDiscount] = useState(null);
   const [discountStart, setDiscountStart] = useState(null);
   const [discountEnd, setDiscountEnd] = useState(null);
 
-  useEffect(() => {
-    async function fetchDiscount() {
-      try {
-        const res = await fetch("/api/discount");
-        if (!res.ok) throw new Error("Ошибка загрузки скидки");
-        const data = await res.json();
-        setDiscount(data.discount || null);
-        setDiscountStart(data.startDate ? dayjs(data.startDate) : null);
-        setDiscountEnd(data.endDate ? dayjs(data.endDate) : null);
-      } catch (err) {
-        // Ошибка загрузки скидки
-      }
+  // Мемоизируем fetchDiscount, чтобы не пересоздавать функцию
+  const fetchDiscount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/discount");
+      if (!res.ok) throw new Error("Ошибка загрузки скидки");
+      const data = await res.json();
+      setDiscount(data.discount || null);
+      setDiscountStart(data.startDate ? dayjs(data.startDate) : null);
+      setDiscountEnd(data.endDate ? dayjs(data.endDate) : null);
+    } catch (err) {
+      // Ошибка загрузки скидки - тихо игнорируем
     }
-    fetchDiscount();
   }, []);
 
-  // Filter cars by the selected class and transmission
   useEffect(() => {
-    const updatedCars = cars
+    fetchDiscount();
+  }, [fetchDiscount]);
+
+  // Мемоизируем фильтрацию и сортировку машин
+  const filteredCars = useMemo(() => {
+    return cars
       .filter(
         (car) =>
           // Фильтр по классу
@@ -51,9 +50,8 @@ function CarGrid() {
           (selectedTransmission === "All" ||
             car.transmission === selectedTransmission)
       )
-      .sort((a, b) => a.model.localeCompare(b.model)); // Sort the filtered cars
-    setFilteredCars(updatedCars);
-  }, [selectedClass, selectedTransmission, cars]); // Добавляем selectedTransmission в зависимости
+      .sort((a, b) => a.model.localeCompare(b.model));
+  }, [selectedClass, selectedTransmission, cars]);
 
   return (
     <Container sx={{ mt: 5 }}>
