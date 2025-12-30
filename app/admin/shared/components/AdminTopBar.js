@@ -46,7 +46,7 @@ export default function AdminTopBar({ feature, onAddClick }) {
       sx={{
         display: {
           xs: "flex",
-          "@media (max-width:900px) and (orientation: landscape)": isCars
+          "@media (maxWidth: 900px) and (orientation: landscape)": isCars
             ? "flex"
             : "none",
         },
@@ -79,7 +79,7 @@ export default function AdminTopBar({ feature, onAddClick }) {
             justifyContent="center"
             sx={{
               display: "flex",
-              "@media (max-width:900px) and (orientation: landscape)": {
+              "@media (maxWidth: 900px) and (orientation: landscape)": {
                 display: "none",
               },
             }}
