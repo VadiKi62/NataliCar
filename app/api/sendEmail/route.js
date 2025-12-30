@@ -29,25 +29,54 @@ Website: https://www.bbqr.site
 
 Email: support@bbqr.site`;
 
-// Create transporter using environment variables from .env (lines 16-20)
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASS,
-  },
-});
+// Validate environment variables
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_APP_PASS = process.env.GMAIL_APP_PASS;
 
-transporter.verify(function (error, success) {
-  if (error) {
-    console.error("Email server error:", error);
-  } else {
-    console.log("Email server is ready to send messages");
-  }
-});
+if (!GMAIL_USER || !GMAIL_APP_PASS) {
+  console.error("Missing email credentials in environment variables:");
+  console.error("GMAIL_USER:", GMAIL_USER ? "✓ Set" : "✗ Missing");
+  console.error("GMAIL_APP_PASS:", GMAIL_APP_PASS ? "✓ Set" : "✗ Missing");
+}
+
+// Create transporter using environment variables from .env (lines 16-20)
+// Only create transporter if credentials are available
+const transporter = GMAIL_USER && GMAIL_APP_PASS
+  ? nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASS,
+      },
+    })
+  : null;
+
+// Verify transporter only if it was created
+if (transporter) {
+  transporter.verify(function (error, success) {
+    if (error) {
+      console.error("Email server verification error:", error);
+    } else {
+      console.log("Email server is ready to send messages");
+    }
+  });
+} else {
+  console.warn("Email transporter not initialized - missing credentials");
+}
 
 export async function POST(request) {
   try {
+    // Check if transporter is initialized
+    if (!transporter) {
+      return NextResponse.json(
+        { 
+          error: "Email service not configured. Missing GMAIL_USER or GMAIL_APP_PASS environment variables.",
+          details: "Please check your .env file and ensure GMAIL_USER and GMAIL_APP_PASS are set."
+        },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const { email, emailCompany, title, message } = body;
 
