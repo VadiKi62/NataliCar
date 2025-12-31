@@ -1,4 +1,16 @@
 // app/api/sendEmail/route.js
+// 
+// SMTP Configuration (.env):
+//   SMTP_HOST - SMTP server host
+//   SMTP_PORT - SMTP port (default: 465)
+//   SMTP_SECURE - "true" for SSL (default: false)
+//   SMTP_USER - email address for sending
+//   SMTP_PASS - email password
+//
+// Testing Mode (.env):
+//   EMAIL_TESTING=true - enables testing mode (emails only go to test address)
+//   EMAIL_TEST_ADDRESS - test email (default: cars@bbqr.site)
+//
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
@@ -156,11 +168,38 @@ function getTransporter() {
 
 export async function POST(request) {
   try {
+    // Check testing mode
+    const { SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_TESTING, EMAIL_TEST_ADDRESS } = process.env;
+    const isTestingMode = EMAIL_TESTING === "true";
+    const testEmail = EMAIL_TEST_ADDRESS || "cars@bbqr.site";
+
+    console.log("SMTP Config check:", {
+      hasHost: !!SMTP_HOST,
+      hasUser: !!SMTP_USER,
+      hasPass: !!SMTP_PASS,
+      host: SMTP_HOST || "NOT SET",
+      testingMode: isTestingMode,
+      testEmail: isTestingMode ? testEmail : "N/A",
+    });
+
     // Get transporter (will throw if config is missing)
     const emailTransporter = getTransporter();
 
     const body = await request.json();
     const { email, emailCompany, title, message } = body;
+    
+    // In testing mode, override recipients to test email only
+    const actualRecipient = isTestingMode ? testEmail : emailCompany;
+    const actualCustomerEmail = isTestingMode ? null : email; // Don't send to customer in testing mode
+    
+    console.log("Email request:", {
+      originalTo: emailCompany,
+      actualTo: actualRecipient,
+      customerEmail: isTestingMode ? "DISABLED (testing mode)" : (email || "not provided"),
+      subject: title,
+      messageLength: message?.length || 0,
+      testingMode: isTestingMode,
+    });
 
     if (!emailCompany || !title || !message) {
       return NextResponse.json(
@@ -175,24 +214,46 @@ export async function POST(request) {
     // Prepare beautiful HTML email with theme colors and centered layout
     const htmlEmail = createEmailHTML(title, message);
 
-    // Determine recipients: always send to company email, optionally to customer email
-    const recipients = email && email.trim() 
-      ? [emailCompany, email.trim()] 
-      : [emailCompany];
+    // Determine recipients: 
+    // - In testing mode: only send to test email
+    // - In production: send to company email, optionally to customer email
+    let recipients;
+    if (isTestingMode) {
+      recipients = [testEmail];
+    } else {
+      recipients = actualCustomerEmail && actualCustomerEmail.trim() 
+        ? [actualRecipient, actualCustomerEmail.trim()] 
+        : [actualRecipient];
+    }
 
     // Get SMTP_USER for from/replyTo
     const { SMTP_USER } = process.env;
+
+    // In testing mode, prefix subject with [TEST]
+    const emailSubject = isTestingMode ? `[TEST] ${title}` : title;
 
     const mailOptions = {
       from: `Natali Cars <${SMTP_USER}>`,
       to: recipients,
       replyTo: SMTP_USER,
-      subject: title,
+      subject: emailSubject,
       text: messageWithSignature,
       html: htmlEmail,
     };
 
+    console.log("Sending email with mailOptions:", {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+    });
+
     const info = await emailTransporter.sendMail(mailOptions);
+
+    console.log("Email sent successfully:", {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      response: info.response,
+    });
 
     return NextResponse.json(
       { 
@@ -204,6 +265,7 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error("Error sending email:", error.message);
+    console.error("Full error:", error);
     return NextResponse.json(
       { 
         error: error.message,
