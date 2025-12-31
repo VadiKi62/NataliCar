@@ -966,3 +966,49 @@ body.hide-navbar-on-landscape-sm
     font-size: 10px !important;
   }
 }
+
+/* ============================================
+   CALENDAR COLUMN HOVER HIGHLIGHT
+   ============================================ */
+:root {
+  --calendar-col-hover: rgba(0, 0, 0, 0.06);
+}
+
+.bigcalendar-root[data-hover-col] [data-col-index] {
+  transition: background-color 120ms ease;
+}
+
+/* Generate hover rules for columns 0-30 */
+.bigcalendar-root[data-hover-col="0"] [data-col-index="0"],
+.bigcalendar-root[data-hover-col="1"] [data-col-index="1"],
+.bigcalendar-root[data-hover-col="2"] [data-col-index="2"],
+.bigcalendar-root[data-hover-col="3"] [data-col-index="3"],
+.bigcalendar-root[data-hover-col="4"] [data-col-index="4"],
+.bigcalendar-root[data-hover-col="5"] [data-col-index="5"],
+.bigcalendar-root[data-hover-col="6"] [data-col-index="6"],
+.bigcalendar-root[data-hover-col="7"] [data-col-index="7"],
+.bigcalendar-root[data-hover-col="8"] [data-col-index="8"],
+.bigcalendar-root[data-hover-col="9"] [data-col-index="9"],
+.bigcalendar-root[data-hover-col="10"] [data-col-index="10"],
+.bigcalendar-root[data-hover-col="11"] [data-col-index="11"],
+.bigcalendar-root[data-hover-col="12"] [data-col-index="12"],
+.bigcalendar-root[data-hover-col="13"] [data-col-index="13"],
+.bigcalendar-root[data-hover-col="14"] [data-col-index="14"],
+.bigcalendar-root[data-hover-col="15"] [data-col-index="15"],
+.bigcalendar-root[data-hover-col="16"] [data-col-index="16"],
+.bigcalendar-root[data-hover-col="17"] [data-col-index="17"],
+.bigcalendar-root[data-hover-col="18"] [data-col-index="18"],
+.bigcalendar-root[data-hover-col="19"] [data-col-index="19"],
+.bigcalendar-root[data-hover-col="20"] [data-col-index="20"],
+.bigcalendar-root[data-hover-col="21"] [data-col-index="21"],
+.bigcalendar-root[data-hover-col="22"] [data-col-index="22"],
+.bigcalendar-root[data-hover-col="23"] [data-col-index="23"],
+.bigcalendar-root[data-hover-col="24"] [data-col-index="24"],
+.bigcalendar-root[data-hover-col="25"] [data-col-index="25"],
+.bigcalendar-root[data-hover-col="26"] [data-col-index="26"],
+.bigcalendar-root[data-hover-col="27"] [data-col-index="27"],
+.bigcalendar-root[data-hover-col="28"] [data-col-index="28"],
+.bigcalendar-root[data-hover-col="29"] [data-col-index="29"],
+.bigcalendar-root[data-hover-col="30"] [data-col-index="30"] {
+  background-color: var(--calendar-col-hover) !important;
+}

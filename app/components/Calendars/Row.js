@@ -1630,8 +1630,12 @@ export default function CarTableRow({
 
   return (
     <>
-      {days.map((day) => (
-        <TableCell key={day.dayjs.toString()} sx={{ padding: 0 }}>
+      {days.map((day, colIndex) => (
+        <TableCell
+          key={day.dayjs.toString()}
+          data-col-index={colIndex}
+          sx={{ padding: 0 }}
+        >
           <Box
             sx={{
               width: "100%",
@@ -1639,6 +1643,16 @@ export default function CarTableRow({
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
+            }}
+            onMouseEnter={() => {
+              document
+                .querySelector(".bigcalendar-root")
+                ?.setAttribute("data-hover-col", colIndex);
+            }}
+            onMouseLeave={() => {
+              document
+                .querySelector(".bigcalendar-root")
+                ?.removeAttribute("data-hover-col");
             }}
           >
             {renderDateCell(day.dayjs)}

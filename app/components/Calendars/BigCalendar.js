@@ -51,9 +51,11 @@ import {
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
 // ============================================
-function BigCalendarLayout({ showLegend, borderStyle, children }) {
+function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
   return (
     <Box
+      ref={calendarRef}
+      className="bigcalendar-root"
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -122,6 +124,7 @@ function BigCalendarHeader({
   onYearChange,
   onDayClick,
   headerStyles,
+  calendarRef,
 }) {
   return (
     <TableHead>
@@ -320,6 +323,7 @@ function BigCalendarHeader({
         {days.map((day, idx) => (
           <TableCell
             key={day.dayjs.valueOf()}
+            data-col-index={idx}
             align="center"
             title="Нажмите для просмотра всех начинающихся и заканчивающихся заказов на эту дату"
             className={idx === todayIndex ? "today-column-bg" : undefined}
@@ -336,6 +340,12 @@ function BigCalendarHeader({
               cursor: "pointer",
             }}
             onClick={() => onDayClick(day)}
+            onMouseEnter={() => {
+              calendarRef?.current?.setAttribute("data-hover-col", idx);
+            }}
+            onMouseLeave={() => {
+              calendarRef?.current?.removeAttribute("data-hover-col");
+            }}
           >
             <div
               style={{
@@ -362,6 +372,11 @@ function BigCalendarHeader({
 // BigCalendar — основной компонент
 // ============================================
 export default function BigCalendar({ cars, showLegend = true }) {
+  // ─────────────────────────────────────────
+  // Refs
+  // ─────────────────────────────────────────
+  const calendarRef = useRef(null);
+
   // ─────────────────────────────────────────
   // Тема и цвета
   // ─────────────────────────────────────────
@@ -790,6 +805,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
     <BigCalendarLayout
       showLegend={showLegend}
       borderStyle={`1px solid ${calendarHeaderStyles.border}`}
+      calendarRef={calendarRef}
     >
       {/* Table с sticky header */}
       <Table
@@ -820,6 +836,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
               });
             }}
             headerStyles={calendarHeaderStyles}
+            calendarRef={calendarRef}
           />
           <TableBody>
             {sortedCars.map((car) => (
