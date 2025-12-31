@@ -736,11 +736,10 @@ const BookingModal = ({
           <DialogContent
             sx={{
               pt: isSubmitted ? 3 : 2,
-              textAlign: "center",
             }}
           >
             {isSubmitted ? (
-              <Box sx={{ position: "relative" }}>
+              <Box sx={{ position: "relative", textAlign: "center" }}>
                 {/* Close button for success state */}
                 <IconButton
                   onClick={handleModalClose}
@@ -1275,11 +1274,13 @@ const BookingModal = ({
                     <ConfirmButton
                       onClick={handleModalClose}
                       label="OK"
+                      color="secondary"
                       sx={{
                         "@media (max-width:600px) and (orientation: portrait)": {
                           flexBasis: 0,
                           flexGrow: 1,
                           minWidth: 0,
+                          
                         },
                       }}
                     />
