@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { TableCell, Box, useTheme } from "@mui/material";
 import dayjs from "dayjs";
+import { useMainContext } from "@app/Context";
 import { returnOverlapOrders } from "@utils/functions";
 import PropTypes from "prop-types";
 import { useSnackbar } from "notistack";
@@ -83,6 +84,9 @@ export default function CarTableRow({
     overlapDates,
     startEndDates,
   } = useCalendarOrders(car._id, orders);
+
+  // ordersByCarId нужен для проверки конфликтов при перемещении на другую машину
+  const { ordersByCarId } = useMainContext();
 
   const [wasLongPress, setWasLongPress] = useState(false);
 
