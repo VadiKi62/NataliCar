@@ -116,6 +116,91 @@ function buildOrderDateRange(order) {
   return dates;
 }
 
+/**
+ * Возвращает индекс текущего дня в массиве days
+ * @param {Array} days - массив дней календаря
+ * @returns {number} индекс текущего дня или -1
+ */
+function getTodayIndex(days) {
+  const today = dayjs();
+  return days.findIndex((d) => d.dayjs.isSame(today, "day"));
+}
+
+/**
+ * Проверяет, является ли viewport мобильным телефоном
+ * @returns {boolean}
+ */
+function isPhoneViewport() {
+  if (typeof window === "undefined") return false;
+
+  const isPortraitPhone = window.matchMedia(
+    "(max-width: 600px) and (orientation: portrait)"
+  ).matches;
+
+  const isSmallLandscape = window.matchMedia(
+    "(max-width: 900px) and (orientation: landscape)"
+  ).matches;
+
+  return isPortraitPhone || isSmallLandscape;
+}
+
+/**
+ * Скроллит контейнер календаря к текущему дню
+ * @param {Object} params
+ * @param {HTMLElement} params.container - контейнер календаря
+ * @param {number} params.todayIndex - индекс текущего дня
+ */
+function scrollCalendarToToday({ container, todayIndex }) {
+  if (!container || todayIndex < 0) return;
+
+  try {
+    const table =
+      container.querySelector(".MuiTable-root") ||
+      container.querySelector("table");
+
+    if (!table) return;
+
+    const headerCells = table.querySelectorAll("thead .MuiTableCell-root");
+
+    if (!headerCells || headerCells.length === 0) return;
+
+    // headerCells[0] is the fixed first column (car), days start at index 1
+    // Scroll so that the first visible date is today minus 2 days (clamped to month start)
+    const offsetDays = 2;
+    const desiredDayIdx = Math.max(0, todayIndex - offsetDays);
+    const targetIndex = 1 + desiredDayIdx;
+
+    if (targetIndex < 1 || targetIndex >= headerCells.length) return;
+
+    const targetCell = headerCells[targetIndex];
+    const firstCell = headerCells[0];
+
+    const tableRect = table.getBoundingClientRect();
+    const cellRect = targetCell.getBoundingClientRect();
+    const firstRect = firstCell
+      ? firstCell.getBoundingClientRect()
+      : { width: 0 };
+
+    // offset of the target cell relative to the table left
+    const offset = cellRect.left - tableRect.left;
+    // aim to place the target cell right after the sticky first column
+    const scrollLeft = Math.max(0, offset - firstRect.width - 4); // small gap
+
+    // prefer smooth scroll when available, fallback to direct assignment
+    if (typeof container.scrollTo === "function") {
+      try {
+        container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+      } catch {
+        container.scrollLeft = scrollLeft;
+      }
+    } else {
+      container.scrollLeft = scrollLeft;
+    }
+  } catch {
+    // ignore
+  }
+}
+
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
 // ============================================
@@ -623,74 +708,30 @@ export default function BigCalendar({ cars, showLegend = true }) {
     [month, year, viewMode, rangeDirection]
   );
 
-  const today = dayjs();
-  const todayIndex = days.findIndex((d) => d.dayjs.isSame(today, "day"));
+  // Индекс текущего дня в массиве days
+  const todayIndex = useMemo(() => getTodayIndex(days), [days]);
 
   // On phones, when the calendar mounts, scroll horizontally so today's
   // column is the first visible day column (accounting for the sticky first column).
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    // treat phones as portrait phones OR small landscape phones
-    const isPhonePortrait = window.matchMedia(
-      "(max-width: 600px) and (orientation: portrait)"
-    ).matches;
-    const isSmallLandscape = window.matchMedia(
-      "(max-width: 900px) and (orientation: landscape)"
-    ).matches;
-    const isPhone = isPhonePortrait || isSmallLandscape;
-    if (!isPhone) return;
+    if (!isPhoneViewport()) return;
 
     const container =
       document.querySelector(".bigcalendar-root .MuiTableContainer-root") ||
       document.querySelector(".bigcalendar-root");
+
     if (!container) return;
 
-    const scrollToToday = () => {
-      try {
-        const table =
-          container.querySelector(".MuiTable-root") ||
-          container.querySelector("table");
-        if (!table) return;
-        const headerCells = table.querySelectorAll("thead .MuiTableCell-root");
-        if (!headerCells || headerCells.length === 0) return;
-        // headerCells[0] is the fixed first column (car), days start at index 1
-        // Scroll so that the first visible date is today minus 2 days (clamped to month start)
-        const offsetDays = 2;
-        const desiredDayIdx = Math.max(0, todayIndex - offsetDays);
-        const targetIndex = 1 + desiredDayIdx;
-        if (targetIndex < 1 || targetIndex >= headerCells.length) return;
-        const targetCell = headerCells[targetIndex];
-        const firstCell = headerCells[0];
-
-        const tableRect = table.getBoundingClientRect();
-        const cellRect = targetCell.getBoundingClientRect();
-        const firstRect = firstCell
-          ? firstCell.getBoundingClientRect()
-          : { width: 0 };
-
-        // offset of the target cell relative to the table left
-        const offset = cellRect.left - tableRect.left;
-        // aim to place the target cell right after the sticky first column
-        const scrollLeft = Math.max(0, offset - firstRect.width - 4); // small gap
-        // prefer smooth scroll when available, fallback to direct assignment
-        if (typeof container.scrollTo === "function") {
-          try {
-            container.scrollTo({ left: scrollLeft, behavior: "smooth" });
-          } catch (e) {
-            container.scrollLeft = scrollLeft;
-          }
-        } else {
-          container.scrollLeft = scrollLeft;
-        }
-      } catch (e) {
-        // ignore
-      }
-    };
+    const runScroll = () =>
+      scrollCalendarToToday({
+        container,
+        todayIndex,
+      });
 
     // run shortly after mount so layout is ready
-    const t = setTimeout(scrollToToday, 50);
+    const t = setTimeout(runScroll, 50);
 
-    const onResize = () => setTimeout(scrollToToday, 50);
+    const onResize = () => setTimeout(runScroll, 50);
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
 
