@@ -231,9 +231,6 @@ export async function POST(request) {
         : [COMPANY_EMAIL];
     }
 
-    // Get SMTP_USER for from/replyTo
-    const { SMTP_USER } = process.env;
-
     // In testing mode, prefix subject with [TEST]
     const emailSubject = isTestingMode ? `[TEST] ${title}` : title;
 
