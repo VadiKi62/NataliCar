@@ -2,17 +2,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { TableCell, Box, useTheme } from "@mui/material";
 import dayjs from "dayjs";
-import { useMainContext } from "@app/Context";
-import {
-  extractArraysOfStartEndConfPending,
-  returnOverlapOrders,
-  returnOverlapOrdersObjects,
-} from "@utils/functions";
+import { returnOverlapOrders } from "@utils/functions";
 import PropTypes from "prop-types";
 import { useSnackbar } from "notistack";
 
 // ============================================
-// Импорт helpers из модулей
+// Импорт helpers и hooks
 // ============================================
 import {
   // Colors
@@ -34,6 +29,7 @@ import {
   // Move mode
   getMoveDayFlags,
 } from "./helpers";
+import { useCalendarOrders } from "./hooks";
 
 CarTableRow.propTypes = {
   car: PropTypes.object.isRequired,
@@ -78,15 +74,15 @@ export default function CarTableRow({
   // Цвета ячеек из централизованной конфигурации
   const colors = buildCellColors(theme);
 
-  // Используем allOrders из контекста напрямую для обновления при изменениях
-  const { ordersByCarId, allOrders: contextAllOrders } = useMainContext();
-
-  const [unavailableDates, setUnavailableDates] = useState([]);
-  const [confirmedDates, setConfirmedDates] = useState([]);
-  const [startEndOverlapDates, setStartEndOverlapDates] = useState(null);
-  const [overlapDates, setOverlapDates] = useState(null);
-  const [startEndDates, setStartEndDates] = useState([]);
-  const [carOrders, setCarOrders] = useState(orders);
+  // Заказы и производные данные из кастомного хука
+  const {
+    carOrders,
+    unavailableDates,
+    confirmedDates,
+    startEndOverlapDates,
+    overlapDates,
+    startEndDates,
+  } = useCalendarOrders(car._id, orders);
 
   const [wasLongPress, setWasLongPress] = useState(false);
 
@@ -100,26 +96,6 @@ export default function CarTableRow({
       setSelectedOrderId(null);
     }
   }, [selectedMoveOrder]);
-
-  useEffect(() => {
-    const updatedOrders = ordersByCarId(car._id);
-    setCarOrders(updatedOrders);
-  }, [car._id, ordersByCarId, contextAllOrders]);
-
-  useEffect(() => {
-    const { unavailable, confirmed, startEnd, transformedStartEndOverlap } =
-      extractArraysOfStartEndConfPending(carOrders);
-
-    const overlap = returnOverlapOrdersObjects(
-      carOrders,
-      transformedStartEndOverlap
-    );
-    setOverlapDates(overlap);
-    setStartEndOverlapDates(transformedStartEndOverlap);
-    setUnavailableDates(unavailable);
-    setConfirmedDates(confirmed);
-    setStartEndDates(startEnd);
-  }, [carOrders]);
 
   // Функция для получения заказа по дате
   const getOrderByDate = useCallback(
