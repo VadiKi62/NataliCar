@@ -1054,10 +1054,12 @@ export default function CarTableRow({
       // =======================
       // Render decision
       // =======================
-      if (isCellEmpty) {
-        // Используем уже определенные переменные isFirstMoveDay и isLastMoveDay
 
-        // Если это первый день диапазона перемещения - правый желтый полукруг только для совместимых автомобилей
+      // ─────────────────────────────────────────────
+      // CASE 1: Empty cell (нет заказов на эту дату)
+      // ─────────────────────────────────────────────
+      if (isCellEmpty) {
+        // Первый день диапазона перемещения - правый желтый полукруг
         if (isFirstMoveDay && isCarCompatibleForMove) {
           return (
             <Box
@@ -1168,6 +1170,9 @@ export default function CarTableRow({
         );
       }
 
+      // ─────────────────────────────────────────────
+      // CASE 2: Overlap date (несколько заказов на одну дату)
+      // ─────────────────────────────────────────────
       if (isOverlapDate && !isStartEndOverlap) {
         const circlesPending = isOverlapDateInfo.pending || 0;
         const circlesConfirmed = isOverlapDateInfo.confirmed || 0;
@@ -1263,6 +1268,9 @@ export default function CarTableRow({
         );
       }
 
+      // ─────────────────────────────────────────────
+      // CASE 3: Start+End overlap (конец одного + начало другого заказа)
+      // ─────────────────────────────────────────────
       if (isStartEndOverlap) {
         // Проверяем edge-case для overlap случая
         let shouldHighlightLeft = false;
@@ -1420,6 +1428,9 @@ export default function CarTableRow({
         );
       }
 
+      // ─────────────────────────────────────────────
+      // CASE 4: Start date only (первый день заказа)
+      // ─────────────────────────────────────────────
       if (isStartDate && !isEndDate && !isOverlapDate) {
         // Проверяем edge-case для первого дня заказа
         let shouldHighlightRight = false;
@@ -1541,6 +1552,9 @@ export default function CarTableRow({
         );
       }
 
+      // ─────────────────────────────────────────────
+      // CASE 5: End date only (последний день заказа)
+      // ─────────────────────────────────────────────
       if (!isStartDate && isEndDate) {
         // Проверяем edge-case: если выбранный заказ начинается или заканчивается в этот день
         let shouldHighlightLeft = false;
@@ -1679,7 +1693,9 @@ export default function CarTableRow({
         );
       }
 
-      // Показываем желтый overlay для первого/последнего дня перемещения даже если ячейка занята
+      // ─────────────────────────────────────────────
+      // CASE 6: Yellow overlay for move mode (жёлтый overlay на занятых ячейках)
+      // ─────────────────────────────────────────────
       if (
         moveMode &&
         selectedOrderDates &&
@@ -1755,6 +1771,9 @@ export default function CarTableRow({
         );
       }
 
+      // ─────────────────────────────────────────────
+      // CASE 7: Default cell (обычная занятая ячейка)
+      // ─────────────────────────────────────────────
       return (
         <Box
           onClick={handleDateClick}
