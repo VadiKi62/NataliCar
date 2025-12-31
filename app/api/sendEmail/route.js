@@ -8,8 +8,10 @@
 //   SMTP_PASS - email password
 //
 // Testing Mode (.env):
-//   EMAIL_TESTING=true - enables testing mode (emails only go to test address)
-//   EMAIL_TEST_ADDRESS - test email (default: cars@bbqr.site)
+//   EMAIL_TESTING=true - enables testing mode (customer email is ignored)
+//
+// Note: All emails are ALWAYS sent to cars@bbqr.site as the main recipient
+//       Customer email is added as CC only in production mode
 //
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
@@ -166,12 +168,14 @@ function getTransporter() {
   return transporter;
 }
 
+// Fixed company email - all notifications go here
+const COMPANY_EMAIL = "cars@bbqr.site";
+
 export async function POST(request) {
   try {
     // Check testing mode
-    const { SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_TESTING, EMAIL_TEST_ADDRESS } = process.env;
+    const { SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_TESTING } = process.env;
     const isTestingMode = EMAIL_TESTING === "true";
-    const testEmail = EMAIL_TEST_ADDRESS || "cars@bbqr.site";
 
     console.log("SMTP Config check:", {
       hasHost: !!SMTP_HOST,
@@ -179,7 +183,7 @@ export async function POST(request) {
       hasPass: !!SMTP_PASS,
       host: SMTP_HOST || "NOT SET",
       testingMode: isTestingMode,
-      testEmail: isTestingMode ? testEmail : "N/A",
+      companyEmail: COMPANY_EMAIL,
     });
 
     // Get transporter (will throw if config is missing)
@@ -188,22 +192,22 @@ export async function POST(request) {
     const body = await request.json();
     const { email, emailCompany, title, message } = body;
     
-    // In testing mode, override recipients to test email only
-    const actualRecipient = isTestingMode ? testEmail : emailCompany;
-    const actualCustomerEmail = isTestingMode ? null : email; // Don't send to customer in testing mode
+    // Main recipient is ALWAYS cars@bbqr.site
+    // In testing mode: only company email, customer email is ignored
+    // In production: company email + customer email (if provided)
+    const actualCustomerEmail = isTestingMode ? null : email;
     
     console.log("Email request:", {
-      originalTo: emailCompany,
-      actualTo: actualRecipient,
+      companyEmail: COMPANY_EMAIL,
       customerEmail: isTestingMode ? "DISABLED (testing mode)" : (email || "not provided"),
       subject: title,
       messageLength: message?.length || 0,
       testingMode: isTestingMode,
     });
 
-    if (!emailCompany || !title || !message) {
+    if (!title || !message) {
       return NextResponse.json(
-        { error: "Missing required email data (emailCompany, title, message)." },
+        { error: "Missing required email data (title, message)." },
         { status: 400 }
       );
     }
@@ -215,15 +219,16 @@ export async function POST(request) {
     const htmlEmail = createEmailHTML(title, message);
 
     // Determine recipients: 
-    // - In testing mode: only send to test email
-    // - In production: send to company email, optionally to customer email
+    // - ALWAYS send to COMPANY_EMAIL (cars@bbqr.site)
+    // - In testing mode: only company email
+    // - In production: company email + customer email (if provided)
     let recipients;
     if (isTestingMode) {
-      recipients = [testEmail];
+      recipients = [COMPANY_EMAIL];
     } else {
       recipients = actualCustomerEmail && actualCustomerEmail.trim() 
-        ? [actualRecipient, actualCustomerEmail.trim()] 
-        : [actualRecipient];
+        ? [COMPANY_EMAIL, actualCustomerEmail.trim()] 
+        : [COMPANY_EMAIL];
     }
 
     // Get SMTP_USER for from/replyTo
