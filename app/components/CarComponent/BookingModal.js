@@ -24,7 +24,9 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import { ConfirmButton, CancelButton } from "../ui";
 import Autocomplete from "@mui/material/Autocomplete";
 import { useTranslation } from "react-i18next";
@@ -567,12 +569,33 @@ const BookingModal = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      sx={{
+        "& .MuiDialog-paper": {
+          borderRadius: 2,
+          m: { xs: 1, sm: 2 },
+          maxHeight: { xs: "95vh", sm: "90vh" },
+        },
+      }}
+    >
       {isLoading ? (
-        <Box sx={{ display: "flex", alignContent: "center", p: 10 }}>
-          <CircularProgress />
-          <CircularProgress sx={{ color: "primary.green" }} />
-          <CircularProgress sx={{ color: "primary.red" }} />
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 2,
+            p: 8,
+            minHeight: 200,
+          }}
+        >
+          <CircularProgress sx={{ color: "primary.main" }} />
+          <CircularProgress sx={{ color: "secondary.main" }} />
+          <CircularProgress sx={{ color: "triadic.green" }} />
         </Box>
       ) : (
         <React.Fragment>
@@ -583,21 +606,40 @@ const BookingModal = ({
                 position: { xs: "sticky", sm: "static" },
                 top: { xs: 0 },
                 zIndex: { xs: 40 },
-                backgroundColor: { xs: "background.paper" },
-                borderBottom: { xs: "1px solid" },
-                borderColor: { xs: "divider" },
-                pt: { xs: 2.4, sm: 1.2 },
-                pb: { xs: 1.3, sm: 1.2 },
+                backgroundColor: "background.paper",
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                pt: { xs: 2.4, sm: 1.5 },
+                pb: { xs: 1.3, sm: 1.5 },
                 mb: { xs: 0.3, sm: 0 },
+                position: "relative",
               }}
             >
+              {/* Close button */}
+              <IconButton
+                onClick={handleModalClose}
+                size="small"
+                sx={{
+                  position: "absolute",
+                  right: 8,
+                  top: 8,
+                  color: "text.secondary",
+                  "&:hover": { color: "primary.main" },
+                }}
+                aria-label="close"
+              >
+                <CloseIcon />
+              </IconButton>
+
               <Typography
                 variant="h6"
                 align="center"
                 sx={{
                   fontSize: { xs: "1.05rem", sm: "1.25rem" },
+                  px: 4, // Добавляем padding чтобы текст не заходил под кнопку
                   m: 1,
                   lineHeight: 1.25,
+                  fontWeight: 600,
                 }}
               >
                 {t("order.book", { model: car.model })}
@@ -691,15 +733,37 @@ const BookingModal = ({
               </Box>
             </Box>
           )}
-          <DialogContent>
+          <DialogContent
+            sx={{
+              pt: isSubmitted ? 3 : 2,
+              textAlign: "center",
+            }}
+          >
             {isSubmitted ? (
-              <SuccessMessage
-                submittedOrder={submittedOrder}
-                presetDates={presetDates}
-                onClose={onClose}
-                emailSent={emailSent}
-                message={message}
-              />
+              <Box sx={{ position: "relative" }}>
+                {/* Close button for success state */}
+                <IconButton
+                  onClick={handleModalClose}
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    right: -16,
+                    top: -16,
+                    color: "text.secondary",
+                    "&:hover": { color: "primary.main" },
+                  }}
+                  aria-label="close"
+                >
+                  <CloseIcon />
+                </IconButton>
+                <SuccessMessage
+                  submittedOrder={submittedOrder}
+                  presetDates={presetDates}
+                  onClose={onClose}
+                  emailSent={emailSent}
+                  message={message}
+                />
+              </Box>
             ) : (
               <Box>
                 {/* Удалён старый отдельный блок: теперь информация перенесена в липкий заголовок */}
@@ -737,7 +801,7 @@ const BookingModal = ({
                           "& .MuiOutlinedInput-input": {
                             py: 0,
                             px: 1.5,
-                            color: "primary.red",
+                            color: "primary.main",
                             fontWeight: 600,
                           },
                         }}
@@ -807,7 +871,7 @@ const BookingModal = ({
                           "& .MuiOutlinedInput-input": {
                             py: 0,
                             px: 1.5,
-                            color: "primary.red",
+                            color: "primary.main",
                             fontWeight: 600,
                           },
                         }}
@@ -1280,3 +1344,4 @@ export default BookingModal;
 // console.log("API: email =", typeof email, email);
 
 // На фронте ничего менять не нужно — email: "" это корректно для необязательного поля.
+
