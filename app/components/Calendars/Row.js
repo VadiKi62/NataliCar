@@ -11,6 +11,66 @@ import {
 import PropTypes from "prop-types";
 import { useSnackbar } from "notistack";
 
+// ============================================
+// Конфигурация цветов ячеек календаря
+// ============================================
+
+/**
+ * Семантические ключи для цветов ячеек.
+ * Значения — MUI palette keys или hex-fallback.
+ */
+const CELL_COLOR_KEYS = {
+  // Подтверждённые заказы
+  confirmed: "primary.main", // Красный — подтверждённый заказ (не my_order)
+  confirmedMine: "order.confirmedMyOrder", // Зелёный — подтверждённый заказ (my_order = true)
+  confirmedMineFallback: "#4CAF50", // Fallback для my_order
+
+  // Неподтверждённые заказы
+  nonConfirmed: "success.main", // Серо-зелёный — неподтверждённый (pending)
+
+  // Выделение
+  selected: "calendar.selected", // Синий — выбранный заказ
+  selectedFallback: "#1976d2",
+
+  // Режим перемещения
+  moveHighlight: "calendar.moveHighlight", // Жёлтый — диапазон перемещения
+  moveHighlightFallback: "#ffeb3b",
+  moveHighlightAlpha: "rgba(255, 235, 59, 0.8)",
+
+  // Рамки
+  cellBorder: "divider",
+  cellBorderFallback: "#e0e0e0",
+};
+
+/**
+ * Возвращает объект цветов для использования внутри компонента.
+ * @param {Object} theme - MUI theme
+ * @returns {Object} colors - объект с цветами
+ */
+function buildCellColors(theme) {
+  return {
+    // Подтверждённые заказы
+    confirmed: CELL_COLOR_KEYS.confirmed,
+    confirmedMine:
+      theme.palette.order?.confirmedMyOrder || CELL_COLOR_KEYS.confirmedMineFallback,
+
+    // Неподтверждённые
+    nonConfirmed: CELL_COLOR_KEYS.nonConfirmed,
+
+    // Выделение
+    selected:
+      theme.palette.calendar?.selected || CELL_COLOR_KEYS.selectedFallback,
+
+    // Режим перемещения
+    moveHighlight:
+      theme.palette.calendar?.moveHighlight || CELL_COLOR_KEYS.moveHighlightFallback,
+    moveHighlightAlpha: CELL_COLOR_KEYS.moveHighlightAlpha,
+
+    // Рамки
+    cellBorder: theme.palette.divider || CELL_COLOR_KEYS.cellBorderFallback,
+  };
+}
+
 CarTableRow.propTypes = {
   car: PropTypes.object.isRequired,
   days: PropTypes.array.isRequired,
@@ -51,14 +111,8 @@ export default function CarTableRow({
   const [longPressOrder, setLongPressOrder] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
 
-  // Цвета из темы для календаря
-  const colors = {
-    myOrder: theme.palette.order?.confirmedMyOrder || "#4CAF50", // Зелёный для my_order
-    selected: theme.palette.calendar?.selected || "#1976d2", // Синий для выбранного
-    moveHighlight: theme.palette.calendar?.moveHighlight || "#ffeb3b", // Жёлтый для перемещения
-    moveHighlightAlpha: "rgba(255, 235, 59, 0.8)", // Полупрозрачный жёлтый
-    cellBorder: theme.palette.divider || "#e0e0e0", // Рамка ячейки
-  };
+  // Цвета ячеек из централизованной конфигурации
+  const colors = buildCellColors(theme);
 
   const { ordersByCarId } = useMainContext();
   const [unavailableDates, setUnavailableDates] = useState([]);
@@ -308,7 +362,7 @@ export default function CarTableRow({
             );
             if (prevOrder) {
               const prevColor =
-                prevOrder.my_order === true ? colors.myOrder : "primary.main";
+                prevOrder.my_order === true ? colors.confirmedMine : colors.confirmed;
               // console.log(
               //   `[BigCalendar][${dateStr}] EDGE-CASE: Первый день выделенного заказа. Левая половина ${
               //     prevOrder.my_order ? "зелёная" : "красная"
@@ -355,7 +409,7 @@ export default function CarTableRow({
             );
             if (nextOrder) {
               const nextColor =
-                nextOrder.my_order === true ? colors.myOrder : "primary.main";
+                nextOrder.my_order === true ? colors.confirmedMine : colors.confirmed;
               // console.log(
               //   `[BigCalendar][${dateStr}] EDGE-CASE: Последний день выделенного заказа. Левая половина синяя, правая ${
               //     nextOrder.my_order ? "зелёная" : "красная"
@@ -504,7 +558,7 @@ export default function CarTableRow({
 
       // Базовая логика определения цвета
       if (isUnavailable) {
-        backgroundColor = "success.main";
+        backgroundColor = colors.nonConfirmed;
         color = "text.primary";
       }
       if (isConfirmed) {
@@ -515,7 +569,7 @@ export default function CarTableRow({
           (order) => order.confirmed && order.my_order
         );
 
-        backgroundColor = hasMyOrder ? colors.myOrder : "primary.main"; // Зеленый если есть my_order=true, иначе красный
+        backgroundColor = hasMyOrder ? colors.confirmedMine : colors.confirmed; // Зеленый если есть my_order=true, иначе красный
         color = "common.white";
       }
 
@@ -605,7 +659,7 @@ export default function CarTableRow({
         borderRadius = "50% 0 0 50%";
         width = "50%";
         if (!isPartOfSelectedOrder(dateStr) && !isInMoveModeDateRange) {
-          backgroundColor = "success.main";
+          backgroundColor = colors.nonConfirmed;
           color = "common.white";
         }
       }
@@ -651,7 +705,7 @@ export default function CarTableRow({
         }
 
         if (!shouldApplyBlueBackground && !isInMoveModeDateRange) {
-          backgroundColor = "success.main";
+          backgroundColor = colors.nonConfirmed;
           color = "common.white";
         }
       }
@@ -979,10 +1033,10 @@ export default function CarTableRow({
               justifyContent: "center",
               color: isPartOfSelectedOrder(dateStr)
                 ? "common.white"
-                : "primary.main",
+                : colors.confirmed,
               backgroundColor: isPartOfSelectedOrder(dateStr)
                 ? colors.selected
-                : "success.main",
+                : colors.nonConfirmed,
               cursor:
                 isPastDay && isEndDate && !isStartDate
                   ? "not-allowed"
@@ -1009,7 +1063,7 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: "primary.main",
+                    backgroundColor: colors.confirmed,
                     borderRadius: "50%",
                   }}
                 />
@@ -1031,7 +1085,7 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: "success.main",
+                    backgroundColor: colors.nonConfirmed,
                     borderRadius: "50%",
                   }}
                 />
@@ -1156,9 +1210,9 @@ export default function CarTableRow({
                           dayjs(order.rentalEndDate).format("YYYY-MM-DD") ===
                             dateStr && order.confirmed === true
                       );
-                      return endingOrder?.my_order ? colors.myOrder : "primary.main";
+                      return endingOrder?.my_order ? colors.confirmedMine : colors.confirmed;
                     })()
-                  : "success.main",
+                  : colors.nonConfirmed,
                 borderRadius: "0 50% 50% 0",
                 display: "flex",
                 alignItems: "center",
@@ -1183,10 +1237,10 @@ export default function CarTableRow({
                             dateStr && order.confirmed === true
                       );
                       return startingOrder?.my_order
-                        ? colors.myOrder
-                        : "primary.main";
+                        ? colors.confirmedMine
+                        : colors.confirmed;
                     })()
-                  : "success.main",
+                  : colors.nonConfirmed,
                 borderRadius: "50% 0 0 50%",
                 display: "flex",
                 alignItems: "center",
@@ -1305,10 +1359,10 @@ export default function CarTableRow({
                         (order) => order._id === startEndInfo.orderId
                       );
                       return orderForStartEnd?.my_order
-                        ? colors.myOrder
-                        : "primary.main";
+                        ? colors.confirmedMine
+                        : colors.confirmed;
                     })()
-                  : "success.main",
+                  : colors.nonConfirmed,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1431,10 +1485,10 @@ export default function CarTableRow({
                         (order) => order._id === startEndInfo.orderId
                       );
                       return orderForStartEnd?.my_order
-                        ? colors.myOrder
-                        : "primary.main";
+                        ? colors.confirmedMine
+                        : colors.confirmed;
                     })()
-                  : "success.main",
+                  : colors.nonConfirmed,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
