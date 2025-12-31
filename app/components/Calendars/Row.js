@@ -823,42 +823,23 @@ export default function CarTableRow({
         }
       }
 
+      // =======================
+      // Selected order logic
+      // =======================
       // ВАЖНО: Проверка выделения должна быть в самом конце для перезаписи цвета
       // НО не должна перезаписывать желтый фон для режима перемещения
+      const selectedOrder = getSelectedOrder(carOrders, selectedOrderId);
+      const edgeCaseFlags = getSelectedOrderEdgeCaseFlags({
+        selectedOrder,
+        carOrders,
+        dateStr,
+      });
+
       if (isPartOfSelectedOrder(dateStr) && !isInMoveModeDateRange) {
         // Проверяем edge-case для императивной логики
-        let shouldApplyImperativeBlue = true;
-        if (selectedOrderId) {
-          const selectedOrder = carOrders.find(
-            (o) => o._id === selectedOrderId
-          );
-          if (selectedOrder) {
-            const selectedOrderStart = dayjs(
-              selectedOrder.rentalStartDate
-            ).format("YYYY-MM-DD");
-            const selectedOrderEnd = dayjs(selectedOrder.rentalEndDate).format(
-              "YYYY-MM-DD"
-            );
-
-            const previousOrder = carOrders.find((o) => {
-              const rentalEnd = dayjs(o.rentalEndDate).format("YYYY-MM-DD");
-              return rentalEnd === dateStr && o._id !== selectedOrderId;
-            });
-
-            const nextOrder = carOrders.find((o) => {
-              const rentalStart = dayjs(o.rentalStartDate).format("YYYY-MM-DD");
-              return rentalStart === dateStr && o._id !== selectedOrderId;
-            });
-
-            // Если это edge-case, не применяем императивную подсветку
-            if (
-              (selectedOrderStart === dateStr && previousOrder) ||
-              (selectedOrderEnd === dateStr && nextOrder)
-            ) {
-              shouldApplyImperativeBlue = false;
-            }
-          }
-        }
+        const shouldApplyImperativeBlue = !(
+          edgeCaseFlags.isStartEdgeCase || edgeCaseFlags.isEndEdgeCase
+        );
 
         if (shouldApplyImperativeBlue) {
           backgroundColor = colors.selected; // Синий цвет для выбранного заказа
@@ -878,42 +859,11 @@ export default function CarTableRow({
         borderRadius = "0 50% 50% 0";
         width = "50%";
 
-        // Проверяем edge-case для императивной логики
-        let shouldApplyBlueBackground = false;
-        if (selectedOrderId) {
-          const selectedOrder = carOrders.find(
-            (o) => o._id === selectedOrderId
-          );
-          if (selectedOrder) {
-            const selectedOrderStart = dayjs(
-              selectedOrder.rentalStartDate
-            ).format("YYYY-MM-DD");
-            const selectedOrderEnd = dayjs(selectedOrder.rentalEndDate).format(
-              "YYYY-MM-DD"
-            );
-
-            const previousOrder = carOrders.find((o) => {
-              const rentalEnd = dayjs(o.rentalEndDate).format("YYYY-MM-DD");
-              return rentalEnd === dateStr && o._id !== selectedOrderId;
-            });
-
-            const nextOrder = carOrders.find((o) => {
-              const rentalStart = dayjs(o.rentalStartDate).format("YYYY-MM-DD");
-              return rentalStart === dateStr && o._id !== selectedOrderId;
-            });
-
-            // Если это НЕ edge-case, применяем обычную логику
-            if (
-              !(selectedOrderStart === dateStr && previousOrder) &&
-              !(selectedOrderEnd === dateStr && nextOrder) &&
-              isPartOfSelectedOrder(dateStr)
-            ) {
-              shouldApplyBlueBackground = true;
-            }
-          }
-        } else if (isPartOfSelectedOrder(dateStr)) {
-          shouldApplyBlueBackground = true;
-        }
+        // Проверяем edge-case для императивной логики (используем уже вычисленные флаги)
+        const shouldApplyBlueBackground =
+          isPartOfSelectedOrder(dateStr) &&
+          !edgeCaseFlags.isStartEdgeCase &&
+          !edgeCaseFlags.isEndEdgeCase;
 
         if (!shouldApplyBlueBackground && !isInMoveModeDateRange) {
           backgroundColor = colors.nonConfirmed;
@@ -921,7 +871,9 @@ export default function CarTableRow({
         }
       }
 
-      // ИСПРАВЛЕННАЯ функция обработки клика по дате с заказом
+      // =======================
+      // Click handlers
+      // =======================
       const handleDateClick = () => {
         if (wasLongPress) {
           setWasLongPress(false);
@@ -1099,6 +1051,9 @@ export default function CarTableRow({
         }
       };
 
+      // =======================
+      // Render decision
+      // =======================
       if (isCellEmpty) {
         // Используем уже определенные переменные isFirstMoveDay и isLastMoveDay
 
