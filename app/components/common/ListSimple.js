@@ -6,7 +6,6 @@ import {
   ListItemIcon,
   ListItemText,
 } from "@mui/material";
-import Typography from "./Typography";
 import { styled } from "@mui/system";
 
 const Icon = styled("img")(({ theme }) => ({
