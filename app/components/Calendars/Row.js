@@ -1,7 +1,10 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { TableCell, Box, useTheme } from "@mui/material";
 import dayjs from "dayjs";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+dayjs.extend(isSameOrBefore);
 import { useMainContext } from "@app/Context";
 import { returnOverlapOrders } from "@utils/functions";
 import PropTypes from "prop-types";
@@ -91,6 +94,56 @@ export default function CarTableRow({
   const [wasLongPress, setWasLongPress] = useState(false);
 
   const { enqueueSnackbar } = useSnackbar();
+
+  // ============================================
+  // Memoization — тяжёлые вычисления
+  // ============================================
+
+  // Map заказов по датам — O(1) доступ вместо O(n) filter
+  const ordersByDateMap = useMemo(() => {
+    const map = new Map();
+
+    carOrders.forEach((order) => {
+      const start = dayjs(order.rentalStartDate);
+      const end = dayjs(order.rentalEndDate);
+
+      let current = start.clone();
+      while (current.isSameOrBefore(end, "day")) {
+        const key = current.format("YYYY-MM-DD");
+        if (!map.has(key)) {
+          map.set(key, []);
+        }
+        map.get(key).push(order);
+        current = current.add(1, "day");
+      }
+    });
+
+    return map;
+  }, [carOrders]);
+
+  // Мемоизированный selectedOrder
+  const selectedOrder = useMemo(() => {
+    if (!selectedOrderId) return null;
+    return carOrders.find((o) => o._id === selectedOrderId) || null;
+  }, [carOrders, selectedOrderId]);
+
+  // Set завершённых дат — для быстрой проверки isCompletedCell
+  const completedDatesSet = useMemo(() => {
+    const set = new Set();
+    carOrders.forEach((order) => {
+      if (dayjs(order.rentalEndDate).isBefore(dayjs(), "day")) {
+        let current = dayjs(order.rentalStartDate);
+        const end = dayjs(order.rentalEndDate);
+        while (current.isSameOrBefore(end, "day")) {
+          set.add(current.format("YYYY-MM-DD"));
+          current = current.add(1, "day");
+        }
+      }
+    });
+    return set;
+  }, [carOrders]);
+
+  // ============================================
 
   // Отслеживаем изменения selectedMoveOrder для подсветки
   useEffect(() => {
