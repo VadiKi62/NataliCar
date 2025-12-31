@@ -126,8 +126,6 @@ export function scrollCalendarToToday({ container, todayIndex }) {
 
     if (!headerCells || headerCells.length === 0) return;
 
-    // headerCells[0] is the fixed first column (car), days start at index 1
-    // Scroll so that the first visible date is today minus 2 days (clamped to month start)
     const offsetDays = 2;
     const desiredDayIdx = Math.max(0, todayIndex - offsetDays);
     const targetIndex = 1 + desiredDayIdx;
@@ -143,12 +141,9 @@ export function scrollCalendarToToday({ container, todayIndex }) {
       ? firstCell.getBoundingClientRect()
       : { width: 0 };
 
-    // offset of the target cell relative to the table left
     const offset = cellRect.left - tableRect.left;
-    // aim to place the target cell right after the sticky first column
-    const scrollLeft = Math.max(0, offset - firstRect.width - 4); // small gap
+    const scrollLeft = Math.max(0, offset - firstRect.width - 4);
 
-    // prefer smooth scroll when available, fallback to direct assignment
     if (typeof container.scrollTo === "function") {
       try {
         container.scrollTo({ left: scrollLeft, behavior: "smooth" });
@@ -209,7 +204,6 @@ export function useMobileCalendarScroll({ days, todayIndex }) {
         todayIndex,
       });
 
-    // run shortly after mount so layout is ready
     const t = setTimeout(runScroll, 50);
 
     const onResize = () => setTimeout(runScroll, 50);

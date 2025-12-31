@@ -46,7 +46,7 @@ import {
   useCalendarDays,
   useMobileCalendarScroll,
   buildOrderDateRange,
-} from "@app/hooks/calendar";
+} from "./hooks";
 
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
