@@ -381,7 +381,7 @@ const CalendarPicker = ({
           `[CalendarPicker][DEBUG ${dateStr}] apply PENDING background`
         );
       }
-      backgroundColor = "warning.light"; // Ожидающие заказы - светлый amber
+      backgroundColor = "neutral.gray400"; // Ожидающие заказы - светлый amber
       color = "text.primary";
     }
 
@@ -436,7 +436,7 @@ const CalendarPicker = ({
                 borderRadius: "50% 0 0 50%",
                 backgroundColor: startEndInfo.confirmed
                   ? "primary.main"
-                  : "warning.light", // Ожидающие заказы - светлый amber
+                  : "neutral.gray400", // Ожидающие заказы - светлый amber
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -480,7 +480,7 @@ const CalendarPicker = ({
                 borderRadius: "0 50% 50% 0",
                 backgroundColor: startEndInfo.confirmed
                   ? "primary.main"
-                  : "warning.light", // Ожидающие заказы - светлый amber
+                  : "neutral.gray400", // Ожидающие заказы - светлый amber
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -526,14 +526,14 @@ const CalendarPicker = ({
               height: "100%",
               backgroundColor: isStartAndEndDateOverlapInfo.endConfirmed
                 ? "primary.main"
-                : "rgba(194, 209, 224, 0.3)", // Сделаем неподтвержденные заказы еще бледнее
+                : "neutral.gray600", // Сделаем неподтвержденные заказы еще бледнее
               borderRadius: "0 50% 50% 0",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: isStartAndEndDateOverlapInfo.endConfirmed
                 ? "common.white"
-                : "common.black",
+                : "common.white",
             }}
           >
             {date.date()}
@@ -546,7 +546,7 @@ const CalendarPicker = ({
               height: "100%",
               backgroundColor: isStartAndEndDateOverlapInfo.startConfirmed
                 ? "primary.main"
-                : "rgba(194, 209, 224, 0.3)", // Сделаем неподтвержденные заказы еще бледнее
+                : "neutral.gray600", // Сделаем неподтвержденные заказы еще бледнее
               borderRadius: "0 50% 50% 0",
               borderRadius: "50% 0 0 50%",
               display: "flex",
@@ -554,7 +554,7 @@ const CalendarPicker = ({
               justifyContent: "center",
               color: isStartAndEndDateOverlapInfo.startConfirmed
                 ? "common.white"
-                : "common.black",
+                : "common.white",
             }}
           >
             {date.date()}

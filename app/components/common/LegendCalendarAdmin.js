@@ -49,7 +49,7 @@ function LegendCalendarAdmin({ client }) {
             display: "inline-block",
             width: "20px",
             height: "20px",
-            backgroundColor: theme.palette.primary.main || "#ff6b6b", // Светло-красный для тёмного фона
+            backgroundColor: theme.palette.primary.main , // красный для тёмного фона
             marginRight: "10px",
           }}
         />
@@ -61,7 +61,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: darkBgColors.success || "#5cd85c", // Светло-зелёный для тёмного фона
+              backgroundColor: "calendar.confirmed" , // зелёный для тёмного фона
               marginRight: "10px",
             }}
           />
@@ -96,7 +96,7 @@ function LegendCalendarAdmin({ client }) {
               display: "inline-block",
               width: "20px",
               height: "20px",
-              backgroundColor: theme.palette.primary|| "#890000", 
+              backgroundColor: "calendar.nonConfirmed", 
               marginRight: "10px",
             }}
           />
@@ -132,15 +132,25 @@ function LegendCalendarAdmin({ client }) {
               display: "flex",
               width: "20px",
               height: "22px",
-              backgroundColor: darkBgColors.warning || "#ffd93d", // Жёлтый для конфликтов
+              backgroundColor: "calendar.conflict", // Жёлтый для конфликтов
               marginRight: "10px",
-              color: "#1a1a1a", // Тёмный текст на жёлтом
+              color: "white", // Тёмный текст на жёлтом
               justifyContent: "center",
               alignItems: "center",
               fontWeight: "bold",
             }}
           >
-            1
+                        <Box
+     
+                  sx={{
+                    width: 6,
+                    height: 6,
+                    backgroundColor: "black",
+                    borderRadius: "50%",
+                    border: `1px solid black`,
+                  }}
+                />
+     
           </Box>
           <Typography
             component="span"

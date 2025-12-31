@@ -41,6 +41,8 @@ export const palette = {
     green: "#008900",
     greenLight: "#33a033",
     greenDark: "#005c00",
+    yellow: "rgb(247, 220, 112)",
+    yellowLight:"rgb(249, 237, 121)",
   },
   neutral: {
     white: "#ffffff",
@@ -75,6 +77,7 @@ export const palette = {
     accent: "#ffb347", // Светло-оранжевый
     success: "#5cd85c", // Светло-зелёный
     warning: "#ffd93d", // Жёлтый
+
   },
   // Тёмный фон #2 - бирюзовый/тёмный акцентный
   backgroundDark2: {
@@ -173,6 +176,9 @@ export const businessColors = {
     firstColumnText: palette.neutral.white,
     selected: "#1976d2", // Синий для выделения
     moveHighlight: "#ffeb3b", // Жёлтый для режима перемещения
+    confirmed: palette.triadic.green, // Зелёный для подтвержденных заказов
+    nonConfirmed: alpha(palette.triadic.yellow, 0.95), // Серый для неподтвержденных заказов
+    conflict: alpha(palette.triadic.yellow, 0.95), // Жёлтый для конфликтов
   },
   button: {
     // Мерцающая кнопка "Забронировать"

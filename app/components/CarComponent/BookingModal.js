@@ -498,6 +498,7 @@ const BookingModal = ({
             company.email,
             company.useEmail
           );
+          console.log("emailResponse", emailResponse);
           setSuccessfullySent(emailResponse.status === 200);
         } catch (emailError) {
           setSuccessfullySent(false);
@@ -1274,13 +1275,13 @@ const BookingModal = ({
                     <ConfirmButton
                       onClick={handleModalClose}
                       label="OK"
-                      color="secondary"
                       sx={{
                         "@media (max-width:600px) and (orientation: portrait)": {
                           flexBasis: 0,
                           flexGrow: 1,
                           minWidth: 0,
-                          
+                          backgroundColor: "secondary.main",
+                          color: "secondary.contrastText",
                         },
                       }}
                     />

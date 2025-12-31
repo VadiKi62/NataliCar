@@ -33,7 +33,7 @@ const OrdersCalendarSection = dynamic(
 const CalendarSection = dynamic(
   () => import("@app/admin/features/calendar/CalendarSection"),
   { 
-    loading: () => <AdminLoader message="Загрузка большого календаря..." />,
+    loading: () => <AdminLoader message="Загрузка календаря..." />,
     ssr: false 
   }
 );

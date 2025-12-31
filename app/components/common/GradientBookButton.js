@@ -7,26 +7,26 @@ import { keyframes } from "@mui/system";
 // Анимация пульсации с градиентом
 const bookPulse = keyframes`
   0% {
-    background: linear-gradient(135deg, #0b6b5f 0%, rgba(0, 180, 150, 0.55) 100%);
+    background: linear-gradient(135deg,rgba(0, 137, 137, 0.95) 0%, rgba(0, 137, 137, 0.85) 100%);
     box-shadow:
-      0 0 18px rgba(0, 140, 120, 0.45),
-      0 0 32px rgba(0, 120, 60, 0.35);
+      0 0 18px rgba(0, 137, 137, 0.45),
+      0 0 32px rgba(10, 137, 137, 0.35);
     transform: scale(1);
   }
 
   50% {
-    background: linear-gradient(135deg, rgba(0, 137, 137, 0.55) 0%, #008989 100%);
+    background: linear-gradient(135deg, rgba(0, 137, 137, 0.75) 0%,rgba(0, 137, 137, 0.95) 100%);
     box-shadow:
-      0 0 28px rgba(0, 180, 150, 0.55),
-      0 0 45px rgba(0, 180, 150, 0.45);
+      0 0 28px rgba(0, 137, 137, 0.45),
+      0 0 45px rgba(10, 137, 137, 0.35);
     transform: scale(1.04);
   }
 
   100% {
-    background: linear-gradient(135deg, rgba(0, 137, 137, 0.55) 0%, rgba(0, 137, 137, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(0, 137, 137, 0.95) 0%, rgba(0, 137, 137, 0.90) 100%);
     box-shadow:
-      0 0 18px rgba(0, 140, 120, 0.45),
-      0 0 32px rgba(0, 120, 60, 0.35);
+      0 0 18px rgba(0, 137, 137, 0.45),
+      0 0 32px rgba(0, 137, 137, 0.95);
     transform: scale(1);
   }
 `;
@@ -51,6 +51,7 @@ const GradientBookButton = forwardRef(
           // Базовый градиент
           background: "linear-gradient(135deg, #008989 0%, #008900 100%)",
           color: "#ffffff",
+          textTransform: "uppercase",
           fontWeight: "bold",
           fontSize: "1.1rem",
           padding: "12px 28px",
