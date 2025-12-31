@@ -24,7 +24,6 @@ import {
   useTheme,
 } from "@mui/material";
 import { ActionButton, CancelButton, ConfirmModal, OrdersByDateModal, ModalLayout } from "../ui";
-// Используем закрашенные треугольники вместо стандартных иконок
 import dayjs from "dayjs";
 import { useMainContext } from "@app/Context";
 import CarTableRow from "./Row";
@@ -39,10 +38,283 @@ import { changeRentalDates } from "@utils/action";
 import EditCarModal from "@app/components/Admin/Car/EditCarModal";
 import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 
+// ============================================
+// BigCalendarHeader — UI-компонент шапки таблицы
+// ============================================
+function BigCalendarHeader({
+  days,
+  month,
+  year,
+  todayIndex,
+  viewMode,
+  rangeDirection,
+  monthNames,
+  weekday2,
+  currentLang,
+  isPortraitPhone,
+  onPrevMonth,
+  onNextMonth,
+  onMonthChange,
+  onYearChange,
+  onDayClick,
+  headerStyles,
+}) {
+  return (
+    <TableHead>
+      <TableRow>
+        {/* Первая ячейка — выбор года/месяца */}
+        <TableCell
+          sx={{
+            position: "sticky",
+            left: 0,
+            backgroundColor: headerStyles.baseBg,
+            zIndex: 5,
+            fontWeight: "bold",
+            minWidth: 120,
+            height: 82,
+            py: 0,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+            }}
+          >
+            {/* Верхняя строка: год */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: 28,
+                py: 0.5,
+                mb: 0.1,
+                "@media (max-width:900px) and (orientation: landscape)": {
+                  mt: 2,
+                },
+              }}
+            >
+              <Select
+                className="bigcalendar-year-select"
+                value={year}
+                onChange={onYearChange}
+                size="small"
+                sx={{
+                  minWidth: 80,
+                  fontSize: 13,
+                  "& .MuiSelect-select": { py: 0.2, fontSize: 13 },
+                }}
+                renderValue={() => {
+                  if (viewMode === "range15") {
+                    const start =
+                      rangeDirection === "forward"
+                        ? dayjs().year(year).month(month).date(15)
+                        : dayjs()
+                            .year(year)
+                            .month(month)
+                            .subtract(1, "month")
+                            .date(15);
+                    const end =
+                      rangeDirection === "forward"
+                        ? start.add(1, "month").date(15)
+                        : dayjs().year(year).month(month).date(15);
+                    const y1 = start.year();
+                    const y2 = end.year();
+                    return y1 === y2 ? `${y1}` : `${y1}-${y2}`;
+                  }
+                  return `${year}`;
+                }}
+              >
+                {Array.from({ length: 5 }, (_, index) => (
+                  <MenuItem
+                    key={index}
+                    value={year - 2 + index}
+                    sx={{ fontSize: 13, py: 0.2 }}
+                  >
+                    {year - 2 + index}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+
+            {/* Нижняя строка: стрелки + месяц */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: 28,
+                py: 0.5,
+                mt: 0.5,
+                mb: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0,
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={onPrevMonth}
+                  sx={{ p: 0.15, mr: 0 }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 16,
+                      height: 16,
+                      color: headerStyles.weekdayText,
+                      fontSize: 13,
+                      lineHeight: 1,
+                      userSelect: "none",
+                    }}
+                  >
+                    {"\u25C0"}
+                  </Box>
+                </IconButton>
+                <Select
+                  className="bigcalendar-month-select"
+                  value={month}
+                  onChange={onMonthChange}
+                  size="small"
+                  sx={{
+                    minWidth: 80,
+                    fontSize: 13,
+                    "& .MuiSelect-select": {
+                      py: 0.2,
+                      fontSize: 13,
+                      letterSpacing: 0,
+                    },
+                    mx: 0.15,
+                  }}
+                  renderValue={() => {
+                    const months = monthNames[currentLang] || monthNames.en;
+                    const abbr = (name) =>
+                      isPortraitPhone && viewMode === "range15"
+                        ? name.slice(0, 3)
+                        : name;
+                    if (viewMode === "range15") {
+                      if (rangeDirection === "forward") {
+                        const currentLabel = months[month];
+                        const nextLabel = months[(month + 1) % 12];
+                        return `${abbr(currentLabel)}-${abbr(nextLabel)}`;
+                      } else {
+                        const prevLabel = months[(month + 11) % 12];
+                        const currentLabel = months[month];
+                        return `${abbr(prevLabel)}-${abbr(currentLabel)}`;
+                      }
+                    }
+                    return months[month];
+                  }}
+                >
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <MenuItem
+                      key={index}
+                      value={index}
+                      sx={{ fontSize: 13, py: 0.2 }}
+                    >
+                      {(monthNames[currentLang] || monthNames.en)[index]}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <IconButton
+                  size="small"
+                  onClick={onNextMonth}
+                  sx={{ p: 0.15, ml: 0 }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 16,
+                      height: 16,
+                      color: headerStyles.weekdayText,
+                      fontSize: 13,
+                      lineHeight: 1,
+                      userSelect: "none",
+                    }}
+                  >
+                    {"\u25B6"}
+                  </Box>
+                </IconButton>
+              </Box>
+            </Box>
+          </Box>
+        </TableCell>
+
+        {/* Ячейки дней */}
+        {days.map((day, idx) => (
+          <TableCell
+            key={day.dayjs.valueOf()}
+            align="center"
+            title="Нажмите для просмотра всех начинающихся и заканчивающихся заказов на эту дату"
+            className={idx === todayIndex ? "today-column-bg" : undefined}
+            sx={{
+              position: "sticky",
+              top: 0,
+              backgroundColor:
+                idx === todayIndex ? headerStyles.todayBg : headerStyles.baseBg,
+              zIndex: 4,
+              fontSize: "16px",
+              padding: "6px",
+              minWidth: 40,
+              fontWeight: "bold",
+              cursor: "pointer",
+            }}
+            onClick={() => onDayClick(day)}
+          >
+            <div
+              style={{
+                color: day.isSunday ? headerStyles.sundayText : "inherit",
+              }}
+            >
+              {day.date}
+            </div>
+            <div
+              style={{
+                color: day.isSunday ? headerStyles.sundayText : "inherit",
+              }}
+            >
+              {(weekday2[currentLang] || weekday2.en)[day.dayjs.day()]}
+            </div>
+          </TableCell>
+        ))}
+      </TableRow>
+    </TableHead>
+  );
+}
+
+// ============================================
+// BigCalendar — основной компонент
+// ============================================
 export default function BigCalendar({ cars, showLegend = true }) {
-  // Получаем тему для использования цветов
+  // ─────────────────────────────────────────
+  // Тема и цвета
+  // ─────────────────────────────────────────
   const theme = useTheme();
   const calendarColors = theme.palette.calendar || {};
+
+  // Централизованные стили для header
+  const calendarHeaderStyles = useMemo(
+    () => ({
+      baseBg: "background.default",
+      todayBg: calendarColors.today || "calendar.today",
+      sundayText: calendarColors.sunday || theme.palette.primary.main,
+      weekdayText: "text.primary",
+      border: calendarColors.border || theme.palette.divider,
+    }),
+    [calendarColors, theme.palette.primary.main, theme.palette.divider]
+  );
   
   // i18n для динамического перевода месяцев и дней недели
   const { i18n } = useTranslation();
@@ -106,49 +378,34 @@ export default function BigCalendar({ cars, showLegend = true }) {
     }),
     []
   );
+  // ─────────────────────────────────────────
+  // Notifications (snackbar)
+  // ─────────────────────────────────────────
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
-  // Состояние для хранения ключа последнего снэка
   const snackKeyRef = useRef(0);
-  // Обёртка для enqueueSnackbar, чтобы всегда показывался только один снэк
   const showSingleSnackbar = (message, options = {}) => {
     snackKeyRef.current += 1;
     enqueueSnackbar(message, { key: snackKeyRef.current, ...options });
     if (snackKeyRef.current > 1) closeSnackbar(snackKeyRef.current - 1);
   };
+
+  // ─────────────────────────────────────────
+  // Context
+  // ─────────────────────────────────────────
   const { ordersByCarId, fetchAndUpdateOrders, allOrders, updateCarInContext } =
     useMainContext();
 
-  const getOrderNumber = (order) => {
-    if (!order) return "Не указан";
-    console.log("Full order object:", order);
-    if (order.orderNumber) return order.orderNumber;
-    if (order.id) return order.id;
-    if (order.number) return order.number;
-    if (order.orderNo) return order.orderNo;
-    if (order._id) {
-      const shortId = order._id.slice(-6).toUpperCase();
-      return `ORD-${shortId}`;
-    }
-    return "Не указан";
-  };
-
-  // const [month, setMonth] = useState(dayjs().month());
-  // const [year, setYear] = useState(dayjs().year());
-
+  // ─────────────────────────────────────────
+  // State: Навигация по календарю
+  // ─────────────────────────────────────────
   const [month, setMonth] = useState(() => {
-    // Проверяем localStorage при первой загрузке
     const savedMonth = localStorage.getItem("bigCalendar_month");
     return savedMonth !== null ? parseInt(savedMonth, 10) : dayjs().month();
   });
-
   const [year, setYear] = useState(() => {
-    // Проверяем localStorage при первой загрузке
     const savedYear = localStorage.getItem("bigCalendar_year");
     return savedYear !== null ? parseInt(savedYear, 10) : dayjs().year();
   });
-
-  // Режим отображения: полный месяц или диапазон 15-го текущего до 15-го следующего
-  // Кешируем последний выбранный режим в localStorage
   const [viewMode, setViewMode] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("bigCalendar_viewMode");
@@ -157,8 +414,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
     return "full";
   }); // 'full' | 'range15'
   const [rangeDirection, setRangeDirection] = useState("forward"); // 'forward' | 'backward'
-
-  // Определяем портретный телефон для условного отображения (3 буквы в названии месяца в range15)
   const [isPortraitPhone, setIsPortraitPhone] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -193,6 +448,9 @@ export default function BigCalendar({ cars, showLegend = true }) {
     }
   }, [viewMode]);
 
+  // ─────────────────────────────────────────
+  // State: Заказы и модалки
+  // ─────────────────────────────────────────
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [startEndDates, setStartEndDates] = useState([]);
   const [isConflictOrder, setIsConflictOrder] = useState(false);
@@ -202,30 +460,33 @@ export default function BigCalendar({ cars, showLegend = true }) {
     date: null,
     orders: [],
   });
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+  const handleClose = () => setOpen(false);
 
-  // Для AddOrderModal
+  // ─────────────────────────────────────────
+  // State: AddOrderModal
+  // ─────────────────────────────────────────
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const [selectedCarForAdd, setSelectedCarForAdd] = useState(null);
   const [selectedDateForAdd, setSelectedDateForAdd] = useState(null);
+
+  // ─────────────────────────────────────────
+  // State: Перемещение заказа
+  // ─────────────────────────────────────────
   const [isMoving, setIsMoving] = useState(false);
   const [selectedMoveOrder, setSelectedMoveOrder] = useState(null);
-
-  // Состояние для принудительной перерисовки
-  const [forceUpdateKey, setForceUpdateKey] = useState(0);
-
-  const handleClose = () => setOpen(false);
-
+  const [moveMode, setMoveMode] = useState(false);
+  const [orderToMove, setOrderToMove] = useState(null);
   const [confirmModal, setConfirmModal] = useState({
     open: false,
     newCar: null,
   });
-  // Состояния для режима редактирования авто
+
+  // ─────────────────────────────────────────
+  // State: Редактирование авто
+  // ─────────────────────────────────────────
   const [selectedCarForEdit, setSelectedCarForEdit] = useState(null);
   const [isEditCarOpen, setIsEditCarOpen] = useState(false);
-
-  // Состояния для режима перемещения
-  const [moveMode, setMoveMode] = useState(false);
-  const [orderToMove, setOrderToMove] = useState(null);
 
   const days = useMemo(() => {
     // Если режим диапазона 15-15 — строим дни между 15 текущего и 15 следующего месяца
@@ -625,8 +886,8 @@ export default function BigCalendar({ cars, showLegend = true }) {
       <TableContainer
         sx={{
           flex: 1,
-          minHeight: 0, // Важно для flex контейнера
-          border: `1px solid ${calendarColors.border || theme.palette.divider}`,
+          minHeight: 0,
+          border: `1px solid ${calendarHeaderStyles.border}`,
           overflowX: "auto",
           overflowY: "auto",
           scrollBehavior: "smooth",
@@ -637,240 +898,31 @@ export default function BigCalendar({ cars, showLegend = true }) {
           stickyHeader
           sx={{ width: "auto", minWidth: { xs: 700, sm: 0 } }}
         >
-          <TableHead>
-            <TableRow>
-              <TableCell
-                sx={{
-                  position: "sticky",
-                  left: 0,
-                  backgroundColor: "background.default",
-                  zIndex: 5,
-                  fontWeight: "bold",
-                  minWidth: 120,
-                  // фиксированная высота заголовочной ячейки для двух строк
-                  height: 82,
-                  py: 0,
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "100%",
-                  }}
-                >
-                  {/* Верхняя строка: год, по центру */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: 28,
-                      py: 0.5,
-                      mb: 0.1,
-                      // Добавляем вертикальный отступ на горизонтальном телефоне
-                      "@media (max-width:900px) and (orientation: landscape)": {
-                        mt: 2,
-                      },
-                    }}
-                  >
-                    <Select
-                      className="bigcalendar-year-select"
-                      value={year}
-                      onChange={handleSelectYear}
-                      size="small"
-                      aria-label={i18n.t("calendar.yearSelect")}
-                      sx={{
-                        minWidth: 80,
-                        fontSize: 13,
-                        "& .MuiSelect-select": { py: 0.2, fontSize: 13 },
-                      }}
-                      renderValue={() => {
-                        if (viewMode === "range15") {
-                          const start =
-                            rangeDirection === "forward"
-                              ? dayjs().year(year).month(month).date(15)
-                              : dayjs()
-                                  .year(year)
-                                  .month(month)
-                                  .subtract(1, "month")
-                                  .date(15);
-                          const end =
-                            rangeDirection === "forward"
-                              ? start.add(1, "month").date(15)
-                              : dayjs().year(year).month(month).date(15);
-                          const y1 = start.year();
-                          const y2 = end.year();
-                          return y1 === y2 ? `${y1}` : `${y1}-${y2}`;
-                        }
-                        return `${year}`;
-                      }}
-                    >
-                      {Array.from({ length: 5 }, (_, index) => (
-                        <MenuItem
-                          key={index}
-                          value={year - 2 + index}
-                          sx={{ fontSize: 13, py: 0.2 }}
-                        >
-                          {year - 2 + index}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </Box>
-                  {/* Нижняя строка: стрелка назад, месяц, стрелка вперёд — по центру */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      height: 28,
-                      py: 0.5,
-                      mt: 0.5,
-                      mb: 0,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 0,
-                      }}
-                    >
-                      <IconButton
-                        size="small"
-                        onClick={handlePrevMonth}
-                        aria-label={i18n.t("calendar.prevMonth")}
-                        sx={{ p: 0.15, mr: 0 }}
-                      >
-                        <Box
-                          component="span"
-                          sx={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 16,
-                            height: 16,
-                            color: "text.primary",
-                            fontSize: 13,
-                            lineHeight: 1,
-                            userSelect: "none",
-                          }}
-                        >
-                          {"\u25C0"}
-                        </Box>
-                      </IconButton>
-                      <Select
-                        className="bigcalendar-month-select"
-                        value={month}
-                        onChange={handleSelectMonth}
-                        size="small"
-                        aria-label={i18n.t("calendar.monthSelect")}
-                        sx={{
-                          minWidth: 80,
-                          fontSize: 13,
-                          "& .MuiSelect-select": {
-                            py: 0.2,
-                            fontSize: 13,
-                            letterSpacing: 0,
-                          },
-                          mx: 0.15,
-                        }}
-                        renderValue={() => {
-                          const months =
-                            monthNames[currentLang] || monthNames.en;
-                          const abbr = (name) =>
-                            isPortraitPhone && viewMode === "range15"
-                              ? name.slice(0, 3)
-                              : name;
-                          if (viewMode === "range15") {
-                            if (rangeDirection === "forward") {
-                              const currentLabel = months[month];
-                              const nextLabel = months[(month + 1) % 12];
-                              return `${abbr(currentLabel)}-${abbr(nextLabel)}`;
-                            } else {
-                              const prevLabel = months[(month + 11) % 12];
-                              const currentLabel = months[month];
-                              return `${abbr(prevLabel)}-${abbr(currentLabel)}`;
-                            }
-                          }
-                          return months[month];
-                        }}
-                      >
-                        {Array.from({ length: 12 }, (_, index) => (
-                          <MenuItem
-                            key={index}
-                            value={index}
-                            sx={{ fontSize: 13, py: 0.2 }}
-                          >
-                            {(monthNames[currentLang] || monthNames.en)[index]}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      <IconButton
-                        size="small"
-                        onClick={handleNextMonth}
-                        aria-label={i18n.t("calendar.nextMonth")}
-                        sx={{ p: 0.15, ml: 0 }}
-                      >
-                        <Box
-                          component="span"
-                          sx={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 16,
-                            height: 16,
-                            color: "text.primary",
-                            fontSize: 13,
-                            lineHeight: 1,
-                            userSelect: "none",
-                          }}
-                        >
-                          {"\u25B6"}
-                        </Box>
-                      </IconButton>
-                    </Box>
-                  </Box>
-                </Box>
-              </TableCell>
-              {days.map((day, idx) => (
-                <TableCell
-                  key={day.dayjs}
-                  align="center"
-                  title="Нажмите для просмотра всех начинающихся и заканчивающихся заказов на эту дату"
-                  className={idx === todayIndex ? "today-column-bg" : undefined}
-                  sx={{
-                    position: "sticky",
-                    top: 0,
-                    backgroundColor: idx === todayIndex 
-                      ? calendarColors.today || "calendar.today" 
-                      : "background.default",
-                    zIndex: 4,
-                    fontSize: "16px",
-                    padding: "6px",
-                    minWidth: 40,
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => {
-                    console.log("orders in header click:", allOrders);
-                    setHeaderOrdersModal({
-                      open: true,
-                      date: day.dayjs,
-                      orders: allOrders,
-                    });
-                  }}
-                >
-                  <div style={{ color: day.isSunday ? calendarColors.sunday || theme.palette.primary.main : "inherit" }}>
-                    {day.date}
-                  </div>
-                  <div style={{ color: day.isSunday ? calendarColors.sunday || theme.palette.primary.main : "inherit" }}>
-                    {(weekday2[currentLang] || weekday2.en)[day.dayjs.day()]}
-                  </div>
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
+          {/* Шапка таблицы — вынесена в отдельный компонент */}
+          <BigCalendarHeader
+            days={days}
+            month={month}
+            year={year}
+            todayIndex={todayIndex}
+            viewMode={viewMode}
+            rangeDirection={rangeDirection}
+            monthNames={monthNames}
+            weekday2={weekday2}
+            currentLang={currentLang}
+            isPortraitPhone={isPortraitPhone}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            onMonthChange={handleSelectMonth}
+            onYearChange={handleSelectYear}
+            onDayClick={(day) => {
+              setHeaderOrdersModal({
+                open: true,
+                date: day.dayjs,
+                orders: allOrders,
+              });
+            }}
+            headerStyles={calendarHeaderStyles}
+          />
           <TableBody>
             {sortedCars.map((car) => (
               <TableRow key={car._id}>
@@ -1027,55 +1079,55 @@ export default function BigCalendar({ cars, showLegend = true }) {
           Вы хотите сдвинуть заказ с автомобиля{" "}
           <strong>{confirmModal.oldCar?.model}</strong> ({confirmModal.oldCar?.regNumber})
           на автомобиль <strong>{confirmModal.newCar?.model}</strong> ({confirmModal.newCar?.regNumber})?
-        </Typography>
+          </Typography>
 
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
           <CancelButton
-            onClick={() => {
-              setConfirmModal({ open: false, newCar: null, oldCar: null });
-              exitMoveMode();
+              onClick={() => {
+                setConfirmModal({ open: false, newCar: null, oldCar: null });
+                exitMoveMode();
             }}
             label="НЕТ"
           />
           <ActionButton
             color="success"
-            onClick={async () => {
-              setConfirmModal({ open: false, newCar: null, oldCar: null });
-              let success = false;
-              try {
-                const result = await changeRentalDates(
-                  selectedMoveOrder._id,
-                  new Date(selectedMoveOrder.rentalStartDate),
-                  new Date(selectedMoveOrder.rentalEndDate),
+              onClick={async () => {
+                setConfirmModal({ open: false, newCar: null, oldCar: null });
+                let success = false;
+                try {
+                  const result = await changeRentalDates(
+                    selectedMoveOrder._id,
+                    new Date(selectedMoveOrder.rentalStartDate),
+                    new Date(selectedMoveOrder.rentalEndDate),
                   new Date(selectedMoveOrder.timeIn || selectedMoveOrder.rentalStartDate),
                   new Date(selectedMoveOrder.timeOut || selectedMoveOrder.rentalEndDate),
-                  selectedMoveOrder.placeIn || "",
-                  selectedMoveOrder.placeOut || "",
-                  confirmModal.newCar._id,
-                  confirmModal.newCar.carNumber,
-                  selectedMoveOrder.ChildSeats,
-                  selectedMoveOrder.insurance,
-                  selectedMoveOrder.franchiseOrder,
+                    selectedMoveOrder.placeIn || "",
+                    selectedMoveOrder.placeOut || "",
+                    confirmModal.newCar._id,
+                    confirmModal.newCar.carNumber,
+                    selectedMoveOrder.ChildSeats,
+                    selectedMoveOrder.insurance,
+                    selectedMoveOrder.franchiseOrder,
                   selectedMoveOrder.numberOrder || selectedMoveOrder.orderNumber,
-                  selectedMoveOrder.insuranceOrder,
-                  selectedMoveOrder.totalPrice,
-                  selectedMoveOrder.numberOfDays
-                );
+                    selectedMoveOrder.insuranceOrder,
+                    selectedMoveOrder.totalPrice,
+                    selectedMoveOrder.numberOfDays
+                  );
 
-                if (result?.status === 201 || result?.status === 202) {
-                  await fetchAndUpdateOrders();
+                  if (result?.status === 201 || result?.status === 202) {
+                    await fetchAndUpdateOrders();
                   showSingleSnackbar(`Заказ сдвинут на ${confirmModal.newCar.model}`, { variant: "success" });
-                  success = true;
-                }
-              } catch (error) {
+                    success = true;
+                  }
+                } catch (error) {
                 showSingleSnackbar(`Ошибка перемещения: ${error.message}`, { variant: "error" });
-              } finally {
-                if (!success) exitMoveMode();
-              }
-            }}
+                } finally {
+                  if (!success) exitMoveMode();
+                }
+              }}
             label="ДА"
           />
-        </Box>
+          </Box>
       </ModalLayout>
 
       {isEditCarOpen && selectedCarForEdit && (
