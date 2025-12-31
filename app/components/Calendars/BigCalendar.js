@@ -25,6 +25,9 @@ import {
 } from "@mui/material";
 import { ActionButton, CancelButton, ConfirmModal, OrdersByDateModal, ModalLayout } from "../ui";
 import dayjs from "dayjs";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+dayjs.extend(isSameOrBefore);
 import { useMainContext } from "@app/Context";
 import CarTableRow from "./Row";
 import {
