@@ -39,6 +39,79 @@ import EditCarModal from "@app/components/Admin/Car/EditCarModal";
 import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 
 // ============================================
+// Pure functions (вычисления без side-effects)
+// ============================================
+
+/**
+ * Генерирует массив дней для календаря
+ * @param {Object} params
+ * @param {number} params.month - месяц (0-11)
+ * @param {number} params.year - год
+ * @param {string} params.viewMode - 'full' | 'range15'
+ * @param {string} params.rangeDirection - 'forward' | 'backward'
+ * @returns {Array} массив дней с dayjs, date, weekday, isSunday
+ */
+function buildCalendarDays({ month, year, viewMode, rangeDirection }) {
+  if (viewMode === "range15") {
+    const start =
+      rangeDirection === "forward"
+        ? dayjs().year(year).month(month).date(15)
+        : dayjs().year(year).month(month).subtract(1, "month").date(15);
+
+    const end =
+      rangeDirection === "forward"
+        ? start.add(1, "month").date(15)
+        : dayjs().year(year).month(month).date(15);
+
+    const totalDays = end.diff(start, "day");
+
+    return Array.from({ length: totalDays + 1 }, (_, index) => {
+      const date = start.add(index, "day");
+      return {
+        dayjs: date,
+        date: date.date(),
+        weekday: date.format("dd"),
+        isSunday: date.day() === 0,
+      };
+    });
+  }
+
+  // Полный месяц
+  const dim = dayjs().year(year).month(month).daysInMonth();
+
+  return Array.from({ length: dim }, (_, index) => {
+    const date = dayjs().year(year).month(month).date(1).add(index, "day");
+    return {
+      dayjs: date,
+      date: date.date(),
+      weekday: date.format("dd"),
+      isSunday: date.day() === 0,
+    };
+  });
+}
+
+/**
+ * Генерирует массив дат (строки YYYY-MM-DD) для заказа
+ * @param {Object} order - заказ с rentalStartDate и rentalEndDate
+ * @returns {Array<string>} массив дат в формате YYYY-MM-DD
+ */
+function buildOrderDateRange(order) {
+  if (!order?.rentalStartDate || !order?.rentalEndDate) return [];
+
+  const startDate = dayjs(order.rentalStartDate);
+  const endDate = dayjs(order.rentalEndDate);
+  const dates = [];
+
+  let currentDate = startDate;
+  while (currentDate.isSameOrBefore(endDate, "day")) {
+    dates.push(currentDate.format("YYYY-MM-DD"));
+    currentDate = currentDate.add(1, "day");
+  }
+
+  return dates;
+}
+
+// ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
 // ============================================
 function BigCalendarLayout({ showLegend, borderStyle, children }) {
@@ -540,40 +613,10 @@ export default function BigCalendar({ cars, showLegend = true }) {
     }
   }, [viewMode]);
 
-  const days = useMemo(() => {
-    // Если режим диапазона 15-15 — строим дни между 15 текущего и 15 следующего месяца
-    if (viewMode === "range15") {
-      const start =
-        rangeDirection === "forward"
-          ? dayjs().year(year).month(month).date(15)
-          : dayjs().year(year).month(month).subtract(1, "month").date(15);
-      const end =
-        rangeDirection === "forward"
-          ? start.add(1, "month").date(15)
-          : dayjs().year(year).month(month).date(15);
-      const totalDays = end.diff(start, "day");
-      return Array.from({ length: totalDays + 1 }, (_, index) => {
-        const date = start.add(index, "day");
-        return {
-          dayjs: date,
-          date: date.date(),
-          weekday: date.format("dd"),
-          isSunday: date.day() === 0,
-        };
-      });
-    }
-    // Иначе — полный месяц
-    const dim = dayjs().year(year).month(month).daysInMonth();
-    return Array.from({ length: dim }, (_, index) => {
-      const date = dayjs().year(year).month(month).date(1).add(index, "day");
-      return {
-        dayjs: date,
-        date: date.date(),
-        weekday: date.format("dd"),
-        isSunday: date.day() === 0,
-      };
-    });
-  }, [month, year, viewMode]);
+  const days = useMemo(
+    () => buildCalendarDays({ month, year, viewMode, rangeDirection }),
+    [month, year, viewMode, rangeDirection]
+  );
 
   const today = dayjs();
   const todayIndex = days.findIndex((d) => d.dayjs.isSame(today, "day"));
@@ -753,18 +796,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
   // Генерируем массив дат для выбранного заказа в режиме перемещения
   const selectedOrderDates = useMemo(() => {
     if (!moveMode || !selectedMoveOrder) return [];
-
-    const startDate = dayjs(selectedMoveOrder.rentalStartDate);
-    const endDate = dayjs(selectedMoveOrder.rentalEndDate);
-    const dates = [];
-
-    let currentDate = startDate;
-    while (currentDate.isSameOrBefore(endDate, "day")) {
-      dates.push(currentDate.format("YYYY-MM-DD"));
-      currentDate = currentDate.add(1, "day");
-    }
-
-    return dates;
+    return buildOrderDateRange(selectedMoveOrder);
   }, [moveMode, selectedMoveOrder]);
 
   // Функция проверки совместимости автомобиля для перемещения
