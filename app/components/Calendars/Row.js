@@ -22,11 +22,11 @@ import { useSnackbar } from "notistack";
 const CELL_COLOR_KEYS = {
   // Подтверждённые заказы
   confirmed: "primary.main", // Красный — подтверждённый заказ (не my_order)
-  confirmedMine: "order.confirmedMyOrder", // Зелёный — подтверждённый заказ (my_order = true)
+  confirmedMine: "calendar.confirmed", // Зелёный — подтверждённый заказ (my_order = true)
   confirmedMineFallback: "#4CAF50", // Fallback для my_order
 
   // Неподтверждённые заказы
-  nonConfirmed: "success.main", // Серо-зелёный — неподтверждённый (pending)
+  nonConfirmed: "calendar.nonConfirmed", // Серо-зелёный — неподтверждённый (pending)
 
   // Выделение
   selected: "calendar.selected", // Синий — выбранный заказ
@@ -68,6 +68,10 @@ function buildCellColors(theme) {
 
     // Рамки
     cellBorder: theme.palette.divider || CELL_COLOR_KEYS.cellBorderFallback,
+
+    // Контрастные цвета для индикаторов (кружочков)
+    indicatorConfirmed: "common.white", // Белый кружочек на зелёном фоне
+    indicatorPending: theme.palette.calendar?.indicatorPending || "#333", // Тёмный кружочек на светлом фоне
   };
 }
 
@@ -114,7 +118,9 @@ export default function CarTableRow({
   // Цвета ячеек из централизованной конфигурации
   const colors = buildCellColors(theme);
 
-  const { ordersByCarId } = useMainContext();
+  // Используем allOrders из контекста напрямую для обновления при изменениях
+  const { ordersByCarId, allOrders: contextAllOrders } = useMainContext();
+
   const [unavailableDates, setUnavailableDates] = useState([]);
   const [confirmedDates, setConfirmedDates] = useState([]);
   const [startEndOverlapDates, setStartEndOverlapDates] = useState(null);
@@ -138,7 +144,7 @@ export default function CarTableRow({
   useEffect(() => {
     const updatedOrders = ordersByCarId(car._id);
     setCarOrders(updatedOrders);
-  }, [car._id, ordersByCarId]);
+  }, [car._id, ordersByCarId, contextAllOrders]);
 
   useEffect(() => {
     const { unavailable, confirmed, startEnd, transformedStartEndOverlap } =
@@ -1063,8 +1069,9 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: colors.confirmed,
+                    backgroundColor: colors.indicatorConfirmed,
                     borderRadius: "50%",
+                    border: `1px solid ${colors.confirmed}`,
                   }}
                 />
               ))}
@@ -1085,8 +1092,9 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: colors.nonConfirmed,
+                    backgroundColor: colors.indicatorPending,
                     borderRadius: "50%",
+                    border: "1px solid white",
                   }}
                 />
               ))}

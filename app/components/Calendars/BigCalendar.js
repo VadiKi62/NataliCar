@@ -1156,13 +1156,14 @@ export default function BigCalendar({ cars, showLegend = true }) {
 
                   if (result?.status === 201 || result?.status === 202) {
                     await fetchAndUpdateOrders();
-                  showSingleSnackbar(`Заказ сдвинут на ${confirmModal.newCar.model}`, { variant: "success" });
+                    showSingleSnackbar(`Заказ сдвинут на ${confirmModal.newCar.model}`, { variant: "success" });
                     success = true;
                   }
                 } catch (error) {
-                showSingleSnackbar(`Ошибка перемещения: ${error.message}`, { variant: "error" });
+                  showSingleSnackbar(`Ошибка перемещения: ${error.message}`, { variant: "error" });
                 } finally {
-                  if (!success) exitMoveMode();
+                  // Всегда выходим из режима перемещения после операции
+                  exitMoveMode();
                 }
               }}
             label="ДА"
