@@ -26,8 +26,10 @@ import {
 import { ActionButton, CancelButton, ConfirmModal, OrdersByDateModal, ModalLayout } from "../ui";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 
 dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 import { useMainContext } from "@app/Context";
 import CarTableRow from "./Row";
 import {
