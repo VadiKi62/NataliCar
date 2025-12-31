@@ -42,164 +42,11 @@ import { useSnackbar } from "notistack";
 import { changeRentalDates } from "@utils/action";
 import EditCarModal from "@app/components/Admin/Car/EditCarModal";
 import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
-
-// ============================================
-// Pure functions (вычисления без side-effects)
-// ============================================
-
-/**
- * Генерирует массив дней для календаря
- * @param {Object} params
- * @param {number} params.month - месяц (0-11)
- * @param {number} params.year - год
- * @param {string} params.viewMode - 'full' | 'range15'
- * @param {string} params.rangeDirection - 'forward' | 'backward'
- * @returns {Array} массив дней с dayjs, date, weekday, isSunday
- */
-function buildCalendarDays({ month, year, viewMode, rangeDirection }) {
-  if (viewMode === "range15") {
-    const start =
-      rangeDirection === "forward"
-        ? dayjs().year(year).month(month).date(15)
-        : dayjs().year(year).month(month).subtract(1, "month").date(15);
-
-    const end =
-      rangeDirection === "forward"
-        ? start.add(1, "month").date(15)
-        : dayjs().year(year).month(month).date(15);
-
-    const totalDays = end.diff(start, "day");
-
-    return Array.from({ length: totalDays + 1 }, (_, index) => {
-      const date = start.add(index, "day");
-      return {
-        dayjs: date,
-        date: date.date(),
-        weekday: date.format("dd"),
-        isSunday: date.day() === 0,
-      };
-    });
-  }
-
-  // Полный месяц
-  const dim = dayjs().year(year).month(month).daysInMonth();
-
-  return Array.from({ length: dim }, (_, index) => {
-    const date = dayjs().year(year).month(month).date(1).add(index, "day");
-    return {
-      dayjs: date,
-      date: date.date(),
-      weekday: date.format("dd"),
-      isSunday: date.day() === 0,
-    };
-  });
-}
-
-/**
- * Генерирует массив дат (строки YYYY-MM-DD) для заказа
- * @param {Object} order - заказ с rentalStartDate и rentalEndDate
- * @returns {Array<string>} массив дат в формате YYYY-MM-DD
- */
-function buildOrderDateRange(order) {
-  if (!order?.rentalStartDate || !order?.rentalEndDate) return [];
-
-  const startDate = dayjs(order.rentalStartDate);
-  const endDate = dayjs(order.rentalEndDate);
-  const dates = [];
-
-  let currentDate = startDate;
-  while (currentDate.isSameOrBefore(endDate, "day")) {
-    dates.push(currentDate.format("YYYY-MM-DD"));
-    currentDate = currentDate.add(1, "day");
-  }
-
-  return dates;
-}
-
-/**
- * Возвращает индекс текущего дня в массиве days
- * @param {Array} days - массив дней календаря
- * @returns {number} индекс текущего дня или -1
- */
-function getTodayIndex(days) {
-  const today = dayjs();
-  return days.findIndex((d) => d.dayjs.isSame(today, "day"));
-}
-
-/**
- * Проверяет, является ли viewport мобильным телефоном
- * @returns {boolean}
- */
-function isPhoneViewport() {
-  if (typeof window === "undefined") return false;
-
-  const isPortraitPhone = window.matchMedia(
-    "(max-width: 600px) and (orientation: portrait)"
-  ).matches;
-
-  const isSmallLandscape = window.matchMedia(
-    "(max-width: 900px) and (orientation: landscape)"
-  ).matches;
-
-  return isPortraitPhone || isSmallLandscape;
-}
-
-/**
- * Скроллит контейнер календаря к текущему дню
- * @param {Object} params
- * @param {HTMLElement} params.container - контейнер календаря
- * @param {number} params.todayIndex - индекс текущего дня
- */
-function scrollCalendarToToday({ container, todayIndex }) {
-  if (!container || todayIndex < 0) return;
-
-  try {
-    const table =
-      container.querySelector(".MuiTable-root") ||
-      container.querySelector("table");
-
-    if (!table) return;
-
-    const headerCells = table.querySelectorAll("thead .MuiTableCell-root");
-
-    if (!headerCells || headerCells.length === 0) return;
-
-    // headerCells[0] is the fixed first column (car), days start at index 1
-    // Scroll so that the first visible date is today minus 2 days (clamped to month start)
-    const offsetDays = 2;
-    const desiredDayIdx = Math.max(0, todayIndex - offsetDays);
-    const targetIndex = 1 + desiredDayIdx;
-
-    if (targetIndex < 1 || targetIndex >= headerCells.length) return;
-
-    const targetCell = headerCells[targetIndex];
-    const firstCell = headerCells[0];
-
-    const tableRect = table.getBoundingClientRect();
-    const cellRect = targetCell.getBoundingClientRect();
-    const firstRect = firstCell
-      ? firstCell.getBoundingClientRect()
-      : { width: 0 };
-
-    // offset of the target cell relative to the table left
-    const offset = cellRect.left - tableRect.left;
-    // aim to place the target cell right after the sticky first column
-    const scrollLeft = Math.max(0, offset - firstRect.width - 4); // small gap
-
-    // prefer smooth scroll when available, fallback to direct assignment
-    if (typeof container.scrollTo === "function") {
-      try {
-        container.scrollTo({ left: scrollLeft, behavior: "smooth" });
-      } catch {
-        container.scrollLeft = scrollLeft;
-      }
-    } else {
-      container.scrollLeft = scrollLeft;
-    }
-  } catch {
-    // ignore
-  }
-}
+import {
+  useCalendarDays,
+  useMobileCalendarScroll,
+  buildOrderDateRange,
+} from "@app/hooks/calendar";
 
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
@@ -703,44 +550,16 @@ export default function BigCalendar({ cars, showLegend = true }) {
     }
   }, [viewMode]);
 
-  const days = useMemo(
-    () => buildCalendarDays({ month, year, viewMode, rangeDirection }),
-    [month, year, viewMode, rangeDirection]
-  );
+  // Дни календаря и индекс текущего дня
+  const { days, todayIndex } = useCalendarDays({
+    month,
+    year,
+    viewMode,
+    rangeDirection,
+  });
 
-  // Индекс текущего дня в массиве days
-  const todayIndex = useMemo(() => getTodayIndex(days), [days]);
-
-  // On phones, when the calendar mounts, scroll horizontally so today's
-  // column is the first visible day column (accounting for the sticky first column).
-  useEffect(() => {
-    if (!isPhoneViewport()) return;
-
-    const container =
-      document.querySelector(".bigcalendar-root .MuiTableContainer-root") ||
-      document.querySelector(".bigcalendar-root");
-
-    if (!container) return;
-
-    const runScroll = () =>
-      scrollCalendarToToday({
-        container,
-        todayIndex,
-      });
-
-    // run shortly after mount so layout is ready
-    const t = setTimeout(runScroll, 50);
-
-    const onResize = () => setTimeout(runScroll, 50);
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-    };
-  }, [todayIndex, days]);
+  // Автоматический скролл к текущему дню на мобильных устройствах
+  useMobileCalendarScroll({ days, todayIndex });
 
   // =======================
   // 🎮 Navigation handlers
