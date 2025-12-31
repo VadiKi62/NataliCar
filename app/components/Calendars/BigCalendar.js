@@ -39,6 +39,60 @@ import EditCarModal from "@app/components/Admin/Car/EditCarModal";
 import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 
 // ============================================
+// BigCalendarLayout — визуальный каркас (без state/effects)
+// ============================================
+function BigCalendarLayout({ showLegend, borderStyle, children }) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        overflowX: "auto",
+        overflowY: "hidden",
+        pt: 4.5,
+        maxWidth: "100vw",
+        zIndex: 100,
+        height: "100vh",
+      }}
+    >
+      {/* Легенда календаря */}
+      {showLegend && (
+        <Box
+          className="bigcalendar-legend"
+          sx={{
+            display: { xs: "none", sm: "flex" },
+            justifyContent: "center",
+            alignItems: "center",
+            py: 0.5,
+            px: 2,
+            flexShrink: 0,
+            "@media (max-width:900px) and (orientation: landscape)": {
+              display: "none",
+            },
+          }}
+        >
+          <LegendCalendarAdmin />
+        </Box>
+      )}
+
+      {/* TableContainer */}
+      <TableContainer
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          border: borderStyle,
+          overflowX: "auto",
+          overflowY: "auto",
+          scrollBehavior: "smooth",
+        }}
+      >
+        {children}
+      </TableContainer>
+    </Box>
+  );
+}
+
+// ============================================
 // BigCalendarHeader — UI-компонент шапки таблицы
 // ============================================
 function BigCalendarHeader({
@@ -395,9 +449,9 @@ export default function BigCalendar({ cars, showLegend = true }) {
   const { ordersByCarId, fetchAndUpdateOrders, allOrders, updateCarInContext } =
     useMainContext();
 
-  // ─────────────────────────────────────────
-  // State: Навигация по календарю
-  // ─────────────────────────────────────────
+  // =======================
+  // 📅 Calendar navigation
+  // =======================
   const [month, setMonth] = useState(() => {
     const savedMonth = localStorage.getItem("bigCalendar_month");
     return savedMonth !== null ? parseInt(savedMonth, 10) : dayjs().month();
@@ -415,6 +469,46 @@ export default function BigCalendar({ cars, showLegend = true }) {
   }); // 'full' | 'range15'
   const [rangeDirection, setRangeDirection] = useState("forward"); // 'forward' | 'backward'
   const [isPortraitPhone, setIsPortraitPhone] = useState(false);
+
+  // =======================
+  // 📦 Orders & selection
+  // =======================
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [startEndDates, setStartEndDates] = useState([]);
+  const [isConflictOrder, setIsConflictOrder] = useState(false);
+  const [headerOrdersModal, setHeaderOrdersModal] = useState({
+    open: false,
+    date: null,
+    orders: [],
+  });
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+
+  // =======================
+  // 🚚 Move order mode
+  // =======================
+  const [isMoving, setIsMoving] = useState(false);
+  const [selectedMoveOrder, setSelectedMoveOrder] = useState(null);
+  const [moveMode, setMoveMode] = useState(false);
+  const [orderToMove, setOrderToMove] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    newCar: null,
+  });
+
+  // =======================
+  // 🧩 UI modals
+  // =======================
+  const [open, setOpen] = useState(false);
+  const handleClose = () => setOpen(false);
+  const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [selectedCarForAdd, setSelectedCarForAdd] = useState(null);
+  const [selectedDateForAdd, setSelectedDateForAdd] = useState(null);
+  const [selectedCarForEdit, setSelectedCarForEdit] = useState(null);
+  const [isEditCarOpen, setIsEditCarOpen] = useState(false);
+
+  // =======================
+  // 💾 Persistence (localStorage)
+  // =======================
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia(
@@ -430,7 +524,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
     };
   }, []);
 
-  // useEffect для сохранения в localStorage:
   useEffect(() => {
     localStorage.setItem("bigCalendar_month", month.toString());
   }, [month]);
@@ -439,7 +532,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
     localStorage.setItem("bigCalendar_year", year.toString());
   }, [year]);
 
-  // Сохраняем выбранный режим при изменении
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
@@ -447,46 +539,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
       } catch (e) {}
     }
   }, [viewMode]);
-
-  // ─────────────────────────────────────────
-  // State: Заказы и модалки
-  // ─────────────────────────────────────────
-  const [selectedOrders, setSelectedOrders] = useState([]);
-  const [startEndDates, setStartEndDates] = useState([]);
-  const [isConflictOrder, setIsConflictOrder] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [headerOrdersModal, setHeaderOrdersModal] = useState({
-    open: false,
-    date: null,
-    orders: [],
-  });
-  const [forceUpdateKey, setForceUpdateKey] = useState(0);
-  const handleClose = () => setOpen(false);
-
-  // ─────────────────────────────────────────
-  // State: AddOrderModal
-  // ─────────────────────────────────────────
-  const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
-  const [selectedCarForAdd, setSelectedCarForAdd] = useState(null);
-  const [selectedDateForAdd, setSelectedDateForAdd] = useState(null);
-
-  // ─────────────────────────────────────────
-  // State: Перемещение заказа
-  // ─────────────────────────────────────────
-  const [isMoving, setIsMoving] = useState(false);
-  const [selectedMoveOrder, setSelectedMoveOrder] = useState(null);
-  const [moveMode, setMoveMode] = useState(false);
-  const [orderToMove, setOrderToMove] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({
-    open: false,
-    newCar: null,
-  });
-
-  // ─────────────────────────────────────────
-  // State: Редактирование авто
-  // ─────────────────────────────────────────
-  const [selectedCarForEdit, setSelectedCarForEdit] = useState(null);
-  const [isEditCarOpen, setIsEditCarOpen] = useState(false);
 
   const days = useMemo(() => {
     // Если режим диапазона 15-15 — строим дни между 15 текущего и 15 следующего месяца
@@ -601,40 +653,26 @@ export default function BigCalendar({ cars, showLegend = true }) {
     };
   }, [todayIndex, days]);
 
-  const handleEditCar = (car) => {
-    setSelectedCarForEdit(car);
-    setIsEditCarOpen(true);
-  };
-
-  // const handleSelectMonth = (e) => setMonth(e.target.value);
-  // const handleSelectYear = (e) => setYear(e.target.value);
-
+  // =======================
+  // 🎮 Navigation handlers
+  // =======================
   const handleSelectMonth = (e) => {
     const newMonth = e.target.value;
     setMonth(newMonth);
     setViewMode("full");
-    console.log(
-      `Выбран месяц: ${dayjs().month(newMonth).format("MMMM")} (${newMonth})`
-    );
   };
 
   const handleSelectYear = (e) => {
     const newYear = e.target.value;
     setYear(newYear);
     setViewMode("full");
-    console.log(`Выбран год: ${newYear}`);
   };
 
-  // Переключатели месяца
-  // Логика кнопок:
-  // - если 'full' -> перейти в 'range15' (окно 15-текущее до 15-следующего)
-  // - если 'range15' -> вернуться в 'full' и сдвинуть месяц на +1 (для Next) или -1 (для Prev)
   const handlePrevMonth = () => {
     if (viewMode === "full") {
       setRangeDirection("backward");
       setViewMode("range15");
     } else {
-      // шаг назад на полный предыдущий месяц
       setViewMode("full");
       const base = dayjs().year(year).month(month).subtract(1, "month");
       setMonth(base.month());
@@ -647,7 +685,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
       setRangeDirection("forward");
       setViewMode("range15");
     } else {
-      // шаг вперёд на полный следующий месяц
       setViewMode("full");
       const base = dayjs().year(year).month(month).add(1, "month");
       setMonth(base.month());
@@ -655,38 +692,26 @@ export default function BigCalendar({ cars, showLegend = true }) {
     }
   };
 
-  const ordersByCarIdWithAllorders = useCallback((carId, orders) => {
-    return orders?.filter((order) => order.car === carId);
-  }, []);
-
-  // ИСПРАВЛЕННАЯ функция handleLongPress - только активирует режим перемещения
+  // =======================
+  // 🚚 Move mode handlers
+  // =======================
   const handleLongPress = (order) => {
     if (!order?._id) return;
-
-    // Устанавливаем заказ для перемещения и включаем режим перемещения
     setSelectedMoveOrder(order);
     setOrderToMove(order);
     setMoveMode(true);
-
-    // Показываем уведомление
     showSingleSnackbar(
       "Выберите другой автомобиль для перемещения заказа. Доступные автомобили выделены желтым цветом",
-      {
-        variant: "info",
-        autoHideDuration: 8000,
-      }
+      { variant: "info", autoHideDuration: 8000 }
     );
-
-    // НЕ открываем модальное окно редактирования!
   };
 
-  useEffect(() => {
-    const { startEnd } = extractArraysOfStartEndConfPending(allOrders);
-    setStartEndDates(startEnd);
-  }, [allOrders]);
-
-  // Отключил добавление класса hide-navbar-on-landscape-sm для landscape,
-  // чтобы Navbar был видим. Если нужно скрывать только легенду — используйте отдельный класс или медиазапрос.
+  // =======================
+  // 📦 Orders handlers
+  // =======================
+  const ordersByCarIdWithAllorders = useCallback((carId, orders) => {
+    return orders?.filter((order) => order.car === carId);
+  }, []);
 
   const handleSaveOrder = async (updatedOrder) => {
     setSelectedOrders((prevSelectedOrders) =>
@@ -696,6 +721,22 @@ export default function BigCalendar({ cars, showLegend = true }) {
     );
     await fetchAndUpdateOrders();
   };
+
+  // =======================
+  // 🚗 Car handlers
+  // =======================
+  const handleEditCar = (car) => {
+    setSelectedCarForEdit(car);
+    setIsEditCarOpen(true);
+  };
+
+  // =======================
+  // 📊 Derived state (orders)
+  // =======================
+  useEffect(() => {
+    const { startEnd } = extractArraysOfStartEndConfPending(allOrders);
+    setStartEndDates(startEnd);
+  }, [allOrders]);
 
   const filteredStartEndDates = allOrders
     ? allOrders.map((order) => ({
@@ -848,56 +889,16 @@ export default function BigCalendar({ cars, showLegend = true }) {
   };
 
   return (
-    <Box
-
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        overflowX: "auto",
-        overflowY: "hidden",
-        // Учитываем высоту Navbar (~64px) + небольшой отступ
-        pt: 4.5,
-        maxWidth: "100vw",
-        zIndex: 100,
-        height: "100vh",
-      }}
+    <>
+    <BigCalendarLayout
+      showLegend={showLegend}
+      borderStyle={`1px solid ${calendarHeaderStyles.border}`}
     >
-      {/* Легенда календаря - встроена в BigCalendar */}
-      {showLegend && (
-        <Box
-          className="bigcalendar-legend"
-          sx={{
-            display: { xs: "none", sm: "flex" },
-            justifyContent: "center",
-            alignItems: "center",
-            py: 0.5,
-            px: 2,
-            flexShrink: 0,
-            "@media (max-width:900px) and (orientation: landscape)": {
-              display: "none",
-            },
-          }}
-        >
-          <LegendCalendarAdmin />
-        </Box>
-      )}
-      
-      {/* Стили перенесены в globals.css для использования CSS переменных */}
-      <TableContainer
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          border: `1px solid ${calendarHeaderStyles.border}`,
-          overflowX: "auto",
-          overflowY: "auto",
-          scrollBehavior: "smooth",
-        }}
+      {/* Table с sticky header */}
+      <Table
+        stickyHeader
+        sx={{ width: "auto", minWidth: { xs: 700, sm: 0 } }}
       >
-        {/* minWidth для таблицы, чтобы на телефоне был скролл */}
-        <Table
-          stickyHeader
-          sx={{ width: "auto", minWidth: { xs: 700, sm: 0 } }}
-        >
           {/* Шапка таблицы — вынесена в отдельный компонент */}
           <BigCalendarHeader
             days={days}
@@ -973,7 +974,9 @@ export default function BigCalendar({ cars, showLegend = true }) {
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
+    </BigCalendarLayout>
+
+      {/* Модальные окна — вне BigCalendarLayout */}
 
       {/* Модальное окно редактирования заказов - открывается только при обычном клике */}
       <Modal
@@ -1164,6 +1167,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
           }}
         />
       )}
-    </Box>
+    </>
   );
 }
