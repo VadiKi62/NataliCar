@@ -70,9 +70,219 @@ function buildCellColors(theme) {
     cellBorder: theme.palette.divider || CELL_COLOR_KEYS.cellBorderFallback,
 
     // Контрастные цвета для индикаторов (кружочков)
-    indicatorConfirmed: "common.white", // Белый кружочек на зелёном фоне
-    indicatorPending: theme.palette.calendar?.indicatorPending || "#333", // Тёмный кружочек на светлом фоне
+    indicatorConfirmed:  theme.palette.neutral.black, // черный кружочек на зелёном фоне
+    indicatorPending: theme.palette.neutral.black, // Тёмный кружочек на светлом фоне
   };
+}
+
+// ============================================
+// Pure helpers — Date & Order
+// ============================================
+
+/**
+ * Возвращает все заказы, покрывающие указанную дату
+ * @param {Array} carOrders - массив заказов
+ * @param {string} dateStr - дата в формате YYYY-MM-DD
+ * @returns {Array} массив заказов
+ */
+function getOrdersForDate(carOrders, dateStr) {
+  return carOrders.filter((order) => {
+    const rentalStart = dayjs(order.rentalStartDate).format("YYYY-MM-DD");
+    const rentalEnd = dayjs(order.rentalEndDate).format("YYYY-MM-DD");
+    return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
+  });
+}
+
+/**
+ * Проверяет, попадает ли дата в диапазон заказа
+ * @param {Object} order - заказ
+ * @param {string} dateStr - дата в формате YYYY-MM-DD
+ * @returns {boolean}
+ */
+function isDateWithinOrder(order, dateStr) {
+  if (!order) return false;
+  const rentalStart = dayjs(order.rentalStartDate).format("YYYY-MM-DD");
+  const rentalEnd = dayjs(order.rentalEndDate).format("YYYY-MM-DD");
+  return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
+}
+
+/**
+ * Проверяет, завершён ли заказ (дата окончания раньше сегодня)
+ * @param {Object} order - заказ
+ * @returns {boolean}
+ */
+function isOrderCompleted(order) {
+  return dayjs(order.rentalEndDate).isBefore(dayjs(), "day");
+}
+
+/**
+ * Проверяет, относится ли дата к завершённому заказу
+ * @param {Array} carOrders - массив заказов
+ * @param {string} dateStr - дата в формате YYYY-MM-DD
+ * @returns {boolean}
+ */
+function isDateInCompletedOrder(carOrders, dateStr) {
+  return carOrders.some((order) => {
+    return isOrderCompleted(order) && isDateWithinOrder(order, dateStr);
+  });
+}
+
+// ============================================
+// Pure helpers — Flags
+// ============================================
+
+/**
+ * Получает информацию о start/end для даты
+ * @param {Array} startEndDates - массив start/end дат
+ * @param {string} dateStr - дата
+ * @returns {{ isStartDate: boolean, isEndDate: boolean, info: Object|null }}
+ */
+function getStartEndInfo(startEndDates, dateStr) {
+  const info = startEndDates.find((d) => d.date === dateStr);
+  return {
+    isStartDate: info?.type === "start",
+    isEndDate: info?.type === "end",
+    info: info || null,
+  };
+}
+
+/**
+ * Проверяет, является ли дата start+end overlap
+ * @param {Array} startEndOverlapDates - массив overlap дат
+ * @param {string} dateStr - дата
+ * @returns {{ isOverlap: boolean, info: Object|null }}
+ */
+function getStartEndOverlapInfo(startEndOverlapDates, dateStr) {
+  const info = startEndOverlapDates?.find((dateObj) => dateObj.date === dateStr);
+  return {
+    isOverlap: Boolean(info),
+    info: info || null,
+  };
+}
+
+/**
+ * Проверяет, является ли дата overlap датой
+ * @param {Array} overlapDates - массив overlap дат
+ * @param {string} dateStr - дата
+ * @returns {{ isOverlap: boolean, info: Object|null }}
+ */
+function getOverlapInfo(overlapDates, dateStr) {
+  const info = overlapDates?.find((dateObj) => dateObj.date === dateStr);
+  return {
+    isOverlap: Boolean(info),
+    info: info || null,
+  };
+}
+
+/**
+ * Возвращает флаги первого/последнего дня перемещения
+ * @param {Array} selectedOrderDates - массив дат выбранного заказа
+ * @param {string} dateStr - дата
+ * @returns {{ isFirstMoveDay: boolean, isLastMoveDay: boolean }}
+ */
+function getMoveDayFlags(selectedOrderDates, dateStr) {
+  if (!selectedOrderDates || selectedOrderDates.length === 0) {
+    return { isFirstMoveDay: false, isLastMoveDay: false };
+  }
+  return {
+    isFirstMoveDay: selectedOrderDates[0] === dateStr,
+    isLastMoveDay: selectedOrderDates[selectedOrderDates.length - 1] === dateStr,
+  };
+}
+
+// ============================================
+// Pure helpers — Selected order
+// ============================================
+
+/**
+ * Получает выбранный заказ по ID
+ * @param {Array} carOrders - массив заказов
+ * @param {string} selectedOrderId - ID выбранного заказа
+ * @returns {Object|null}
+ */
+function getSelectedOrder(carOrders, selectedOrderId) {
+  if (!selectedOrderId) return null;
+  return carOrders.find((o) => o._id === selectedOrderId) || null;
+}
+
+/**
+ * Проверяет, попадает ли дата в выбранный заказ
+ * @param {Object} selectedOrder - выбранный заказ
+ * @param {string} dateStr - дата
+ * @returns {boolean}
+ */
+function isDateInSelectedOrder(selectedOrder, dateStr) {
+  return isDateWithinOrder(selectedOrder, dateStr);
+}
+
+/**
+ * Получает edge-case флаги для выбранного заказа
+ * @param {Object} params
+ * @returns {{ hasPreviousOrderEndingHere, hasNextOrderStartingHere, isStartEdgeCase, isEndEdgeCase }}
+ */
+function getSelectedOrderEdgeCaseFlags({ selectedOrder, carOrders, dateStr }) {
+  if (!selectedOrder) {
+    return {
+      hasPreviousOrderEndingHere: false,
+      hasNextOrderStartingHere: false,
+      isStartEdgeCase: false,
+      isEndEdgeCase: false,
+    };
+  }
+
+  const selectedOrderStart = dayjs(selectedOrder.rentalStartDate).format("YYYY-MM-DD");
+  const selectedOrderEnd = dayjs(selectedOrder.rentalEndDate).format("YYYY-MM-DD");
+
+  const previousOrder = carOrders.find((o) => {
+    const rentalEnd = dayjs(o.rentalEndDate).format("YYYY-MM-DD");
+    return rentalEnd === dateStr && o._id !== selectedOrder._id;
+  });
+
+  const nextOrder = carOrders.find((o) => {
+    const rentalStart = dayjs(o.rentalStartDate).format("YYYY-MM-DD");
+    return rentalStart === dateStr && o._id !== selectedOrder._id;
+  });
+
+  return {
+    hasPreviousOrderEndingHere: Boolean(previousOrder),
+    hasNextOrderStartingHere: Boolean(nextOrder),
+    previousOrder: previousOrder || null,
+    nextOrder: nextOrder || null,
+    isStartEdgeCase: selectedOrderStart === dateStr && Boolean(previousOrder),
+    isEndEdgeCase: selectedOrderEnd === dateStr && Boolean(nextOrder),
+  };
+}
+
+// ============================================
+// Pure helpers — Color resolution
+// ============================================
+
+/**
+ * Определяет цвет для подтверждённого заказа
+ * @param {Object} order - заказ
+ * @param {Object} colors - объект цветов
+ * @returns {string}
+ */
+function resolveConfirmedColor(order, colors) {
+  return order?.my_order ? colors.confirmedMine : colors.confirmed;
+}
+
+/**
+ * Определяет базовый цвет ячейки
+ * @param {Object} params
+ * @returns {{ backgroundColor: string, color: string }}
+ */
+function resolveBaseCellColor({ isConfirmed, isUnavailable, hasMyOrder, colors }) {
+  if (isUnavailable && !isConfirmed) {
+    return { backgroundColor: colors.nonConfirmed, color: "text.primary" };
+  }
+  if (isConfirmed) {
+    return {
+      backgroundColor: hasMyOrder ? colors.confirmedMine : colors.confirmed,
+      color: "common.white",
+    };
+  }
+  return { backgroundColor: "transparent", color: "inherit" };
 }
 
 CarTableRow.propTypes = {
@@ -332,21 +542,12 @@ export default function CarTableRow({
 
   const renderDateCell = useCallback(
     (date) => {
+      // =======================
+      // Date context
+      // =======================
       const dateStr = date.format("YYYY-MM-DD");
       const isPastDay = date.isBefore(dayjs(), "day");
-      // Флаг: ячейка относится к завершённому заказу (его конечная дата раньше сегодняшнего дня)
-      const isCompletedCell = carOrders.some((order) => {
-        const rentalStart = dayjs(order.rentalStartDate).format("YYYY-MM-DD");
-        const rentalEnd = dayjs(order.rentalEndDate).format("YYYY-MM-DD");
-        const isEndBeforeToday = dayjs(order.rentalEndDate).isBefore(
-          dayjs(),
-          "day"
-        );
-        return (
-          isEndBeforeToday &&
-          dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]")
-        );
-      });
+      const isCompletedCell = isDateInCompletedOrder(carOrders, dateStr);
 
       if (isPartOfSelectedOrder(dateStr) && selectedOrderId) {
         const selectedOrder = carOrders.find((o) => o._id === selectedOrderId);
@@ -539,52 +740,59 @@ export default function CarTableRow({
         return null;
       };
 
+      // =======================
+      // Base state flags
+      // =======================
       const isConfirmed = confirmedDates.includes(dateStr);
       const isUnavailable = unavailableDates.includes(dateStr);
 
-      const startEndInfo = startEndDates.find((d) => d.date === dateStr);
-      const isStartDate = startEndInfo?.type === "start";
-      const isEndDate = startEndInfo?.type === "end";
-      const isStartAndEndDateOverlapInfo = startEndOverlapDates?.find(
-        (dateObj) => dateObj.date === dateStr
-      );
-      const isStartEndOverlap = Boolean(isStartAndEndDateOverlapInfo);
+      // Start/End info
+      const startEndInfoResult = getStartEndInfo(startEndDates, dateStr);
+      const isStartDate = startEndInfoResult.isStartDate;
+      const isEndDate = startEndInfoResult.isEndDate;
+      const startEndInfo = startEndInfoResult.info;
+
+      // Start+End overlap info
+      const startEndOverlapResult = getStartEndOverlapInfo(startEndOverlapDates, dateStr);
+      const isStartEndOverlap = startEndOverlapResult.isOverlap;
+      const isStartAndEndDateOverlapInfo = startEndOverlapResult.info;
+
+      // Overlap info
+      const overlapResult = getOverlapInfo(overlapDates, dateStr);
+      const isOverlapDate = overlapResult.isOverlap;
+      const isOverlapDateInfo = overlapResult.info;
 
       const overlapOrders = returnOverlapOrders(carOrders, dateStr);
-      const isOverlapDateInfo = overlapDates?.find(
-        (dateObj) => dateObj.date === dateStr
-      );
-      const isOverlapDate = Boolean(isOverlapDateInfo);
 
-      let backgroundColor = "transparent";
-      let color = "inherit";
+      // =======================
+      // Base cell styling
+      // =======================
+      const ordersForDate = returnOverlapOrders(carOrders, dateStr);
+      const hasMyOrder = ordersForDate?.some(
+        (order) => order.confirmed && order.my_order
+      );
+      const baseColors = resolveBaseCellColor({
+        isConfirmed,
+        isUnavailable,
+        hasMyOrder,
+        colors,
+      });
+
+      let backgroundColor = baseColors.backgroundColor;
+      let color = baseColors.color;
       let borderRadius = "1px";
       let border = `1px solid ${colors.cellBorder}`;
       let width;
 
-      // Базовая логика определения цвета
-      if (isUnavailable) {
-        backgroundColor = colors.nonConfirmed;
-        color = "text.primary";
-      }
-      if (isConfirmed) {
-        // Получаем заказы для текущей даты
-        const ordersForDate = returnOverlapOrders(carOrders, dateStr);
-        // Проверяем, есть ли среди них заказы с my_order = true
-        const hasMyOrder = ordersForDate?.some(
-          (order) => order.confirmed && order.my_order
-        );
-
-        backgroundColor = hasMyOrder ? colors.confirmedMine : colors.confirmed; // Зеленый если есть my_order=true, иначе красный
-        color = "common.white";
-      }
-
-      // Желтый фон для режима перемещения - применяется только к совместимым автомобилям
+      // =======================
+      // Move mode flags
+      // =======================
+      const moveDayFlags = getMoveDayFlags(selectedOrderDates, dateStr);
+      let isFirstMoveDay = moveDayFlags.isFirstMoveDay;
+      let isLastMoveDay = moveDayFlags.isLastMoveDay;
       let isInMoveModeDateRange = false;
       let gradientBackground = null;
       let shouldShowYellowOverlay = false;
-      let isFirstMoveDay = false;
-      let isLastMoveDay = false;
 
       if (
         moveMode &&
@@ -592,9 +800,6 @@ export default function CarTableRow({
         selectedOrderDates.includes(dateStr) &&
         isCarCompatibleForMove
       ) {
-        isFirstMoveDay = selectedOrderDates[0] === dateStr;
-        isLastMoveDay =
-          selectedOrderDates[selectedOrderDates.length - 1] === dateStr;
 
         // Применяем желтый фон для пустых ячеек и совместимых автомобилей
         if (backgroundColor === "transparent") {
@@ -1092,9 +1297,9 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: colors.indicatorPending,
+                    backgroundColor: colors.indicatorConfirmed,
                     borderRadius: "50%",
-                    border: "1px solid white",
+                    border: `1px solid ${colors.confirmed}`,
                   }}
                 />
               ))}
