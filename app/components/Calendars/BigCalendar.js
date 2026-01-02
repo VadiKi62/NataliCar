@@ -389,9 +389,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
   const calendarRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Drag-to-scroll для прокрутки календаря зажатием мыши
-  useDragScroll(containerRef);
-
   // ─────────────────────────────────────────
   // Тема и цвета
   // ─────────────────────────────────────────
@@ -629,6 +626,12 @@ export default function BigCalendar({ cars, showLegend = true }) {
       setYear(base.year());
     }
   };
+
+  // Drag-to-scroll с авто-переключением месяца при достижении края
+  useDragScroll(containerRef, {
+    onReachLeft: handlePrevMonth,
+    onReachRight: handleNextMonth,
+  });
 
   // =======================
   // 🚚 Move mode handlers

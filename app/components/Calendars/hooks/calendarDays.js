@@ -219,11 +219,15 @@ export function useMobileCalendarScroll({ days, todayIndex }) {
 }
 
 /**
- * Хук для drag-to-scroll функциональности
+ * Хук для drag-to-scroll функциональности с авто-переключением месяца
  * Позволяет прокручивать контейнер зажатием мыши
+ * При достижении края — переключает месяц
  * @param {React.RefObject} containerRef - ref на scrollable контейнер
+ * @param {Object} options - опции
+ * @param {Function} options.onReachLeft - callback при достижении левого края
+ * @param {Function} options.onReachRight - callback при достижении правого края
  */
-export function useDragScroll(containerRef) {
+export function useDragScroll(containerRef, { onReachLeft, onReachRight } = {}) {
   useEffect(() => {
     const container = containerRef?.current;
     if (!container) return;
@@ -233,6 +237,7 @@ export function useDragScroll(containerRef) {
     let startY = 0;
     let scrollLeft = 0;
     let scrollTop = 0;
+    let edgeTriggered = false; // Предотвращает многократный trigger
 
     const handleMouseDown = (e) => {
       // Игнорируем клики по интерактивным элементам
@@ -247,6 +252,7 @@ export function useDragScroll(containerRef) {
       }
 
       isDown = true;
+      edgeTriggered = false;
       container.classList.add("dragging");
       startX = e.pageX - container.offsetLeft;
       startY = e.pageY - container.offsetTop;
@@ -275,6 +281,27 @@ export function useDragScroll(containerRef) {
 
       container.scrollLeft = scrollLeft - walkX;
       container.scrollTop = scrollTop - walkY;
+
+      // Проверка достижения края
+      if (!edgeTriggered) {
+        const threshold = 50; // px от края
+        const maxScrollLeft = container.scrollWidth - container.clientWidth;
+
+        // Левый край — переход к предыдущему месяцу
+        if (container.scrollLeft <= threshold && onReachLeft) {
+          edgeTriggered = true;
+          isDown = false;
+          container.classList.remove("dragging");
+          onReachLeft();
+        }
+        // Правый край — переход к следующему месяцу
+        else if (container.scrollLeft >= maxScrollLeft - threshold && onReachRight) {
+          edgeTriggered = true;
+          isDown = false;
+          container.classList.remove("dragging");
+          onReachRight();
+        }
+      }
     };
 
     container.addEventListener("mousedown", handleMouseDown);
@@ -288,6 +315,6 @@ export function useDragScroll(containerRef) {
       container.removeEventListener("mouseup", handleMouseUp);
       container.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [containerRef]);
+  }, [containerRef, onReachLeft, onReachRight]);
 }
 
