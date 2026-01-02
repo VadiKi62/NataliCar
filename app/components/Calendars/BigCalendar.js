@@ -45,13 +45,14 @@ import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 import {
   useCalendarDays,
   useMobileCalendarScroll,
+  useDragScroll,
   buildOrderDateRange,
 } from "./hooks";
 
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
 // ============================================
-function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
+function BigCalendarLayout({ showLegend, borderStyle, calendarRef, containerRef, children }) {
   return (
     <Box
       ref={calendarRef}
@@ -87,15 +88,25 @@ function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
         </Box>
       )}
 
-      {/* TableContainer */}
+      {/* TableContainer с drag-to-scroll */}
       <TableContainer
+        ref={containerRef}
+        className="calendar-scrollable"
         sx={{
           flex: 1,
           minHeight: 0,
           border: borderStyle,
           overflowX: "auto",
           overflowY: "auto",
-          scrollBehavior: "smooth",
+          cursor: "grab",
+          userSelect: "none",
+          "&.dragging": {
+            cursor: "grabbing",
+            scrollBehavior: "auto",
+          },
+          "&:not(.dragging)": {
+            scrollBehavior: "smooth",
+          },
         }}
       >
         {children}
@@ -376,6 +387,10 @@ export default function BigCalendar({ cars, showLegend = true }) {
   // Refs
   // ─────────────────────────────────────────
   const calendarRef = useRef(null);
+  const containerRef = useRef(null);
+
+  // Drag-to-scroll для прокрутки календаря зажатием мыши
+  useDragScroll(containerRef);
 
   // ─────────────────────────────────────────
   // Тема и цвета
@@ -806,6 +821,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
       showLegend={showLegend}
       borderStyle={`1px solid ${calendarHeaderStyles.border}`}
       calendarRef={calendarRef}
+      containerRef={containerRef}
     >
       {/* Table с sticky header */}
       <Table

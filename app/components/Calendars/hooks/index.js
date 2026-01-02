@@ -11,5 +11,6 @@ export {
   // Hooks
   useCalendarDays,
   useMobileCalendarScroll,
+  useDragScroll,
 } from "./calendarDays";
 

@@ -218,3 +218,76 @@ export function useMobileCalendarScroll({ days, todayIndex }) {
   }, [todayIndex, days]);
 }
 
+/**
+ * Хук для drag-to-scroll функциональности
+ * Позволяет прокручивать контейнер зажатием мыши
+ * @param {React.RefObject} containerRef - ref на scrollable контейнер
+ */
+export function useDragScroll(containerRef) {
+  useEffect(() => {
+    const container = containerRef?.current;
+    if (!container) return;
+
+    let isDown = false;
+    let startX = 0;
+    let startY = 0;
+    let scrollLeft = 0;
+    let scrollTop = 0;
+
+    const handleMouseDown = (e) => {
+      // Игнорируем клики по интерактивным элементам
+      if (
+        e.target.closest("button") ||
+        e.target.closest("select") ||
+        e.target.closest("input") ||
+        e.target.closest('[role="button"]') ||
+        e.target.closest(".MuiSelect-root")
+      ) {
+        return;
+      }
+
+      isDown = true;
+      container.classList.add("dragging");
+      startX = e.pageX - container.offsetLeft;
+      startY = e.pageY - container.offsetTop;
+      scrollLeft = container.scrollLeft;
+      scrollTop = container.scrollTop;
+    };
+
+    const handleMouseLeave = () => {
+      isDown = false;
+      container.classList.remove("dragging");
+    };
+
+    const handleMouseUp = () => {
+      isDown = false;
+      container.classList.remove("dragging");
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+
+      const x = e.pageX - container.offsetLeft;
+      const y = e.pageY - container.offsetTop;
+      const walkX = (x - startX) * 1.5; // Множитель скорости
+      const walkY = (y - startY) * 1.5;
+
+      container.scrollLeft = scrollLeft - walkX;
+      container.scrollTop = scrollTop - walkY;
+    };
+
+    container.addEventListener("mousedown", handleMouseDown);
+    container.addEventListener("mouseleave", handleMouseLeave);
+    container.addEventListener("mouseup", handleMouseUp);
+    container.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      container.removeEventListener("mousedown", handleMouseDown);
+      container.removeEventListener("mouseleave", handleMouseLeave);
+      container.removeEventListener("mouseup", handleMouseUp);
+      container.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [containerRef]);
+}
+
