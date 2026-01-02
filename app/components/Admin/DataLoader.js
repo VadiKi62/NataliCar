@@ -1,9 +1,15 @@
-import { Suspense } from "react";
 import { unstable_noStore } from "next/cache";
-import Loading from "@app/loading";
 import AdminView from "./AdminView";
 import { fetchAllCars, reFetchAllOrders, fetchCompany } from "@utils/action";
 
+/**
+ * DataLoader — Server Component для загрузки данных админки
+ * 
+ * Загрузка происходит на сервере через await Promise.all(),
+ * поэтому Suspense здесь не нужен — данные уже готовы.
+ * 
+ * Lazy-loading секций происходит в AdminView через dynamic().
+ */
 export default async function DataLoader({ viewType }) {
   unstable_noStore(); // Отключаем кеширование для админки
   
@@ -17,14 +23,13 @@ export default async function DataLoader({ viewType }) {
     reFetchAllOrders(),
   ]);
 
+  // Данные уже загружены — передаём в AdminView без Suspense
   return (
-    <Suspense fallback={<Loading />}>
-      <AdminView
-        company={company}
-        cars={cars}
-        orders={orders}
-        viewType={viewType}
-      />
-    </Suspense>
+    <AdminView
+      company={company}
+      cars={cars}
+      orders={orders}
+      viewType={viewType}
+    />
   );
 }

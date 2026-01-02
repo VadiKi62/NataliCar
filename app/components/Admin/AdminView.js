@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
@@ -128,11 +128,9 @@ function AdminViewContent({ viewType }) {
         onAddClick={viewType === "cars" ? openAddModal : undefined}
       />
       
-      {/* Feature section with lazy loading */}
+      {/* Feature section — lazy loading handled by dynamic() */}
       <Box sx={{ my: 3 }}>
-        <Suspense fallback={<AdminLoader />}>
-          <FeatureComponent />
-        </Suspense>
+        <FeatureComponent />
       </Box>
       
       {/* Global notifications */}
