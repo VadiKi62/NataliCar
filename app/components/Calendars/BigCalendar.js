@@ -45,14 +45,13 @@ import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
 import {
   useCalendarDays,
   useMobileCalendarScroll,
-  useDragScroll,
   buildOrderDateRange,
 } from "./hooks";
 
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
 // ============================================
-function BigCalendarLayout({ showLegend, borderStyle, calendarRef, containerRef, children }) {
+function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
   return (
     <Box
       ref={calendarRef}
@@ -88,25 +87,15 @@ function BigCalendarLayout({ showLegend, borderStyle, calendarRef, containerRef,
         </Box>
       )}
 
-      {/* TableContainer с drag-to-scroll */}
+      {/* TableContainer */}
       <TableContainer
-        ref={containerRef}
-        className="calendar-scrollable"
         sx={{
           flex: 1,
           minHeight: 0,
           border: borderStyle,
           overflowX: "auto",
           overflowY: "auto",
-          cursor: "grab",
-          userSelect: "none",
-          "&.dragging": {
-            cursor: "grabbing",
-            scrollBehavior: "auto",
-          },
-          "&:not(.dragging)": {
-            scrollBehavior: "smooth",
-          },
+          scrollBehavior: "smooth",
         }}
       >
         {children}
@@ -387,7 +376,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
   // Refs
   // ─────────────────────────────────────────
   const calendarRef = useRef(null);
-  const containerRef = useRef(null);
 
   // ─────────────────────────────────────────
   // Тема и цвета
@@ -627,12 +615,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
     }
   };
 
-  // Drag-to-scroll с авто-переключением месяца при достижении края
-  useDragScroll(containerRef, {
-    onReachLeft: handlePrevMonth,
-    onReachRight: handleNextMonth,
-  });
-
   // =======================
   // 🚚 Move mode handlers
   // =======================
@@ -824,7 +806,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
       showLegend={showLegend}
       borderStyle={`1px solid ${calendarHeaderStyles.border}`}
       calendarRef={calendarRef}
-      containerRef={containerRef}
     >
       {/* Table с sticky header */}
       <Table
