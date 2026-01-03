@@ -20,10 +20,18 @@ import {
   Modal,
   Grid,
   Typography,
-  IconButton,
   useTheme,
 } from "@mui/material";
-import { ActionButton, CancelButton, ConfirmModal, OrdersByDateModal, ModalLayout } from "../ui";
+import { 
+  ActionButton, 
+  CancelButton, 
+  ConfirmModal, 
+  OrdersByDateModal, 
+  ModalLayout,
+  CalendarNavButton,
+  CalendarFirstColumn,
+  CalendarDayCell,
+} from "../ui";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -42,6 +50,7 @@ import { useSnackbar } from "notistack";
 import { changeRentalDates } from "@utils/action";
 import EditCarModal from "@app/components/Admin/Car/EditCarModal";
 import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
+import { calendarStyles } from "@/theme";
 import {
   useCalendarDays,
   useMobileCalendarScroll,
@@ -55,35 +64,12 @@ function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
   return (
     <Box
       ref={calendarRef}
-      className="bigcalendar-root"
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        overflowX: "auto",
-        overflowY: "hidden",
-        pt: { xs: 2, sm: 3, md: 4 },
-        maxWidth: "100vw",
-        zIndex: 100,
-        height: "100vh",
-      }}
+      className="bigcalendar-root" // Оставляем для media queries в globals.css
+      sx={calendarStyles.root}
     >
-      {/* Стили для landscape/portrait перенесены в globals.css */}
       {/* Легенда календаря */}
       {showLegend && (
-        <Box
-          className="bigcalendar-legend"
-          sx={{
-            display: { xs: "none", sm: "flex" },
-            justifyContent: "center",
-            alignItems: "center",
-            py: 0.5,
-            px: 2,
-            flexShrink: 0,
-            "@media (max-width:900px) and (orientation: landscape)": {
-              display: "none",
-            },
-          }}
-        >
+        <Box sx={calendarStyles.legend}>
           <LegendCalendarAdmin />
         </Box>
       )}
@@ -91,12 +77,8 @@ function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
       {/* TableContainer */}
       <TableContainer
         sx={{
-          flex: 1,
-          minHeight: 0,
+          ...calendarStyles.tableContainer,
           border: borderStyle,
-          overflowX: "auto",
-          overflowY: "auto",
-          scrollBehavior: "smooth",
         }}
       >
         {children}
@@ -133,57 +115,25 @@ function BigCalendarHeader({
         {/* Первая ячейка — выбор года/месяца */}
         <TableCell
           sx={{
-            position: "sticky",
-            left: 0,
+            ...calendarStyles.headerFirstCell,
             backgroundColor: headerStyles.baseBg,
-            zIndex: 5,
-            fontWeight: "bold",
-            minWidth: 120,
-            height: 82,
-            py: 0,
           }}
         >
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-            }}
-          >
+          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
             {/* Верхняя строка: год */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: 28,
-                py: 0.5,
-                mb: 0.1,
-                "@media (max-width:900px) and (orientation: landscape)": {
-                  mt: 2,
-                },
-              }}
-            >
+            <Box sx={calendarStyles.yearRow}>
               <Select
-                className="bigcalendar-year-select"
+                className="bigcalendar-year-select" // Для globals.css
                 value={year}
                 onChange={onYearChange}
                 size="small"
-                sx={{
-                  minWidth: 80,
-                  fontSize: 13,
-                  "& .MuiSelect-select": { py: 0.2, fontSize: 13 },
-                }}
+                sx={calendarStyles.yearSelect}
                 renderValue={() => {
                   if (viewMode === "range15") {
                     const start =
                       rangeDirection === "forward"
                         ? dayjs().year(year).month(month).date(15)
-                        : dayjs()
-                            .year(year)
-                            .month(month)
-                            .subtract(1, "month")
-                            .date(15);
+                        : dayjs().year(year).month(month).subtract(1, "month").date(15);
                     const end =
                       rangeDirection === "forward"
                         ? start.add(1, "month").date(15)
@@ -196,11 +146,7 @@ function BigCalendarHeader({
                 }}
               >
                 {Array.from({ length: 5 }, (_, index) => (
-                  <MenuItem
-                    key={index}
-                    value={year - 2 + index}
-                    sx={{ fontSize: 13, py: 0.2 }}
-                  >
+                  <MenuItem key={index} value={year - 2 + index} sx={{ fontSize: 13, py: 0.2 }}>
                     {year - 2 + index}
                   </MenuItem>
                 ))}
@@ -208,67 +154,23 @@ function BigCalendarHeader({
             </Box>
 
             {/* Нижняя строка: стрелки + месяц */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: 28,
-                py: 0.5,
-                mt: 0.5,
-                mb: 0,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 0,
-                }}
-              >
-                <IconButton
-                  size="small"
-                  onClick={onPrevMonth}
-                  sx={{ p: 0.15, mr: 0 }}
-                >
-                  <Box
-                    component="span"
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 16,
-                      height: 16,
-                      color: headerStyles.weekdayText,
-                      fontSize: 13,
-                      lineHeight: 1,
-                      userSelect: "none",
-                    }}
-                  >
-                    {"\u25C0"}
-                  </Box>
-                </IconButton>
+            <Box sx={calendarStyles.monthRow}>
+              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0 }}>
+                <CalendarNavButton 
+                  direction="prev" 
+                  onClick={onPrevMonth} 
+                  color={headerStyles.weekdayText} 
+                />
                 <Select
-                  className="bigcalendar-month-select"
+                  className="bigcalendar-month-select" // Для globals.css
                   value={month}
                   onChange={onMonthChange}
                   size="small"
-                  sx={{
-                    minWidth: 80,
-                    fontSize: 13,
-                    "& .MuiSelect-select": {
-                      py: 0.2,
-                      fontSize: 13,
-                      letterSpacing: 0,
-                    },
-                    mx: 0.15,
-                  }}
+                  sx={calendarStyles.monthSelect}
                   renderValue={() => {
                     const months = monthNames[currentLang] || monthNames.en;
                     const abbr = (name) =>
-                      isPortraitPhone && viewMode === "range15"
-                        ? name.slice(0, 3)
-                        : name;
+                      isPortraitPhone && viewMode === "range15" ? name.slice(0, 3) : name;
                     if (viewMode === "range15") {
                       if (rangeDirection === "forward") {
                         const currentLabel = months[month];
@@ -284,37 +186,16 @@ function BigCalendarHeader({
                   }}
                 >
                   {Array.from({ length: 12 }, (_, index) => (
-                    <MenuItem
-                      key={index}
-                      value={index}
-                      sx={{ fontSize: 13, py: 0.2 }}
-                    >
+                    <MenuItem key={index} value={index} sx={{ fontSize: 13, py: 0.2 }}>
                       {(monthNames[currentLang] || monthNames.en)[index]}
                     </MenuItem>
                   ))}
                 </Select>
-                <IconButton
-                  size="small"
-                  onClick={onNextMonth}
-                  sx={{ p: 0.15, ml: 0 }}
-                >
-                  <Box
-                    component="span"
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 16,
-                      height: 16,
-                      color: headerStyles.weekdayText,
-                      fontSize: 13,
-                      lineHeight: 1,
-                      userSelect: "none",
-                    }}
-                  >
-                    {"\u25B6"}
-                  </Box>
-                </IconButton>
+                <CalendarNavButton 
+                  direction="next" 
+                  onClick={onNextMonth} 
+                  color={headerStyles.weekdayText} 
+                />
               </Box>
             </Box>
           </Box>
@@ -322,47 +203,23 @@ function BigCalendarHeader({
 
         {/* Ячейки дней */}
         {days.map((day, idx) => (
-          <TableCell
+          <CalendarDayCell
             key={day.dayjs.valueOf()}
-            data-col-index={idx}
-            align="center"
-            title="Нажмите для просмотра всех начинающихся и заканчивающихся заказов на эту дату"
-            className={idx === todayIndex ? "today-column-bg" : undefined}
-            sx={{
-              position: "sticky",
-              top: 0,
-              backgroundColor:
-                idx === todayIndex ? headerStyles.todayBg : headerStyles.baseBg,
-              zIndex: 4,
-              fontSize: "16px",
-              padding: "6px",
-              minWidth: 40,
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
+            colIndex={idx}
+            isToday={idx === todayIndex}
+            backgroundColor={idx === todayIndex ? headerStyles.todayBg : headerStyles.baseBg}
             onClick={() => onDayClick(day)}
-            onMouseEnter={() => {
-              calendarRef?.current?.setAttribute("data-hover-col", idx);
-            }}
-            onMouseLeave={() => {
-              calendarRef?.current?.removeAttribute("data-hover-col");
-            }}
+            onMouseEnter={() => calendarRef?.current?.setAttribute("data-hover-col", idx)}
+            onMouseLeave={() => calendarRef?.current?.removeAttribute("data-hover-col")}
+            title="Нажмите для просмотра всех начинающихся и заканчивающихся заказов на эту дату"
           >
-            <div
-              style={{
-                color: day.isSunday ? headerStyles.sundayText : "inherit",
-              }}
-            >
+            <div style={{ color: day.isSunday ? headerStyles.sundayText : "inherit" }}>
               {day.date}
             </div>
-            <div
-              style={{
-                color: day.isSunday ? headerStyles.sundayText : "inherit",
-              }}
-            >
+            <div style={{ color: day.isSunday ? headerStyles.sundayText : "inherit" }}>
               {(weekday2[currentLang] || weekday2.en)[day.dayjs.day()]}
             </div>
-          </TableCell>
+          </CalendarDayCell>
         ))}
       </TableRow>
     </TableHead>
@@ -842,44 +699,12 @@ export default function BigCalendar({ cars, showLegend = true }) {
           <TableBody>
             {sortedCars.map((car) => (
               <TableRow key={car._id}>
-                <TableCell
-                  className="bigcalendar-first-column"
+                <CalendarFirstColumn
                   onClick={() => handleEditCar(car)}
                   title="Нажмите для редактирования информации об автомобиле"
-                  sx={{
-                    position: "sticky",
-                    left: 0,
-                    backgroundColor: "secondary.main",
-                    color: "backgroundLight.bg",
-                    zIndex: 3,
-                    // Полный сброс padding для контроля высоты
-                    padding: { 
-                      xs: "2px 4px !important", 
-                      sm: "4px 8px !important", 
-                      md: "6px 12px !important" 
-                    },
-                    // Адаптивная ширина
-                    width: { xs: 55, sm: 100, md: 140 },
-                    minWidth: { xs: 55, sm: 100, md: 140 },
-                    maxWidth: { xs: 55, sm: 100, md: 140 },
-                    // Адаптивный размер шрифта
-                    fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.875rem" },
-                    fontWeight: 500,
-                    lineHeight: 1.2,
-                    // Обрезка длинного текста
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    boxSizing: "border-box",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s ease",
-                    "&:hover": {
-                      backgroundColor: "secondary.dark",
-                    },
-                  }}
                 >
                   {car.model} {car.regNumber}
-                </TableCell>
+                </CalendarFirstColumn>
 
                 <CarTableRow
                   key={car._id}

@@ -10,3 +10,11 @@ export { default as GradientBookButton } from "../common/GradientBookButton";
 // Модальные компоненты
 export { ModalLayout, ConfirmModal, OrdersByDateModal } from "./modals";
 
+// Компоненты календаря
+export { 
+  CalendarNavButton, 
+  CalendarSelect, 
+  CalendarFirstColumn, 
+  CalendarDayCell 
+} from "./calendar";
+

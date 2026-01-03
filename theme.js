@@ -627,6 +627,174 @@ export const darkTheme = createTheme({
 export default lightTheme;
 
 // ============================================
+// СТИЛИ ДЛЯ BIGCALENDAR (централизованные)
+// ============================================
+export const calendarStyles = {
+  // Корневой контейнер
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    overflowX: "auto",
+    overflowY: "hidden",
+    pt: { xs: 2, sm: 3, md: 4 },
+    // Убираем maxWidth чтобы не обрезать контент
+    width: "100%",
+    zIndex: 100,
+    height: "100vh",
+    // Добавляем padding справа для 31-го дня
+    pr: { xs: 0.5, sm: 1 },
+  },
+  
+  // Легенда
+  legend: {
+    display: { xs: "none", sm: "flex" },
+    justifyContent: "center",
+    alignItems: "center",
+    py: 0.5,
+    px: 2,
+    flexShrink: 0,
+    "@media (max-width:900px) and (orientation: landscape)": {
+      display: "none",
+    },
+  },
+  
+  // TableContainer
+  tableContainer: {
+    flex: 1,
+    minHeight: 0,
+    overflowX: "auto",
+    overflowY: "auto",
+    scrollBehavior: "smooth",
+  },
+  
+  // Шапка — первая ячейка (год/месяц)
+  headerFirstCell: {
+    position: "sticky",
+    left: 0,
+    zIndex: 5,
+    fontWeight: "bold",
+    minWidth: 120,
+    height: 82,
+    py: 0,
+  },
+  
+  // Шапка — ячейки дней
+  headerDayCell: {
+    position: "sticky",
+    top: 0,
+    zIndex: 4,
+    fontSize: "16px",
+    padding: "6px",
+    minWidth: 40,
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  
+  // Первый столбец (названия машин)
+  firstColumn: {
+    position: "sticky",
+    left: 0,
+    backgroundColor: "secondary.main",
+    color: "backgroundLight.bg",
+    zIndex: 3,
+    padding: { 
+      xs: "2px 4px !important", 
+      sm: "4px 8px !important", 
+      md: "6px 12px !important" 
+    },
+    width: { xs: 55, sm: 100, md: 140 },
+    minWidth: { xs: 55, sm: 100, md: 140 },
+    maxWidth: { xs: 55, sm: 100, md: 140 },
+    fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.875rem" },
+    fontWeight: 500,
+    lineHeight: 1.2,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    boxSizing: "border-box",
+    cursor: "pointer",
+    transition: "background-color 0.2s ease",
+    "&:hover": {
+      backgroundColor: "secondary.dark",
+    },
+  },
+  
+  // Селект года
+  yearSelect: {
+    minWidth: 80,
+    fontSize: 13,
+    "& .MuiSelect-select": { py: 0.2, fontSize: 13 },
+  },
+  
+  // Селект месяца
+  monthSelect: {
+    minWidth: 80,
+    fontSize: 13,
+    "& .MuiSelect-select": {
+      py: 0.2,
+      fontSize: 13,
+      letterSpacing: 0,
+    },
+    mx: 0.15,
+  },
+  
+  // Кнопки навигации (стрелки)
+  navButton: {
+    p: 0.15,
+  },
+  
+  // Стрелка внутри кнопки
+  navArrow: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 16,
+    height: 16,
+    fontSize: 13,
+    lineHeight: 1,
+    userSelect: "none",
+  },
+  
+  // Контейнер ряда год
+  yearRow: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: 28,
+    py: 0.5,
+    mb: 0.1,
+    "@media (max-width:900px) and (orientation: landscape)": {
+      mt: 2,
+    },
+  },
+  
+  // Контейнер ряда месяц
+  monthRow: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: 28,
+    py: 0.5,
+    mt: 0.5,
+    mb: 0,
+  },
+  
+  // Ячейка с датами (обёртка)
+  cellWrapper: {
+    width: "100%",
+    height: { xs: "28px", sm: "36px", md: "44px", lg: "50px" },
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  
+  // Сегодняшний день
+  todayCell: {
+    backgroundColor: "calendar.today",
+  },
+};
+
+// ============================================
 // СОВМЕСТИМОСТЬ СО СТАРЫМ КОДОМ
 // ============================================
 // Эти экспорты нужны для обратной совместимости

@@ -501,6 +501,10 @@ const EditOrderModal = ({
         totalPrice: editedOrder.totalPrice, // <-- сохраняем totalPrice
       };
 
+      // DEBUG: проверяем что отправляется на сервер
+      console.log("🪑 EditOrderModal: ChildSeats отправляется:", datesToSend.ChildSeats);
+      console.log("🛡️ EditOrderModal: Insurance отправляется:", datesToSend.insurance);
+
       const response = await changeRentalDates(
         editedOrder._id,
         datesToSend.rentalStartDate,
@@ -685,16 +689,23 @@ const EditOrderModal = ({
     <>
       <Paper
         sx={{
-          width: { xs: 500, md: 700 },
-          maxWidth: "90%",
-          p: { xs: 2, md: 4 },
-          pt: { xs: 1, md: 2 },
-          maxHeight: "99vh",
+          // Адаптивная ширина для разных экранов
+          width: { xs: "100%", sm: 500, md: 700 },
+          maxWidth: { xs: "95vw", sm: "90%" },
+          // Адаптивные отступы
+          p: { xs: 1.5, sm: 2, md: 4 },
+          pt: { xs: 1, sm: 1.5, md: 2 },
+          // Центрирование модального окна
+          mx: "auto",
+          // Ограничение высоты с учётом мобильных устройств
+          maxHeight: { xs: "95vh", sm: "99vh" },
           overflow: "auto",
+          // Стили для конфликтных заказов
           border: isConflictOrder ? "4px solid" : "none",
           borderColor: isConflictOrder ? "error.main" : "transparent",
           animation: isConflictOrder ? "pulse 2s infinite" : "none",
-          // Центрирование убрано, Paper теперь не центрируется явно
+          // Скругление углов для мобильных
+          borderRadius: { xs: 2, sm: 1 },
         }}
       >
         {loading ? (
@@ -706,7 +717,12 @@ const EditOrderModal = ({
             <Typography
               variant="h6"
               color="primary.main"
-              sx={{ letterSpacing: "-0.5px", fontSize: "1.3rem" }}
+              sx={{ 
+                letterSpacing: "-0.5px", 
+                fontSize: { xs: "1rem", sm: "1.15rem", md: "1.3rem" },
+                textAlign: { xs: "center", sm: "left" },
+                mb: { xs: 0.5, sm: 0 },
+              }}
             >
               {viewOnly ? "Просмотреть заказ" : t("order.editOrder")} №
               {order?.orderNumber ? order.orderNumber.slice(2, -2) : ""}
@@ -721,12 +737,13 @@ const EditOrderModal = ({
                 return "";
               })()}
             </Typography>
-            {/* Новая строка: Количество дней и стоимость */}
+            {/* Количество дней и стоимость */}
             <Box
               display="flex"
               alignItems="center"
-              justifyContent="left"
-              sx={{ mb: 1 }}
+              justifyContent={{ xs: "center", sm: "flex-start" }}
+              flexWrap="wrap"
+              sx={{ mb: 1, gap: { xs: 0.5, sm: 0 } }}
             >
               <Typography variant="body1">
                 {t("order.daysNumber")}{" "}
@@ -876,12 +893,14 @@ const EditOrderModal = ({
             </Box>
 
             <Box sx={{ mb: 1 }}>
+              {/* Даты — вертикально на мобильных */}
               <Box
                 sx={{
                   display: "flex",
-                  gap: 2,
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: { xs: 1, sm: 2 },
                   mb: 1,
-                  alignItems: "flex-start",
+                  alignItems: { xs: "stretch", sm: "flex-start" },
                 }}
               >
                 <TextField
@@ -954,7 +973,8 @@ const EditOrderModal = ({
                   }}
                 />
               </Box>
-              <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
+              {/* Время — горизонтально всегда, компактнее на мобильных */}
+              <Box sx={{ display: "flex", gap: { xs: 1, sm: 2 }, mb: 1 }}>
                 <TextField
                   label={t("order.pickupTime")}
                   type="time"
@@ -993,8 +1013,13 @@ const EditOrderModal = ({
                   disabled={viewOnly}
                 />
               </Box>
-              {/* Место получения и возврата: Autocomplete с freeSolo */}
-              <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
+              {/* Место получения и возврата — вертикально на мобильных */}
+              <Box sx={{ 
+                display: "flex", 
+                flexDirection: { xs: "column", sm: "row" },
+                gap: { xs: 1, sm: 2 }, 
+                mb: 1 
+              }}>
                 <Autocomplete
                   freeSolo
                   options={locations}
@@ -1101,11 +1126,20 @@ const EditOrderModal = ({
                   }}
                 />
               </Box>
-              <Box sx={{ display: "flex", gap: 2, mb: 0 }}>
+              {/* Страховка и детские кресла — адаптивно */}
+              <Box sx={{ 
+                display: "flex", 
+                flexDirection: { xs: "column", sm: "row" },
+                gap: { xs: 1, sm: 2 }, 
+                mb: 0 
+              }}>
                 <FormControl
                   fullWidth
                   sx={{
-                    width: editedOrder.insurance === "TPL" ? "49%" : "30%",
+                    width: { 
+                      xs: "100%", 
+                      sm: editedOrder.insurance === "TPL" ? "49%" : "30%" 
+                    },
                   }}
                 >
                   <InputLabel>{t("order.insurance")}</InputLabel>
@@ -1166,7 +1200,7 @@ const EditOrderModal = ({
                     />
                   </Box>
                 )}
-                <FormControl fullWidth sx={{ width: "49%" }}>
+                <FormControl fullWidth sx={{ width: { xs: "100%", sm: "49%" } }}>
                   <InputLabel>
                     {t("order.childSeats")}{" "}
                     {(() => {
@@ -1244,7 +1278,13 @@ const EditOrderModal = ({
                   disabled={viewOnly}
                 />
               </FormControl>
-              <Box sx={{ display: "flex", gap: 2, mb: 0 }}>
+              {/* Телефон и email — вертикально на мобильных */}
+              <Box sx={{ 
+                display: "flex", 
+                flexDirection: { xs: "column", sm: "row" },
+                gap: { xs: 0.5, sm: 2 }, 
+                mb: 0 
+              }}>
                 <FormControl
                   fullWidth
                   margin="dense"
@@ -1309,22 +1349,30 @@ const EditOrderModal = ({
               </Box>
             </Box>
 
+            {/* Кнопки действий — адаптивное расположение */}
             <Box
               sx={{
-                mt: 1,
+                mt: { xs: 2, sm: 1 },
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                flexDirection: { xs: "column", sm: "row" },
+                justifyContent: { xs: "center", sm: "space-between" },
+                alignItems: { xs: "stretch", sm: "center" },
+                gap: { xs: 1, sm: 0 },
               }}
             >
               <CancelButton
                 onClick={onCloseModalEdit}
                 label={t("basic.cancel")}
+                sx={{ order: { xs: 3, sm: 1 }, width: { xs: "100%", sm: "auto" } }}
               />
               <ConfirmButton
                 loading={isUpdating}
                 disabled={viewOnly}
-                sx={{ mx: 2, width: "40%" }}
+                sx={{ 
+                  mx: { xs: 0, sm: 2 }, 
+                  width: { xs: "100%", sm: "40%" },
+                  order: { xs: 1, sm: 2 },
+                }}
                 onClick={async () => {
                   if (viewOnly) return;
                   setIsUpdating(true);
@@ -1348,7 +1396,8 @@ const EditOrderModal = ({
                 disabled={viewOnly || isCurrentOrder}
                 label={t("order.deleteOrder")}
                 sx={{
-                  width: "30%",
+                  width: { xs: "100%", sm: "30%" },
+                  order: { xs: 2, sm: 3 },
                   opacity: isCurrentOrder ? 0.5 : 1,
                   cursor: isCurrentOrder ? "not-allowed" : "pointer",
                 }}
