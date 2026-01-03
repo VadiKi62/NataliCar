@@ -63,6 +63,7 @@ import {
   Checkbox,
   FormControlLabel,
   Autocomplete,
+  useTheme,
 } from "@mui/material";
 import { ConfirmButton, CancelButton, DeleteButton, ActionButton } from "../../ui";
 import { RenderTextField } from "@app/components/common/Fields";
@@ -411,6 +412,11 @@ const EditOrderModal = ({
 
       showMessage(message);
       onSave(updatedOrder);
+      
+      // Закрываем модальное окно после успешного обновления
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error) {
       console.error("Error toggling confirmation status:", error);
       setUpdateMessage(error.message || "Статус не обновлен. Ошибка сервера.");
@@ -513,7 +519,7 @@ const EditOrderModal = ({
         Number(editedOrder.totalPrice),
         Number(editedOrder.numberOfDays)
       );
-      showMessage(response.message);
+      // Сообщение показывается в onClick кнопки после всех обновлений
       if (response.status == 202) {
         setConflictMessage1(response.conflicts);
         onSave(response.updatedOrder);
@@ -566,7 +572,7 @@ const EditOrderModal = ({
       // Логгируем ответ сервера
       console.log("EditOrderModal: response от updateCustomerInfo:", response);
 
-      showMessage(response.message);
+      // Сообщение показывается в onClick кнопки после всех обновлений
       onSave(response.updatedOrder);
     } catch (error) {
       console.error("Error updating customer info:", error);
@@ -659,6 +665,21 @@ const EditOrderModal = ({
   };
 
   const { t } = useTranslation();
+  const theme = useTheme();
+
+  // Стили для отключенных элементов
+  const disabledStyles = {
+    opacity: 0.6,
+    cursor: "not-allowed",
+  };
+
+  const enabledStyles = {
+    opacity: 1,
+    cursor: "pointer",
+  };
+
+  // Проверка, заблокирована ли кнопка подтверждения
+  const isConfirmationDisabled = viewOnly || (isCurrentOrder && editedOrder?.confirmed);
 
   return (
     <>
@@ -709,9 +730,12 @@ const EditOrderModal = ({
             >
               <Typography variant="body1">
                 {t("order.daysNumber")}{" "}
-                <span style={{ color: "#990606", fontWeight: 700 }}>
+                <Box
+                  component="span"
+                  sx={{ color: "primary.dark", fontWeight: 700 }}
+                >
                   {editedOrder?.numberOfDays}
-                </span>{" "}
+                </Box>{" "}
                 | {t("order.price")}
               </Typography>
               <TextField
@@ -733,49 +757,38 @@ const EditOrderModal = ({
                 variant="outlined"
                 size="small"
                 inputProps={{
-                  style: {
-                    fontWeight: 700,
-                    fontSize: 18,
-                    textAlign: "right",
-                    letterSpacing: 1,
-                    width: "5ch",
-                    paddingRight: 0,
-                    color: "#990606",
-                  },
                   maxLength: 4,
                   inputMode: "numeric",
                   pattern: "[0-9]*",
                 }}
                 InputProps={{
                   endAdornment: (
-                    <span
-                      style={{
+                    <Box
+                      component="span"
+                      sx={{
                         fontWeight: 700,
                         fontSize: 18,
-                        marginLeft: 0,
-                        marginRight: "-8px",
-                        paddingLeft: 0,
-                        paddingRight: 0,
-                        letterSpacing: 0,
-                        color: "#990606",
-                        display: "inline-block",
+                        ml: 0,
+                        mr: "-8px",
+                        color: "primary.dark",
                       }}
                     >
                       €
-                    </span>
+                    </Box>
                   ),
                 }}
                 sx={{
                   ml: 1,
-                  mt: 0,
-                  mb: 0,
                   width: "90px",
                   "& .MuiInputBase-input": {
-                    padding: "8px 8px 8px 12px",
-                    width: "5ch",
-                    boxSizing: "content-box",
-                    color: "#990606",
+                    fontWeight: 700,
                     fontSize: 18,
+                    textAlign: "right",
+                    letterSpacing: 1,
+                    width: "5ch",
+                    padding: "8px 8px 8px 12px",
+                    boxSizing: "content-box",
+                    color: "primary.dark",
                   },
                 }}
                 disabled={viewOnly}
@@ -846,11 +859,7 @@ const EditOrderModal = ({
               <ActionButton
                 fullWidth
                 onClick={handleConfirmationToggle}
-                disabled={
-                  isUpdating ||
-                  viewOnly ||
-                  (isCurrentOrder && editedOrder?.confirmed)
-                }
+                disabled={isUpdating || isConfirmationDisabled}
                 color={editedOrder?.confirmed ? "success" : "primary"}
                 label={
                   editedOrder?.confirmed
@@ -862,16 +871,7 @@ const EditOrderModal = ({
                     ? "Нельзя снять подтверждение у текущего заказа"
                     : ""
                 }
-                sx={{
-                  opacity:
-                    viewOnly || (isCurrentOrder && editedOrder?.confirmed)
-                      ? 0.6
-                      : 1,
-                  cursor:
-                    viewOnly || (isCurrentOrder && editedOrder?.confirmed)
-                      ? "not-allowed"
-                      : "pointer",
-                }}
+                sx={isConfirmationDisabled ? disabledStyles : enabledStyles}
               />
             </Box>
 
@@ -1230,7 +1230,7 @@ const EditOrderModal = ({
                   label={
                     <>
                       <span>{t("order.clientName")}</span>
-                      <span style={{ color: "#990606" }}>*</span>
+                      <Box component="span" sx={{ color: "primary.dark" }}>*</Box>
                     </>
                   }
                   value={editedOrder.customerName || ""}
@@ -1257,7 +1257,7 @@ const EditOrderModal = ({
                     label={
                       <>
                         <span>{t("order.phone")}</span>
-                        <span style={{ color: "#990606" }}>*</span>
+                        <Box component="span" sx={{ color: "primary.dark" }}>*</Box>
                       </>
                     }
                     value={editedOrder.phone || ""}
@@ -1283,15 +1283,16 @@ const EditOrderModal = ({
                     label={
                       <>
                         {t("order.email")}
-                        <span
-                          style={{
-                            color: "#4CAF50",
+                        <Box
+                          component="span"
+                          sx={{
+                            color: "success.main",
                             fontWeight: 500,
-                            marginLeft: 8,
+                            ml: 1,
                           }}
                         >
                           {t("basic.optional")}
-                        </span>
+                        </Box>
                       </>
                     }
                     value={editedOrder.email || ""}

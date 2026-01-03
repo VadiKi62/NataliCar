@@ -61,12 +61,13 @@ function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
         flexDirection: "column",
         overflowX: "auto",
         overflowY: "hidden",
-        pt: 4.5,
+        pt: { xs: 2, sm: 3, md: 4 },
         maxWidth: "100vw",
         zIndex: 100,
         height: "100vh",
       }}
     >
+      {/* Стили для landscape/portrait перенесены в globals.css */}
       {/* Легенда календаря */}
       {showLegend && (
         <Box
@@ -386,7 +387,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
   // Централизованные стили для header
   const calendarHeaderStyles = useMemo(
     () => ({
-      baseBg: "background.default",
+      baseBg: "background.default" || "#121212",
       todayBg: calendarColors.today || "calendar.today",
       sundayText: calendarColors.sunday || theme.palette.primary.main,
       weekdayText: "text.primary",
@@ -848,15 +849,31 @@ export default function BigCalendar({ cars, showLegend = true }) {
                   sx={{
                     position: "sticky",
                     left: 0,
-                    // Use the same background as the Navbar to ensure visual consistency
                     backgroundColor: "secondary.main",
                     color: "backgroundLight.bg",
                     zIndex: 3,
-                    padding: "0, 0, 0, 5px",
-                    minWidth: 120,
+                    // Полный сброс padding для контроля высоты
+                    padding: { 
+                      xs: "2px 4px !important", 
+                      sm: "4px 8px !important", 
+                      md: "6px 12px !important" 
+                    },
+                    // Адаптивная ширина
+                    width: { xs: 55, sm: 100, md: 140 },
+                    minWidth: { xs: 55, sm: 100, md: 140 },
+                    maxWidth: { xs: 55, sm: 100, md: 140 },
+                    // Адаптивный размер шрифта
+                    fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.875rem" },
+                    fontWeight: 500,
+                    lineHeight: 1.2,
+                    // Обрезка длинного текста
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    boxSizing: "border-box",
                     cursor: "pointer",
+                    transition: "background-color 0.2s ease",
                     "&:hover": {
-                      // slightly different shade on hover but staying within primary palette
                       backgroundColor: "secondary.dark",
                     },
                   }}
@@ -902,32 +919,50 @@ export default function BigCalendar({ cars, showLegend = true }) {
           justifyContent: "center",
         }}
       >
-        <Grid
-          container
-          spacing={1}
-          justifyContent="center"
+        <Box
+          onClick={(e) => {
+            // Закрываем модал при клике на backdrop (вне контента)
+            if (e.target === e.currentTarget) {
+              handleClose();
+            }
+          }}
           sx={{
-            maxWidth: "90vw",
-            maxHeight: "90vh",
-            overflow: "auto",
-            "&::-webkit-scrollbar": {
-              width: "4px",
-            },
-            "&::-webkit-scrollbar-thumb": {
-              backgroundColor: "primary.main",
-              borderRadius: "4px",
-            },
-            "&::-webkit-scrollbar-track": {
-              backgroundColor: "background.paper",
-            },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
           }}
         >
-          {selectedOrders.map((order, index) => (
+          <Grid
+            container
+            spacing={1}
+            justifyContent="center"
+            onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на контент
+            sx={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              overflow: "auto",
+              "&::-webkit-scrollbar": {
+                width: "4px",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "primary.main",
+                borderRadius: "4px",
+              },
+              "&::-webkit-scrollbar-track": {
+                backgroundColor: "background.paper",
+              },
+            }}
+          >
+          {/* Сортировка: сначала ранние, затем поздние */}
+          {[...selectedOrders]
+            .sort((a, b) => dayjs(a.rentalStartDate).valueOf() - dayjs(b.rentalStartDate).valueOf())
+            .map((order, index) => (
             <Grid
               item
               key={order._id}
               xs={12}
-              sm={selectedOrders.length === 1 ? 12 : 6}
               md={
                 selectedOrders.length === 1
                   ? 12
@@ -952,6 +987,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
             </Grid>
           ))}
         </Grid>
+        </Box>
       </Modal>
 
       {/* AddOrderModal для создания нового заказа */}
@@ -966,6 +1002,10 @@ export default function BigCalendar({ cars, showLegend = true }) {
             if (status?.type === 200) {
               fetchAndUpdateOrders();
               setForceUpdateKey((prev) => prev + 1); // триггер перерисовки
+              // Автоматически закрываем модальное окно после успешного создания
+              setTimeout(() => {
+                setIsAddOrderOpen(false);
+              }, 1500);
             }
           }}
         />

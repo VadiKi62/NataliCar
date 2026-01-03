@@ -9,16 +9,29 @@ import { useCars } from "./useCars";
 /**
  * CarsSection - секция управления автомобилями
  * Feature component - lazy-loaded
+ * 
+ * @param {object} props
+ * @param {boolean} props.isAddModalOpen - управляется из AdminViewContent
+ * @param {function} props.closeAddModal - callback для закрытия модала
+ * @param {function} props.setNotification - callback для уведомлений
  */
-export default function CarsSection() {
+export default function CarsSection({ 
+  isAddModalOpen = false, 
+  closeAddModal, 
+  setNotification: externalSetNotification 
+}) {
   const {
     cars,
-    isAddModalOpen,
-    closeAddModal,
     deleteCar,
-    setNotification,
+    setNotification: localSetNotification,
     resubmitCars,
   } = useCars();
+
+  // Используем внешний setNotification если передан, иначе локальный
+  const setNotification = externalSetNotification || localSetNotification;
+  
+  // Безопасный callback для закрытия (на случай если не передан)
+  const handleCloseModal = closeAddModal || (() => {});
 
   return (
     <Box sx={{ px: { xs: 1, md: 2 }, pb: 6 }}>
@@ -29,7 +42,7 @@ export default function CarsSection() {
       
       <AddCarModal
         open={isAddModalOpen}
-        onClose={closeAddModal}
+        onClose={handleCloseModal}
         car={cars[0]}
         setUpdateStatus={setNotification}
         fetchAndUpdateCars={resubmitCars}

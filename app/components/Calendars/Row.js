@@ -1637,9 +1637,12 @@ export default function CarTableRow({
           sx={{ padding: 0 }}
         >
           <Box
+            className="bigcalendar-cell-wrapper"
             sx={{
               width: "100%",
-              height: "50px",
+              // Адаптивная высота ячеек — row height определяется этим значением
+              height: { xs: "28px", sm: "36px", md: "44px", lg: "50px" },
+              minHeight: { xs: "28px", sm: "36px", md: "44px", lg: "50px" },
               display: "flex",
               justifyContent: "center",
               alignItems: "center",

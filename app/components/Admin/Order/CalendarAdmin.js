@@ -462,55 +462,72 @@ const CalendarAdmin = ({
           justifyContent: "center",
         }}
       >
-        <Grid
-          container
-          spacing={1}
-          justifyContent="center"
+        <Box
+          onClick={(e) => {
+            // Закрываем модал при клике на backdrop (вне контента)
+            if (e.target === e.currentTarget) {
+              handleClose();
+            }
+          }}
           sx={{
-            maxWidth: "90vw",
-            maxHeight: "90vh",
-            overflow: "auto",
-            "&::-webkit-scrollbar": {
-              width: "4px",
-            },
-            "&::-webkit-scrollbar-thumb": {
-              backgroundColor: "primary.main",
-              borderRadius: "4px",
-            },
-            "&::-webkit-scrollbar-track": {
-              backgroundColor: "background.paper",
-            },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
           }}
         >
-          {selectedOrders.map((order, index) => (
-            <Grid
-              item
-              key={order._id}
-              xs={12}
-              sm={selectedOrders.length === 1 ? 12 : 6}
-              md={
-                selectedOrders.length === 1
-                  ? 12
-                  : selectedOrders.length === 2
-                  ? 6
-                  : selectedOrders.length >= 3 && selectedOrders.length <= 4
-                  ? 3
-                  : 2
-              }
-            >
-              <EditOrderModal
-                order={order}
-                open={open}
-                onClose={handleClose}
-                onSave={handleSaveOrder}
-                setCarOrders={setCarOrders}
-                isConflictOrder={selectedOrders.length > 1 ? true : false}
-                setIsConflictOrder={setIsConflictOrder}
-                startEndDates={startEndDates}
-              />
-            </Grid>
-          ))}
-        </Grid>
+          <Grid
+            container
+            spacing={1}
+            justifyContent="center"
+            onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на контент
+            sx={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              overflow: "auto",
+              "&::-webkit-scrollbar": {
+                width: "4px",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "primary.main",
+                borderRadius: "4px",
+              },
+              "&::-webkit-scrollbar-track": {
+                backgroundColor: "background.paper",
+              },
+            }}
+          >
+            {selectedOrders.map((order, index) => (
+              <Grid
+                item
+                key={order._id}
+                xs={12}
+                sm={selectedOrders.length === 1 ? 12 : 6}
+                md={
+                  selectedOrders.length === 1
+                    ? 12
+                    : selectedOrders.length === 2
+                    ? 6
+                    : selectedOrders.length >= 3 && selectedOrders.length <= 4
+                    ? 3
+                    : 2
+                }
+              >
+                <EditOrderModal
+                  order={order}
+                  open={open}
+                  onClose={handleClose}
+                  onSave={handleSaveOrder}
+                  setCarOrders={setCarOrders}
+                  isConflictOrder={selectedOrders.length > 1 ? true : false}
+                  setIsConflictOrder={setIsConflictOrder}
+                  startEndDates={startEndDates}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       </Modal>
     </Box>
   );

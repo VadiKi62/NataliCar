@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
 
 // Shared components from new structure
 import { AdminLoader, AdminNotifications, AdminTopBar } from "@app/admin/shared";
-import { useCars } from "@app/admin/features/cars";
 
 // ─────────────────────────────────────────────────────────────
 // LAZY-LOADED FEATURE SECTIONS
@@ -109,8 +108,23 @@ export default function AdminView({ company, cars, orders, viewType }) {
  * Без бизнес-логики, только выбор feature для отображения
  */
 function AdminViewContent({ viewType }) {
-  // Get cars feature hook for add car modal
-  const { notification, closeNotification, openAddModal } = useCars();
+  // ───────────────────────────────────────────────────────────
+  // SHARED MODAL STATE (поднят сюда, чтобы AdminTopBar и CarsSection использовали один state)
+  // ───────────────────────────────────────────────────────────
+  const [isAddCarModalOpen, setIsAddCarModalOpen] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  const openAddCarModal = useCallback(() => {
+    setIsAddCarModalOpen(true);
+  }, []);
+
+  const closeAddCarModal = useCallback(() => {
+    setIsAddCarModalOpen(false);
+  }, []);
+
+  const closeNotification = useCallback(() => {
+    setNotification(null);
+  }, []);
 
   // Memoize feature config lookup
   const featureConfig = useMemo(
@@ -120,17 +134,24 @@ function AdminViewContent({ viewType }) {
 
   const FeatureComponent = featureConfig.component;
 
+  // Props for CarsSection (only when cars feature is active)
+  const carsSectionProps = viewType === "cars" ? {
+    isAddModalOpen: isAddCarModalOpen,
+    closeAddModal: closeAddCarModal,
+    setNotification,
+  } : {};
+
   return (
     <>
       {/* Top bar with feature-specific actions */}
       <AdminTopBar
         feature={featureConfig.feature}
-        onAddClick={viewType === "cars" ? openAddModal : undefined}
+        onAddClick={viewType === "cars" ? openAddCarModal : undefined}
       />
       
       {/* Feature section — lazy loading handled by dynamic() */}
       <Box sx={{ my: 3 }}>
-        <FeatureComponent />
+        <FeatureComponent {...carsSectionProps} />
       </Box>
       
       {/* Global notifications */}

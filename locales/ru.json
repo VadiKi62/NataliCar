@@ -83,6 +83,7 @@
     "deleteOrder": "Удалить заказ",
     "sureDelOrder": "Вы уверены, что хотите удалить этот заказ?",
     "changeDates": "Все отлично ! Даты изменены",
+    "orderUpdated": "Заказ успешно обновлен",
     "discount": "Скидка",
     "flightNumber": "№ рейса",
     "minAllowed": "Не раньше: ",

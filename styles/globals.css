@@ -670,6 +670,72 @@ body .MuiAutocomplete-popper .MuiPaper-root {
   background-color: var(--color-calendar-today) !important;
 }
 
+/* Portrait телефон — отступ сверху */
+@media (max-width: 600px) and (orientation: portrait) {
+  .bigcalendar-root {
+    padding-top: 56px !important;
+  }
+}
+
+/* Landscape телефон — компактные ячейки */
+@media (max-width: 900px) and (orientation: landscape) {
+  .bigcalendar-root {
+    padding-top: 38px !important;
+  }
+  
+  /* Обычные ячейки (не первый столбец) — минимальная высота */
+  .bigcalendar-root tbody .MuiTableCell-root:not(:first-child),
+  .bigcalendar-root thead .MuiTableCell-root:not(:first-child) {
+    padding: 0 !important;
+    min-width: 24px !important;
+    max-width: 32px !important;
+    min-height: 18px !important;
+    max-height: 22px !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    border-width: 1px !important;
+    margin: 0 !important;
+  }
+  
+  .bigcalendar-root tbody .MuiTableCell-root:not(:first-child) > div,
+  .bigcalendar-root thead .MuiTableCell-root:not(:first-child) > div {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 18px !important;
+    max-height: 22px !important;
+  }
+  
+  /* Первый столбец: компактный размер шрифта */
+  .bigcalendar-root tbody .MuiTableCell-root:first-child {
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 50px !important;
+    max-width: 80px !important;
+  }
+  
+  /* Шапка календаря: компактный размер */
+  .bigcalendar-root thead .MuiTableCell-root {
+    font-size: 11px !important;
+    padding: 2px !important;
+  }
+  
+  .bigcalendar-root thead .MuiTableCell-root > div {
+    font-size: 11px !important;
+  }
+  
+  /* Контейнер ячеек с датами */
+  .bigcalendar-root .bigcalendar-cell-wrapper {
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+  }
+}
+
 /* Первый столбец календаря - белый текст */
 .bigcalendar-root tbody .MuiTableCell-root:first-child,
 .bigcalendar-root tbody .MuiTableCell-root:first-child *,
@@ -846,9 +912,9 @@ body.hide-navbar-on-landscape-sm
   }
 
   body.hide-navbar-on-landscape-sm .bigcalendar-root .bigcalendar-cell-wrapper {
-    height: 30px !important;
-    min-height: 30px !important;
-    max-height: 30px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     line-height: 1 !important;
@@ -861,9 +927,9 @@ body.hide-navbar-on-landscape-sm
   body.hide-navbar-on-landscape-sm .bigcalendar-root .MuiTableCell-root > span,
   body.hide-navbar-on-landscape-sm .bigcalendar-root td > div,
   body.hide-navbar-on-landscape-sm .bigcalendar-root th > div {
-    height: 30px !important;
-    min-height: 30px !important;
-    max-height: 30px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     line-height: 1 !important;
@@ -915,10 +981,10 @@ body.hide-navbar-on-landscape-sm
   body.hide-navbar-on-landscape-sm
     .bigcalendar-root
     .MuiTableCell-root:first-child {
-    padding-left: 6px !important;
-    padding-right: 6px !important;
-    height: 30px !important;
-    min-height: 30px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    height: 26px !important;
+    min-height: 26px !important;
   }
 
   body.hide-navbar-on-landscape-sm .bigcalendar-root tbody tr,
@@ -926,7 +992,7 @@ body.hide-navbar-on-landscape-sm
     border-bottom: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    height: 30px !important;
+    height: 26px !important;
   }
 
   @media (max-width: 420px) {
@@ -978,37 +1044,42 @@ body.hide-navbar-on-landscape-sm
   transition: background-color 120ms ease;
 }
 
-/* Generate hover rules for columns 0-30 */
-.bigcalendar-root[data-hover-col="0"] [data-col-index="0"],
-.bigcalendar-root[data-hover-col="1"] [data-col-index="1"],
-.bigcalendar-root[data-hover-col="2"] [data-col-index="2"],
-.bigcalendar-root[data-hover-col="3"] [data-col-index="3"],
-.bigcalendar-root[data-hover-col="4"] [data-col-index="4"],
-.bigcalendar-root[data-hover-col="5"] [data-col-index="5"],
-.bigcalendar-root[data-hover-col="6"] [data-col-index="6"],
-.bigcalendar-root[data-hover-col="7"] [data-col-index="7"],
-.bigcalendar-root[data-hover-col="8"] [data-col-index="8"],
-.bigcalendar-root[data-hover-col="9"] [data-col-index="9"],
-.bigcalendar-root[data-hover-col="10"] [data-col-index="10"],
-.bigcalendar-root[data-hover-col="11"] [data-col-index="11"],
-.bigcalendar-root[data-hover-col="12"] [data-col-index="12"],
-.bigcalendar-root[data-hover-col="13"] [data-col-index="13"],
-.bigcalendar-root[data-hover-col="14"] [data-col-index="14"],
-.bigcalendar-root[data-hover-col="15"] [data-col-index="15"],
-.bigcalendar-root[data-hover-col="16"] [data-col-index="16"],
-.bigcalendar-root[data-hover-col="17"] [data-col-index="17"],
-.bigcalendar-root[data-hover-col="18"] [data-col-index="18"],
-.bigcalendar-root[data-hover-col="19"] [data-col-index="19"],
-.bigcalendar-root[data-hover-col="20"] [data-col-index="20"],
-.bigcalendar-root[data-hover-col="21"] [data-col-index="21"],
-.bigcalendar-root[data-hover-col="22"] [data-col-index="22"],
-.bigcalendar-root[data-hover-col="23"] [data-col-index="23"],
-.bigcalendar-root[data-hover-col="24"] [data-col-index="24"],
-.bigcalendar-root[data-hover-col="25"] [data-col-index="25"],
-.bigcalendar-root[data-hover-col="26"] [data-col-index="26"],
-.bigcalendar-root[data-hover-col="27"] [data-col-index="27"],
-.bigcalendar-root[data-hover-col="28"] [data-col-index="28"],
-.bigcalendar-root[data-hover-col="29"] [data-col-index="29"],
-.bigcalendar-root[data-hover-col="30"] [data-col-index="30"] {
+/* Generate hover rules for columns 0-30 (только tbody, не шапка) */
+.bigcalendar-root[data-hover-col="0"] tbody [data-col-index="0"],
+.bigcalendar-root[data-hover-col="1"] tbody [data-col-index="1"],
+.bigcalendar-root[data-hover-col="2"] tbody [data-col-index="2"],
+.bigcalendar-root[data-hover-col="3"] tbody [data-col-index="3"],
+.bigcalendar-root[data-hover-col="4"] tbody [data-col-index="4"],
+.bigcalendar-root[data-hover-col="5"] tbody [data-col-index="5"],
+.bigcalendar-root[data-hover-col="6"] tbody [data-col-index="6"],
+.bigcalendar-root[data-hover-col="7"] tbody [data-col-index="7"],
+.bigcalendar-root[data-hover-col="8"] tbody [data-col-index="8"],
+.bigcalendar-root[data-hover-col="9"] tbody [data-col-index="9"],
+.bigcalendar-root[data-hover-col="10"] tbody [data-col-index="10"],
+.bigcalendar-root[data-hover-col="11"] tbody [data-col-index="11"],
+.bigcalendar-root[data-hover-col="12"] tbody [data-col-index="12"],
+.bigcalendar-root[data-hover-col="13"] tbody [data-col-index="13"],
+.bigcalendar-root[data-hover-col="14"] tbody [data-col-index="14"],
+.bigcalendar-root[data-hover-col="15"] tbody [data-col-index="15"],
+.bigcalendar-root[data-hover-col="16"] tbody [data-col-index="16"],
+.bigcalendar-root[data-hover-col="17"] tbody [data-col-index="17"],
+.bigcalendar-root[data-hover-col="18"] tbody [data-col-index="18"],
+.bigcalendar-root[data-hover-col="19"] tbody [data-col-index="19"],
+.bigcalendar-root[data-hover-col="20"] tbody [data-col-index="20"],
+.bigcalendar-root[data-hover-col="21"] tbody [data-col-index="21"],
+.bigcalendar-root[data-hover-col="22"] tbody [data-col-index="22"],
+.bigcalendar-root[data-hover-col="23"] tbody [data-col-index="23"],
+.bigcalendar-root[data-hover-col="24"] tbody [data-col-index="24"],
+.bigcalendar-root[data-hover-col="25"] tbody [data-col-index="25"],
+.bigcalendar-root[data-hover-col="26"] tbody [data-col-index="26"],
+.bigcalendar-root[data-hover-col="27"] tbody [data-col-index="27"],
+.bigcalendar-root[data-hover-col="28"] tbody [data-col-index="28"],
+.bigcalendar-root[data-hover-col="29"] tbody [data-col-index="29"],
+.bigcalendar-root[data-hover-col="30"] tbody [data-col-index="30"] {
   background-color: var(--calendar-col-hover) !important;
+}
+
+/* Hover для шапки — более светлый эффект */
+.bigcalendar-root thead [data-col-index]:hover {
+  filter: brightness(0.95);
 }
