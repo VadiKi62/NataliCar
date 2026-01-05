@@ -1,4 +1,4 @@
-import DataLoader from "@app/components/Admin/DataLoader";
+import { DataLoader } from "@/app/admin/features/shared";
 
 /**
  * /admin/table - страница таблицы заказов (альтернативный путь)

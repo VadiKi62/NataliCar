@@ -11,7 +11,7 @@ import { Box } from "@mui/material";
 import i from "@locales/i18n";
 import { MainContextProvider } from "../Context";
 
-import ScrollButton from "./common/ScrollButton";
+import ScrollButton from "@/app/components/ui/buttons/ScrollButton";
 import Navbar from "@app/components/Navbar";
 import Footer from "@app/components/Footer";
 

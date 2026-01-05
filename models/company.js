@@ -26,6 +26,7 @@ const CompanySchema = new Schema({
   coords: { type: CoordsSchema, required: true },
   hoursDiffForStart: { type: Number, required: true },
   hoursDiffForEnd: { type: Number, required: true },
+  bufferTime: { type: Number, required: true, default: 0 },
   defaultStart: { type: String, required: true }, // Use HH:mm format
   defaultEnd: { type: String, required: true }, // Use HH:mm format
   seasons: {

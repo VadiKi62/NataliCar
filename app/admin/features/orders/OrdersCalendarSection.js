@@ -2,8 +2,8 @@
 
 import React, { useCallback } from "react";
 import { Grid } from "@mui/material";
-import Item from "@app/components/Admin/Order/Item";
-import AddOrderModal from "@app/components/Admin/Order/AddOrderModal";
+import Item from "./OrderItem";
+import AddOrderModal from "./modals/AddOrderModal";
 import { useOrders } from "./useOrders";
 
 /**

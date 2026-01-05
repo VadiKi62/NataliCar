@@ -26,9 +26,9 @@ import { useTranslation } from "react-i18next";
 import LanguageIcon from "@mui/icons-material/Language";
 import { companyData } from "@utils/companyData";
 import { useMainContext } from "@app/Context";
-import LegendCalendarAdmin from "./common/LegendCalendarAdmin";
+import LegendCalendarAdmin from "@/app/components/calendar-ui/LegendCalendarAdmin";
 import { CAR_CLASSES } from "@models/enums";
-import SelectedFieldClass from "./common/SelectedFieldClass";
+import SelectedFieldClass from "@/app/components/ui/inputs/SelectedFieldClass";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import {

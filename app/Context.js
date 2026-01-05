@@ -15,6 +15,7 @@ import {
   updateCar,
   deleteCar,
 } from "@utils/action";
+import { buildPendingConfirmBlockMap } from "@/domain/orders/buildPendingConfirmBlockMap";
 
 const MainContext = createContext({
   cars: [],
@@ -27,6 +28,7 @@ const MainContext = createContext({
   resubmitCars: () => {},
   scrolled: false,
   company: {},
+  pendingConfirmBlockById: {}, // Map pending order ID -> block message
 });
 
 export function useMainContext() {
@@ -278,12 +280,34 @@ export const MainContextProvider = ({
       };
     }
   }, []);
+
+  // Функция для обновления компании в контексте
+  const updateCompanyInContext = useCallback(async (companyId) => {
+    try {
+      const { fetchCompany } = await import("@utils/action");
+      const freshCompany = await fetchCompany(companyId);
+      setCompany(freshCompany);
+      companyDataRef.current = freshCompany;
+      return { success: true, data: freshCompany };
+    } catch (error) {
+      console.error("Error updating company in context:", error);
+      return {
+        success: false,
+        errorMessage: error.message || "Failed to update company",
+      };
+    }
+  }, []);
   const ordersByCarId = useCallback(
     (carId) => {
       return allOrders?.filter((order) => order.car === carId);
     },
     [allOrders]
   );
+
+  // 🎯 Computed map: какие pending заказы НЕ МОГУТ быть подтверждены
+  const { pendingConfirmBlockById } = useMemo(() => {
+    return buildPendingConfirmBlockMap(allOrders, company);
+  }, [allOrders, company]);
 
   const contextValue = useMemo(
     () => ({
@@ -314,6 +338,8 @@ export const MainContextProvider = ({
       company,
       companyLoading,
       companyError,
+      updateCompanyInContext, // Функция для обновления компании
+      pendingConfirmBlockById, // 🎯 Map pending order ID -> block message
     }),
     [
       cars,
@@ -332,10 +358,12 @@ export const MainContextProvider = ({
       company,
       companyLoading,
       companyError,
+      updateCompanyInContext,
       fetchAndUpdateOrders,
       resubmitCars,
       updateCarInContext,
       deleteCarInContext,
+      pendingConfirmBlockById,
     ]
   );
 

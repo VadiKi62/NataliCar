@@ -189,5 +189,16 @@
     "yearSelect": "Выберите год",
     "thisMonth": "этот месяц",
     "nextMonthLabel": "следующий месяц"
+  },
+  "timeAdjust": {
+    "overridePending": "Подтверждённый заказ переопределит ожидающую заявку",
+    "blockedByConfirmed": "Невозможно: конфликт с подтверждённым заказом",
+    "pendingOverlap": "Предупреждение: пересечение двух ожидающих заказов",
+    "confirmedConflict": "Невозможно: конфликт двух подтверждённых заказов",
+    "confirmChanges": "Подтвердите изменения",
+    "acknowledgementRequired": "Требуется подтверждение",
+    "understandConsequences": "Я понимаю последствия и хочу продолжить",
+    "saveWithWarning": "Сохранить с предупреждением",
+    "cannotSaveDueToConflict": "Невозможно сохранить из-за конфликта"
   }
 }

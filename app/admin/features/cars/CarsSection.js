@@ -2,8 +2,8 @@
 
 import React from "react";
 import { Box } from "@mui/material";
-import Cars from "@app/components/Admin/Car/Cars";
-import AddCarModal from "@app/components/Admin/AddCarModal";
+import Cars from "./Cars";
+import AddCarModal from "./modals/AddCarModal";
 import { useCars } from "./useCars";
 
 /**

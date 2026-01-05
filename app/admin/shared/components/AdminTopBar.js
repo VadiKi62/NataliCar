@@ -4,8 +4,8 @@ import React from "react";
 import { Box, Stack, styled } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useMainContext } from "@app/Context";
-import DefaultButton from "@app/components/common/DefaultButton";
-import LegendCalendarAdmin from "@app/components/common/LegendCalendarAdmin";
+import DefaultButton from "@/app/components/ui/buttons/DefaultButton";
+import LegendCalendarAdmin from "@/app/components/calendar-ui/LegendCalendarAdmin";
 
 const StyledTopBar = styled(Box)(({ theme, scrolled }) => ({
   zIndex: 996,

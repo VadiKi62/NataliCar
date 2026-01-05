@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Box } from "@mui/material";
-import DataGridOrders from "@app/components/Admin/DataGridOrders";
+import DataGridOrders from "./DataGridOrders";
 import { useOrders } from "./useOrders";
 
 /**

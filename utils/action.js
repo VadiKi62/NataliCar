@@ -365,8 +365,20 @@ export const changeRentalDates = async (
 };
 
 // UPDATE 2.  action for switching confirmed status
+/**
+ * Переключает статус подтверждения заказа
+ *
+ * @returns {{
+ *   success: boolean,
+ *   updatedOrder?: Object,
+ *   message: string,
+ *   level?: "block" | "warning" | null,
+ *   affectedOrders?: Array,
+ *   conflicts?: Array
+ * }}
+ */
 export const toggleConfirmedStatus = async (orderId) => {
-  console.log("!!!!!!orderId", orderId);
+  console.log("toggleConfirmedStatus orderId:", orderId);
   try {
     const response = await fetch(`/api/order/update/switchConfirm/${orderId}`, {
       method: "PATCH",
@@ -377,13 +389,42 @@ export const toggleConfirmedStatus = async (orderId) => {
 
     const data = await response.json();
 
-    if (response.status === 200) {
+    // ✅ Успех (200) или успех с предупреждением (202)
+    if (response.status === 200 || response.status === 202) {
       console.log("Order confirmation status updated:", data);
-      return { updatedOrder: data.data, message: data.message };
+      return {
+        success: true,
+        updatedOrder: data.data,
+        message: data.message,
+        level: data.level || null,
+        affectedOrders: data.affectedOrders || [],
+      };
     }
+
+    // ⛔ Блок (409) — нельзя подтвердить
+    if (response.status === 409) {
+      console.log("Order confirmation blocked:", data);
+      return {
+        success: false,
+        message: data.message,
+        level: data.level || "block",
+        conflicts: data.conflicts || [],
+      };
+    }
+
+    // Другие ошибки
+    return {
+      success: false,
+      message: data.message || "Ошибка при обновлении статуса",
+      level: "block",
+    };
   } catch (error) {
     console.error("Error updating confirmation status:", error);
-    return error;
+    return {
+      success: false,
+      message: error.message || "Ошибка сети",
+      level: "block",
+    };
   }
 };
 
@@ -541,5 +582,51 @@ export async function fetchCompany(companyId) {
   } catch (error) {
     console.error("Error fetching company:", error.message);
     throw error;
+  }
+}
+
+/**
+ * Обновляет bufferTime компании
+ * @param {string} companyId - ID компании
+ * @param {number} bufferTime - Буферное время в часах (0-24)
+ * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+ */
+export async function updateCompanyBuffer(companyId, bufferTime) {
+  try {
+    // Валидация
+    if (!companyId) {
+      return { success: false, error: "Company ID is required" };
+    }
+
+    const bufferTimeNumber = Number(bufferTime);
+    if (isNaN(bufferTimeNumber) || bufferTimeNumber < 0 || bufferTimeNumber > 24) {
+      return { success: false, error: "bufferTime must be a number between 0 and 24 hours" };
+    }
+
+    const apiUrl = API_URL 
+      ? `${API_URL}/api/company/buffer/${companyId}` 
+      : `/api/company/buffer/${companyId}`;
+    
+    const response = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ bufferTime: bufferTimeNumber }),
+      // Не кешируем мутации
+      cache: "no-store",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || "Failed to update buffer" };
+    }
+
+    console.log(`✅ Buffer updated: ${companyId} → ${bufferTimeNumber}h`);
+    return { success: true, data: data.data };
+  } catch (error) {
+    console.error("Error updating company buffer:", error.message);
+    return { success: false, error: error.message || "Network error" };
   }
 }

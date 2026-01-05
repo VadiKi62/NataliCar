@@ -13,7 +13,7 @@ import {
   Divider,
   Paper
 } from "@mui/material";
-import dayjs from "dayjs";
+import { formatDate, formatDateRange } from "@utils/businessTime";
 import ModalLayout from "./ModalLayout";
 import { ActionButton } from "../index";
 
@@ -71,9 +71,7 @@ const OrdersByDateModal = ({
               </TableCell>
               <TableCell sx={cellSx}>
                 {order.rentalStartDate
-                  ? `${dayjs(order.rentalStartDate).format("DD.MM.YY")}-${dayjs(
-                      order.rentalEndDate
-                    ).format("DD.MM.YY")}`
+                  ? formatDateRange(order.rentalStartDate, order.rentalEndDate)
                   : ""}
               </TableCell>
               <TableCell sx={cellSx}>{order.customerName}</TableCell>
@@ -114,7 +112,7 @@ const OrdersByDateModal = ({
             align="center"
             sx={{ fontWeight: 600, mb: 1 }}
           >
-            Заказы, начинающиеся {date && date.format("DD.MM.YY")}
+            Заказы, начинающиеся {date && formatDate(date, "DD.MM.YY")}
           </Typography>
 
           <Divider sx={{ mb: 2 }} />
@@ -142,7 +140,7 @@ const OrdersByDateModal = ({
             align="center"
             sx={{ fontWeight: 600, mb: 1 }}
           >
-            Заказы, заканчивающиеся {date && date.format("DD.MM.YY")}
+            Заказы, заканчивающиеся {date && formatDate(date, "DD.MM.YY")}
           </Typography>
 
           <Divider sx={{ mb: 2 }} />

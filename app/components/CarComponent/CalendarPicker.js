@@ -12,8 +12,8 @@ import { Calendar, DatePicker } from "antd";
 import dayjs from "dayjs";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import DefaultButton from "../common/DefaultButton";
-import GradientBookButton from "../common/GradientBookButton";
+import DefaultButton from "@/app/components/ui/buttons/DefaultButton";
+import GradientBookButton from "@/app/components/ui/buttons/GradientBookButton";
 import {
   functionToretunrStartEndOverlap,
   getConfirmedAndUnavailableStartEndDates,

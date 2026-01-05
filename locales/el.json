@@ -190,5 +190,16 @@
     "yearSelect": "Επιλογή έτους",
     "thisMonth": "τρέχων μήνας",
     "nextMonthLabel": "επόμενος μήνας"
+  },
+  "timeAdjust": {
+    "overridePending": "Η επιβεβαιωμένη κράτηση θα αντικαταστήσει την εκκρεμή",
+    "blockedByConfirmed": "Αδύνατο: σύγκρουση με επιβεβαιωμένη κράτηση",
+    "pendingOverlap": "Προειδοποίηση: δύο εκκρεμείς κρατήσεις αλληλεπικαλύπτονται",
+    "confirmedConflict": "Αδύνατο: σύγκρουση δύο επιβεβαιωμένων κρατήσεων",
+    "confirmChanges": "Επιβεβαίωση αλλαγών",
+    "acknowledgementRequired": "Απαιτείται επιβεβαίωση",
+    "understandConsequences": "Κατανοώ τις συνέπειες και θέλω να συνεχίσω",
+    "saveWithWarning": "Αποθήκευση με προειδοποίηση",
+    "cannotSaveDueToConflict": "Αδύνατη η αποθήκευση λόγω σύγκρουσης"
   }
 }

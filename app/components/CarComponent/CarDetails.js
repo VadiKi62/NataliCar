@@ -15,7 +15,7 @@ import SpeedIcon from "@mui/icons-material/Speed";
 // import PricingTiers from "./PricingTiers";
 import Image from "next/image";
 import CarDetailsModal from "./CarDetailsModal";
-import CarTypography from "../common/CarTypography";
+import CarTypography from "@/app/components/ui/typography/CarTypography";
 import { useTranslation } from "react-i18next";
 
 const CarTitle = styled(Typography)(({ theme }) => ({

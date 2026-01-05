@@ -1,5 +1,22 @@
-// Orders feature exports
+/**
+ * 📦 app/admin/features/orders
+ *
+ * Feature: Управление заказами.
+ * Entry point для всей функциональности заказов в админке.
+ */
+
+// Sections
 export { default as OrdersCalendarSection } from "./OrdersCalendarSection";
 export { default as OrdersTableSection } from "./OrdersTableSection";
-export { useOrders } from "./useOrders";
+export { default as CalendarAdmin } from "./CalendarAdmin";
 
+// Modals
+export { default as EditOrderModal } from "./modals/EditOrderModal";
+export { default as AddOrderModal } from "./modals/AddOrderModal";
+
+// Components
+export { default as OrderItem } from "./OrderItem";
+export { default as DataGridOrders } from "./DataGridOrders";
+
+// Hooks
+export { default as useOrders } from "./useOrders";

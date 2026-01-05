@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Snackbar from "@app/components/common/Snackbar";
+import Snackbar from "@/app/components/ui/feedback/Snackbar";
 
 /**
  * AdminNotifications - централизованные уведомления для админки

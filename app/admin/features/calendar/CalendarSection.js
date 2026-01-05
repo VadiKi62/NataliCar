@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Box } from "@mui/material";
-import BigCalendar from "@app/components/Calendars/BigCalendar";
+import BigCalendar from "@/app/components/calendar-ui/BigCalendar";
 import { useCalendar } from "./useCalendar";
 
 /**

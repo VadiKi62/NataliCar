@@ -31,7 +31,7 @@ import { ConfirmButton, CancelButton } from "../ui";
 import Autocomplete from "@mui/material/Autocomplete";
 import { useTranslation } from "react-i18next";
 import { addOrderNew } from "@utils/action";
-import SuccessMessage from "../common/SuccessMessage";
+import SuccessMessage from "@/app/components/ui/feedback/SuccessMessage";
 import sendEmail from "@utils/sendEmail";
 import { setTimeToDatejs } from "@utils/functions";
 import dayjs from "dayjs";
@@ -39,11 +39,19 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useMainContext } from "../../Context";
 import { useSnackbar } from "notistack";
+// 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
+import {
+  ATHENS_TZ,
+  createAthensDateTime,
+  toServerUTC,
+  fromServerUTC,
+  formatTimeHHMM,
+} from "@/domain/time/athensTime";
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
-const TIME_ZONE = "Europe/Athens";
+const TIME_ZONE = ATHENS_TZ; // Для обратной совместимости
 // DEBUG: ограничение логов по машине и дате (YYYY-MM-DD)
 // Пример: const DEBUG_CAR_ID = "670bb226223dd911f0595286"; const DEBUG_DATE = "2025-11-30";
 const DEBUG_CAR_ID = null;
@@ -412,7 +420,7 @@ const BookingModal = ({
     setIsSubmitting(true);
 
     try {
-      // Интерпретируем ввод как локальное время Афин и конвертируем в UTC для БД
+      // 🎯 Используем athensTime utilities для timezone-корректного создания времени
       const startDateStr = presetDates?.startDate
         ? dayjs(presetDates.startDate).format("YYYY-MM-DD")
         : null;
@@ -420,23 +428,17 @@ const BookingModal = ({
         ? dayjs(presetDates.endDate).format("YYYY-MM-DD")
         : null;
 
-      const timeInLocal = startDateStr
-        ? dayjs.tz(
-            `${startDateStr} ${dayjs(startTime).format("HH:mm")}`,
-            "YYYY-MM-DD HH:mm",
-            TIME_ZONE
-          )
+      // Извлекаем HH:mm и создаём заново в Athens БЕЗ конвертации из таймзоны браузера
+      const timeInAthens = startDateStr
+        ? createAthensDateTime(startDateStr, formatTimeHHMM(dayjs(startTime)))
         : null;
-      const timeOutLocal = endDateStr
-        ? dayjs.tz(
-            `${endDateStr} ${dayjs(endTime).format("HH:mm")}`,
-            "YYYY-MM-DD HH:mm",
-            TIME_ZONE
-          )
+      const timeOutAthens = endDateStr
+        ? createAthensDateTime(endDateStr, formatTimeHHMM(dayjs(endTime)))
         : null;
 
-      const timeInUTC = timeInLocal ? timeInLocal.utc().toDate() : null;
-      const timeOutUTC = timeOutLocal ? timeOutLocal.utc().toDate() : null;
+      // Конвертируем в UTC для сохранения в БД
+      const timeInUTC = toServerUTC(timeInAthens);
+      const timeOutUTC = toServerUTC(timeOutAthens);
 
       const orderData = {
         carNumber: car.carNumber || "",
@@ -467,14 +469,9 @@ const BookingModal = ({
         const formattedEndDate = dayjs
           .utc(orderData.rentalEndDate)
           .format("DD.MM.YYYY");
-        // Форматируем время начала и окончания (HH:MM) в часовом поясе Europe/Athens
-        // Почемуто 18.12.25 не работает()
-        const formattedStartTime = dayjs(orderData.timeIn)
-          .tz("Europe/Athens")
-          .format("HH:mm");
-        const formattedEndTime = dayjs(orderData.timeOut)
-          .tz("Europe/Athens")
-          .format("HH:mm");
+        // 🎯 Форматируем время в Athens timezone
+        const formattedStartTime = formatTimeHHMM(fromServerUTC(orderData.timeIn));
+        const formattedEndTime = formatTimeHHMM(fromServerUTC(orderData.timeOut));
         let title =
           status === "success"
             ? `Новое бронирование ${orderData.carNumber} ${orderData.carModel}`

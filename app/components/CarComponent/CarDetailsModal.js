@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, Box, Typography, Button, Grid } from "@mui/material";
 import Image from "next/image";
-import CarTypography from "../common/CarTypography";
+import CarTypography from "@/app/components/ui/typography/CarTypography";
 import { useTranslation } from "react-i18next";
 
 const CarDetailsModal = ({ open, onClose, car }) => {

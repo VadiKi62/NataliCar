@@ -189,5 +189,16 @@
     "yearSelect": "Select year",
     "thisMonth": "this month",
     "nextMonthLabel": "next month"
+  },
+  "timeAdjust": {
+    "overridePending": "Confirmed order will override pending request",
+    "blockedByConfirmed": "Cannot adjust: conflicts with confirmed order",
+    "pendingOverlap": "Warning: two pending orders will overlap",
+    "confirmedConflict": "Cannot adjust: two confirmed orders conflict",
+    "confirmChanges": "Confirm changes",
+    "acknowledgementRequired": "Acknowledgement required",
+    "understandConsequences": "I understand the consequences and want to proceed",
+    "saveWithWarning": "Save with warning",
+    "cannotSaveDueToConflict": "Cannot save due to conflict"
   }
 }
