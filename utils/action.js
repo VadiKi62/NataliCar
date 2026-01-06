@@ -264,6 +264,50 @@ export const fetchAllOrders = async () => {
   }
 };
 
+// UPDATE 0. action for moving order to another car (ADMIN and SUPERADMIN allowed)
+/**
+ * Move order to another car
+ * 
+ * @param {string} orderId - Order ID
+ * @param {string} newCarId - New car ID
+ * @param {string} newCarNumber - New car number
+ * @returns {Promise<{ status: number, updatedOrder: Object|null, conflicts: Array, message: string }>}
+ */
+export const moveOrderToCar = async (orderId, newCarId, newCarNumber) => {
+  try {
+    console.log("[moveOrderToCar] orderId:", orderId);
+    const response = await fetch("/api/order/update/moveCar", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      credentials: "include",
+      body: JSON.stringify({
+        orderId,
+        newCarId,
+        newCarNumber,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[moveOrderToCar] Response:", { status: response.status, data });
+    }
+
+    return {
+      status: response.status,
+      updatedOrder: data.updatedOrder || null,
+      conflicts: data.conflicts || [],
+      message: data.message || "Order moved successfully",
+    };
+  } catch (error) {
+    console.error("[moveOrderToCar] Error:", error);
+    throw error;
+  }
+};
+
 // UPDATE 1. action for changing rental dates
 export const changeRentalDates = async (
   orderId,

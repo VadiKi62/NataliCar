@@ -80,6 +80,36 @@ export const ORDER_COLORS = {
 };
 
 /**
+ * MOVE_MODE_COLORS - цвета для режима перемещения заказов
+ * 
+ * ⚠️ ЗАФИКСИРОВАНО: Эти цвета НЕ должны изменяться без согласования.
+ * Используются для визуального выделения доступных автомобилей при перемещении заказа.
+ * 
+ * ПРАВИЛА ИСПОЛЬЗОВАНИЯ:
+ * - ВСЕГДА используйте эти константы, НЕ хардкодите цвета
+ * - НЕ используйте theme.palette.warning.main (может быть amber)
+ * - НЕ используйте theme.palette.triadic.yellowBright (может быть amber)
+ * - YELLOW_OVERLAY: для прозрачных overlay (rgba с alpha 0.8)
+ * - YELLOW_SOLID: для сплошного фона ячеек (#ffeb3b)
+ * 
+ * ГДЕ ИСПОЛЬЗУЕТСЯ:
+ * - CalendarRow.js: createYellowOverlay, gradientBackground, backgroundColor
+ * - BigCalendar.js: (если нужно в будущем)
+ * 
+ * ИЗМЕНЕНИЕ ЦВЕТОВ:
+ * - ТОЛЬКО здесь в config/orderColors.js
+ * - После изменения проверить визуально в CalendarRow
+ * - Убедиться, что цвет желтый, а не amber
+ */
+export const MOVE_MODE_COLORS = {
+  // Желтый цвет для выделения доступных ячеек при перемещении
+  // Используется для overlay и фона ячеек
+  YELLOW_OVERLAY: "rgba(255, 235, 59, 0.8)", // Прозрачный желтый для overlay
+  YELLOW_SOLID: "#ffeb3b", // Сплошной желтый для фона ячеек
+  // Источник: palette.triadic.yellowBright может быть amber, поэтому используем явный желтый
+};
+
+/**
  * ORDER_UI_COLORS - дополнительные цвета для UI (не используются в getOrderColor)
  */
 export const ORDER_UI_COLORS = {

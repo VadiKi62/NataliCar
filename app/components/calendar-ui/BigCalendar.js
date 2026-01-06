@@ -53,7 +53,7 @@ import {
 import EditOrderModal from "@/app/admin/features/orders/modals/EditOrderModal";
 import AddOrderModal from "@/app/admin/features/orders/modals/AddOrderModal";
 import { useSnackbar } from "notistack";
-import { changeRentalDates } from "@utils/action";
+import { changeRentalDates, moveOrderToCar } from "@utils/action";
 import EditCarModal from "@/app/admin/features/cars/modals/EditCarModal";
 import LegendCalendarAdmin from "./LegendCalendarAdmin";
 import { calendarStyles } from "@/theme";
@@ -881,32 +881,55 @@ export default function BigCalendar({ cars, showLegend = true }) {
           <ActionButton
             color="success"
               onClick={async () => {
+                // 🔧 FIX: Capture values BEFORE clearing state
+                const newCar = confirmModal.newCar;
+                const order = selectedMoveOrder;
+                
+                // Defensive guards
+                if (!newCar?._id || !order?._id) {
+                  showSingleSnackbar("❌ Нет данных для перемещения", { variant: "error" });
+                  exitMoveMode();
+                  setConfirmModal({ open: false, newCar: null, oldCar: null });
+                  return;
+                }
+                
+                // Close modal after capturing values
                 setConfirmModal({ open: false, newCar: null, oldCar: null });
+                
+                // Debug logs (dev-friendly)
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[MOVE] newCar:", newCar);
+                  console.log("[MOVE] order:", order);
+                }
+                
                 let success = false;
                 try {
-                  const result = await changeRentalDates(
-                    selectedMoveOrder._id,
-                    new Date(selectedMoveOrder.rentalStartDate),
-                    new Date(selectedMoveOrder.rentalEndDate),
-                  new Date(selectedMoveOrder.timeIn || selectedMoveOrder.rentalStartDate),
-                  new Date(selectedMoveOrder.timeOut || selectedMoveOrder.rentalEndDate),
-                    selectedMoveOrder.placeIn || "",
-                    selectedMoveOrder.placeOut || "",
-                    confirmModal.newCar._id,
-                    confirmModal.newCar.carNumber,
-                    selectedMoveOrder.ChildSeats,
-                    selectedMoveOrder.insurance,
-                    selectedMoveOrder.franchiseOrder,
-                  selectedMoveOrder.numberOrder || selectedMoveOrder.orderNumber,
-                    selectedMoveOrder.insuranceOrder,
-                    selectedMoveOrder.totalPrice,
-                    selectedMoveOrder.numberOfDays
+                  // Use dedicated moveCar endpoint (allows ADMIN and SUPERADMIN)
+                  const result = await moveOrderToCar(
+                    order._id,
+                    newCar._id,
+                    newCar.carNumber
                   );
+                  
 
                   if (result?.status === 201 || result?.status === 202) {
                     await fetchAndUpdateOrders();
-                    showSingleSnackbar(`Заказ сдвинут на ${confirmModal.newCar.model}`, { variant: "success" });
+                    const conflictMsg = result.conflicts?.length > 0 
+                      ? " (есть конфликты с неподтвержденными заказами)" 
+                      : "";
+                    showSingleSnackbar(`Заказ сдвинут на ${newCar.model}${conflictMsg}`, { variant: "success" });
                     success = true;
+                  } else if (result?.status === 409) {
+                    // Blocking conflict
+                    showSingleSnackbar(
+                      result.message || "Конфликт с подтвержденными заказами. Перемещение невозможно.",
+                      { variant: "error", autoHideDuration: 5000 }
+                    );
+                  } else {
+                    showSingleSnackbar(
+                      result.message || "Ошибка перемещения заказа",
+                      { variant: "error" }
+                    );
                   }
                 } catch (error) {
                   showSingleSnackbar(`Ошибка перемещения: ${error.message}`, { variant: "error" });

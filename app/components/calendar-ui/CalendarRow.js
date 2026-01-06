@@ -37,6 +37,8 @@ import {
   getMoveDayFlags,
 } from "@/app/admin/features/calendar/helpers";
 import { useCalendarOrders } from "@/app/admin/features/calendar/hooks";
+// ⚠️ ЗАФИКСИРОВАНО: Цвета для режима перемещения из централизованного конфига
+import { MOVE_MODE_COLORS } from "@/config/orderColors";
 
 CarTableRow.propTypes = {
   car: PropTypes.object.isRequired,
@@ -469,6 +471,9 @@ export default function CarTableRow({
       );
 
       // Функция для создания желтого overlay для первого/последнего дня перемещения
+      // ⚠️ ЗАФИКСИРОВАНО: Используем централизованную константу из config/orderColors.js
+      // НЕ изменять цвет здесь - использовать MOVE_MODE_COLORS из конфига
+      const YELLOW_COLOR = MOVE_MODE_COLORS.YELLOW_OVERLAY;
       const createYellowOverlay = (isFirstDay, isLastDay) => {
         // Показываем overlay только для совместимых авто и режима перемещения
         if (!moveMode || !isCarCompatibleForMove) return null;
@@ -483,7 +488,7 @@ export default function CarTableRow({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: "rgba(255, 235, 59, 0.8)", // Желтый overlay для режима перемещения
+                backgroundColor: YELLOW_COLOR, // Желтый overlay для режима перемещения
                 pointerEvents: "none",
                 zIndex: 2,
               }}
@@ -499,7 +504,7 @@ export default function CarTableRow({
                 right: 0,
                 width: "50%",
                 height: "100%",
-                backgroundColor: "rgba(255, 235, 59, 0.8)", // Желтый overlay для режима перемещения
+                backgroundColor: YELLOW_COLOR, // Желтый overlay для режима перемещения
                 pointerEvents: "none",
                 zIndex: 2,
                 borderRadius: "50% 0 0 50%",
@@ -516,7 +521,7 @@ export default function CarTableRow({
                 left: 0,
                 width: "50%",
                 height: "100%",
-                backgroundColor: "rgba(255, 235, 59, 0.8)", // Желтый overlay для режима перемещения
+                backgroundColor: YELLOW_COLOR, // Желтый overlay для режима перемещения
                 pointerEvents: "none",
                 zIndex: 2,
                 borderRadius: "0 50% 50% 0",
@@ -599,16 +604,18 @@ export default function CarTableRow({
       ) {
 
         // Применяем желтый фон для пустых ячеек и совместимых автомобилей
+        // ⚠️ ЗАФИКСИРОВАНО: Используем централизованную константу из config/orderColors.js
+        const yellowColor = MOVE_MODE_COLORS.YELLOW_SOLID; // Сплошной желтый для фона
         if (backgroundColor === "transparent") {
           if (isFirstMoveDay) {
             // Желтый фон в правой половине первого дня
-            gradientBackground = `linear-gradient(to right, transparent 50%, ${theme.palette.warning.main || "#ffeb3b"} 50%)`;
+            gradientBackground = `linear-gradient(to right, transparent 50%, ${yellowColor} 50%)`;
           } else if (isLastMoveDay) {
             // Желтый фон в левой половине последнего дня
-            gradientBackground = `linear-gradient(to right, ${theme.palette.warning.main || "#ffeb3b"} 50%, transparent 50%)`;
+            gradientBackground = `linear-gradient(to right, ${yellowColor} 50%, transparent 50%)`;
           } else {
             // Полный желтый фон для средних дней
-            backgroundColor = theme.palette.warning.main || "#ffeb3b";
+            backgroundColor = yellowColor;
           }
           isInMoveModeDateRange = true;
         } else {
@@ -892,7 +899,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
+                  backgroundColor: MOVE_MODE_COLORS.YELLOW_SOLID, // ⚠️ ЗАФИКСИРОВАНО: из config/orderColors.js
                   borderRadius: "50% 0 0 50%",
                 }}
               ></Box>
@@ -925,7 +932,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
+                  backgroundColor: MOVE_MODE_COLORS.YELLOW_SOLID, // ⚠️ ЗАФИКСИРОВАНО: из config/orderColors.js
                   borderRadius: "0 50% 50% 0",
                 }}
               ></Box>
@@ -1221,7 +1228,7 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowLastMoveDay
-                  ? theme.palette.warning.main || "#ffeb3b"
+                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
                   : shouldHighlightLeft
                   ? theme.palette.primary.main
                   : isStartAndEndDateOverlapInfo.endConfirmed
@@ -1260,7 +1267,7 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? theme.palette.warning.main || "#ffeb3b"
+                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
                   : shouldHighlightRight
                   ? theme.palette.primary.main
                   : isStartAndEndDateOverlapInfo.startConfirmed
@@ -1397,7 +1404,7 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "50% 0 0 50%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? theme.palette.warning.main || "#ffeb3b"
+                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
                   : shouldHighlightRight
                   ? theme.palette.primary.main
                   : startEndInfo.confirmed
@@ -1534,7 +1541,7 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "0 50% 50% 0",
                 backgroundColor: shouldShowLastMoveDay
-                  ? theme.palette.warning.main || "#ffeb3b"
+                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
                   : shouldHighlightLeft
                   ? theme.palette.primary.main
                   : startEndInfo.confirmed
@@ -1623,7 +1630,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
+                  backgroundColor: MOVE_MODE_COLORS.YELLOW_SOLID, // ⚠️ ЗАФИКСИРОВАНО: из config/orderColors.js
                   borderRadius: "0 50% 50% 0",
                   position: "absolute",
                   left: 0,
@@ -1638,7 +1645,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
+                  backgroundColor: MOVE_MODE_COLORS.YELLOW_SOLID, // ⚠️ ЗАФИКСИРОВАНО: из config/orderColors.js
                   borderRadius: "50% 0 0 50%",
                   position: "absolute",
                   right: 0,
