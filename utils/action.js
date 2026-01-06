@@ -345,6 +345,21 @@ export const changeRentalDates = async (
         message: data.message,
         conflicts: data.confirmedOrders,
       };
+    } else if (response.status === 403) {
+      // Handle permission denied (protected order)
+      console.log("Permission denied:", data);
+      return {
+        status: 403,
+        message: data.message || "Permission denied: Only superadmin can modify this order",
+        code: data.code || "PERMISSION_DENIED",
+      };
+    } else if (response.status === 401) {
+      // Handle unauthorized
+      console.log("Unauthorized:", data);
+      return {
+        status: 401,
+        message: data.message || "Unauthorized",
+      };
     } else {
       // Handle unexpected responses
       console.error("Unexpected response:", data);
@@ -385,6 +400,8 @@ export const toggleConfirmedStatus = async (orderId) => {
       headers: {
         "Content-Type": "application/json",
       },
+      cache: "no-store",
+      credentials: "include",
     });
 
     const data = await response.json();
@@ -409,6 +426,17 @@ export const toggleConfirmedStatus = async (orderId) => {
         message: data.message,
         level: data.level || "block",
         conflicts: data.conflicts || [],
+      };
+    }
+
+    // ⛔ Permission denied (403) — только суперадмин может изменить
+    if (response.status === 403) {
+      console.log("Permission denied:", data);
+      return {
+        success: false,
+        message: data.message || "Permission denied: Only superadmin can modify this order",
+        level: "block",
+        code: data.code || "PERMISSION_DENIED",
       };
     }
 
@@ -444,11 +472,288 @@ export const updateCustomerInfo = async (orderId, updateData) => {
     }),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to update customer information");
+  const data = await response.json();
+
+  // Handle permission denied (403)
+  if (response.status === 403) {
+    throw new Error(data.message || "Permission denied: Only superadmin can modify this order");
   }
 
-  return await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update customer information");
+  }
+
+  return data;
+};
+
+/**
+ * Unified order update action - single source of truth for all order updates
+ * 
+ * @param {string} orderId - The order ID to update
+ * @param {Object} payload - Partial update payload with any order fields:
+ *   - rentalStartDate?, rentalEndDate?, timeIn?, timeOut?
+ *   - car?, carNumber?, placeIn?, placeOut?
+ *   - insurance?, ChildSeats?, franchiseOrder?
+ *   - totalPrice?, numberOfDays?
+ *   - customerName?, phone?, email?, flightNumber?
+ *   - confirmed?
+ * 
+ * @returns {Promise<Object>} Response object with status, message, updatedOrder, etc.
+ */
+export const updateOrder = async (orderId, payload) => {
+  try {
+    const response = await fetch(`/api/order/update/${orderId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    // Handle success responses
+    if (response.status === 200 || response.status === 201) {
+      return {
+        status: response.status,
+        message: data.message || "Order updated successfully",
+        updatedOrder: data.updatedOrder || data.data,
+        success: data.success !== false, // Default to true if not specified
+      };
+    }
+
+    // Handle partial success with conflicts (202)
+    if (response.status === 202) {
+      return {
+        status: 202,
+        message: data.message,
+        conflicts: data.conflicts,
+        updatedOrder: data.updatedOrder || data.data,
+        level: data.level || null,
+        affectedOrders: data.affectedOrders || [],
+        success: true, // Still a success, just with warnings
+      };
+    }
+
+    // Handle conflict errors (408, 409)
+    if (response.status === 408 || response.status === 409) {
+      return {
+        status: response.status,
+        message: data.message || "Conflict detected",
+        conflicts: data.conflicts || data.conflictDates,
+        success: false,
+      };
+    }
+
+    // Handle permission denied (403)
+    if (response.status === 403) {
+      return {
+        status: 403,
+        message: data.message || "Permission denied",
+        code: data.code || "PERMISSION_DENIED",
+        success: false,
+        level: data.level || "block",
+      };
+    }
+
+    // Handle unauthorized (401)
+    if (response.status === 401) {
+      return {
+        status: 401,
+        message: data.message || "Unauthorized",
+        success: false,
+      };
+    }
+
+    // Handle other errors
+    return {
+      status: response.status,
+      message: data.message || "Unexpected response",
+      data: data,
+      success: false,
+    };
+  } catch (error) {
+    console.error("Error updating order:", error);
+    return {
+      status: 500,
+      message: "Error updating order: " + error.message,
+      success: false,
+    };
+  }
+};
+
+// UPDATE 4. Inline order update action (for table inline editing)
+/**
+ * Update order fields inline (supports customer info, dates, and times)
+ * 
+ * @param {string} orderId - Order ID
+ * @param {Object} fields - Fields to update: 
+ *   - Customer: { customerName?, phone?, email?, flightNumber? }
+ *   - Dates/Times: { rentalStartDate?, rentalEndDate?, timeIn?, timeOut? }
+ * @returns {Promise<Object>} Normalized response with updated order
+ */
+export const updateOrderInline = async (orderId, fields) => {
+  // Determine which endpoint to use based on fields
+  const dateTimeFields = ["rentalStartDate", "rentalEndDate", "timeIn", "timeOut"];
+  const pricingFields = ["totalPrice", "price", "numberOfDays"];
+  const hasDateTimeFields = Object.keys(fields).some(key => dateTimeFields.includes(key));
+  const hasPricingFields = Object.keys(fields).some(key => pricingFields.includes(key));
+  
+  // Use changeDates endpoint for date/time/pricing fields, customer endpoint for customer fields only
+  const endpoint = (hasDateTimeFields || hasPricingFields) 
+    ? "/api/order/update/changeDates" 
+    : "/api/order/update/customer";
+  
+  // Debug logging (dev only)
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[updateOrderInline] Request:", {
+      orderId,
+      endpoint,
+      fields,
+      hasDateTimeFields,
+    });
+  }
+  
+  const response = await fetch(endpoint, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    credentials: "include",
+    body: JSON.stringify({
+      _id: orderId,
+      ...fields,
+    }),
+  });
+
+  const data = await response.json();
+
+  // Debug logging (dev only)
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[updateOrderInline] Response:", {
+      orderId,
+      status: response.status,
+      success: data.success,
+      dataKeys: data.data ? Object.keys(data.data) : data.updatedOrder ? Object.keys(data.updatedOrder) : [],
+      data: data.data || data.updatedOrder || data,
+    });
+  }
+
+  // Normalize response to match unified contract
+  if (response.status === 403) {
+    return {
+      success: false,
+      data: null,
+      message: data.message || "Permission denied",
+      level: "block",
+      conflicts: [],
+      affectedOrders: [],
+      bufferHours: 2,
+    };
+  }
+
+  if (!response.ok) {
+    // For 409 conflicts, return normalized structure
+    if (response.status === 409 || response.status === 408) {
+      return {
+        success: false,
+        data: null,
+        message: data.message || "Update blocked by conflict",
+        level: "block",
+        conflicts: data.conflicts ?? data.conflictDates ?? [],
+        affectedOrders: data.affectedOrders ?? [],
+        bufferHours: data.bufferHours ?? 2,
+      };
+    }
+    throw new Error(data.message || "Failed to update order");
+  }
+
+  // Success - return normalized structure
+  // changeDates endpoint returns { data: order } or { updatedOrder: order }
+  // customer endpoint returns { updatedOrder: order }
+  const updatedOrder = data.data || data.updatedOrder || data;
+  
+  return {
+    success: true,
+    data: updatedOrder,
+    message: data.message || "Order updated successfully",
+    level: null,
+    conflicts: [],
+    affectedOrders: [],
+    bufferHours: 2,
+  };
+};
+
+// UPDATE 5. Inline confirmation toggle action
+/**
+ * Toggle order confirmation status inline
+ * 
+ * @param {string} orderId - Order ID
+ * @returns {Promise<{ success: boolean, updatedOrder: Object|null, level: string|null, message: string }>}
+ *   - success: true if toggle succeeded, false if blocked/denied (403/409)
+ *   - updatedOrder: updated order object from server (only if success=true)
+ *   - level: "warning" | "block" | null
+ *   - message: status message
+ * @throws {Error} if request fails (network error, 500, etc.)
+ */
+export const updateOrderConfirmation = async (orderId) => {
+  const response = await fetch(`/api/order/update/switchConfirm/${orderId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  const data = await response.json();
+
+  // Pass through normalized response structure from backend
+  // Backend always returns: { success, data, message, level, conflicts, affectedOrders, bufferHours }
+  
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[updateOrderConfirmation] result:", {
+      status: response.status,
+      success: data.success,
+      level: data.level,
+      orderId,
+    });
+  }
+
+  // Check if response is ok
+  if (!response.ok) {
+    // For 403, 409, etc. - return error result, don't throw
+    if (response.status === 403 || response.status === 409) {
+      return {
+        success: false,
+        data: null,
+        message: data.message || "Cannot update order confirmation",
+        level: data.level || "block",
+        conflicts: data.conflicts ?? [],
+        affectedOrders: data.affectedOrders ?? [],
+        bufferHours: data.bufferHours ?? 2,
+      };
+    }
+    // For other errors, throw
+    throw new Error(data.message || "Failed to toggle confirmation");
+  }
+
+  // Success (200 or 202)
+  if (response.status === 200 || response.status === 202) {
+    return {
+      success: true,
+      data: data.data, // Server returns { success: true, data: updatedOrder }
+      message: data.message,
+      level: data.level ?? null,
+      conflicts: data.conflicts ?? [],
+      affectedOrders: data.affectedOrders ?? [],
+      bufferHours: data.bufferHours ?? 2,
+    };
+  }
+
+  // Unexpected status
+  throw new Error(data.message || "Unexpected response from server");
 };
 
 export const addCar = async (formData) => {

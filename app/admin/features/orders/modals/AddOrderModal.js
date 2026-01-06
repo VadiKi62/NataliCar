@@ -475,334 +475,285 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     );
   };
 
-  const renderDateTimeSection = () => (
-    <Box sx={{ mb: 2 }}>
-      <Box sx={{ display: "flex", gap: 2 }}>
-        <TextField
-          label={t("order.pickupDate")}
-          type="date"
-          value={bookDates.start || ""}
-          onChange={(e) => {
-            const newStart = normalizeDate(e.target.value);
-            // Запрет выбора прошлой даты
-            if (newStart && dayjs(newStart).isBefore(dayjs(), "day")) {
-              return; // игнорируем недопустимый выбор
-            }
-            setBookedDates((dates) => {
-              if (!newStart) return { ...dates, start: newStart };
-              if (
-                dates.end &&
-                dayjs(dates.end).isSameOrBefore(dayjs(newStart), "day")
-              ) {
-                return {
-                  start: newStart,
-                  end: dayjs(newStart).add(1, "day").format("YYYY-MM-DD"),
-                };
-              }
-              return { ...dates, start: newStart };
-            });
-          }}
-          fullWidth
-          margin="dense"
-          required
-          inputProps={{ min: dayjs().format("YYYY-MM-DD") }}
-        />
-        <TextField
-          label={t("order.returnDate")}
-          type="date"
-          value={bookDates.end || ""}
-          onChange={(e) => {
-            const newEnd = normalizeDate(e.target.value);
-            if (
-              bookDates.start &&
-              newEnd &&
-              dayjs(newEnd).isSameOrBefore(dayjs(bookDates.start), "day")
-            ) {
-              return;
-            }
-            setBookedDates((dates) => ({ ...dates, end: newEnd }));
-          }}
-          fullWidth
-          margin="dense"
-          inputProps={{
-            min: bookDates.start
-              ? dayjs(bookDates.start).add(1, "day").format("YYYY-MM-DD")
-              : undefined,
-          }}
-          InputLabelProps={{ shrink: true }}
-          required
-        />
-      </Box>
-      <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
-        <TextField
-          label={t("order.pickupTime")}
-          type="time"
-          value={startTime.format("HH:mm")}
-          onChange={(e) => setStartTime(dayjs(e.target.value, "HH:mm"))}
-          margin="dense"
-          sx={{ flex: 1 }}
-        />
-        <TextField
-          label={t("order.returnTime")}
-          type="time"
-          value={endTime.format("HH:mm")}
-          onChange={(e) => setEndTime(dayjs(e.target.value, "HH:mm"))}
-          margin="dense"
-          sx={{ flex: 1 }}
-        />
-      </Box>
-      {/* Места получения и возврата в одну строку */}
-      <Box
-        sx={{
-          display: "flex",
-          gap: 2,
-          mt: 2,
-          mb: 2,
-          flexWrap: "nowrap",
-          alignItems: "stretch",
-          width: "100%",
-        }}
-      >
-        <Autocomplete
-          freeSolo
-          options={locations}
-          value={orderDetails.placeIn || ""}
-          onChange={(e, newValue) =>
-            handleFieldChange("placeIn", newValue || "")
-          }
-          onInputChange={(e, newInput) =>
-            handleFieldChange("placeIn", newInput || "")
-          }
-          PaperProps={{
-            sx: {
-                      border: "2px solid var(--color-text-primary) !important",
-              borderRadius: 1,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
-              backgroundColor: "background.paper",
-            },
-          }}
-          PopperProps={{ style: { zIndex: 1400 } }}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label={t("order.pickupLocation")}
-              size="medium"
-              required
-              InputProps={{ ...params.InputProps, style: { minHeight: 48 } }}
-            />
-          )}
-          sx={{
-            width:
-              orderDetails.placeIn &&
-              orderDetails.placeIn.toLowerCase() === "airport"
-                ? "25%"
-                : "50%",
-            mb: 0,
-            mt: 0,
-            minHeight: 48,
-            alignSelf: "stretch",
-          }}
-          fullWidth={false}
-        />
+  const renderDateTimeSection = () => {
+    // Handle pickup date change with validation
+    const handlePickupDateChange = (newStart) => {
+      const normalized = normalizeDate(newStart);
+      // Запрет выбора прошлой даты
+      if (normalized && dayjs(normalized).isBefore(dayjs(), "day")) {
+        return; // игнорируем недопустимый выбор
+      }
+      setBookedDates((dates) => {
+        if (!normalized) return { ...dates, start: normalized };
+        if (
+          dates.end &&
+          dayjs(dates.end).isSameOrBefore(dayjs(normalized), "day")
+        ) {
+          return {
+            start: normalized,
+            end: dayjs(normalized).add(1, "day").format("YYYY-MM-DD"),
+          };
+        }
+        return { ...dates, start: normalized };
+      });
+    };
 
+    // Handle return date change with validation
+    const handleReturnDateChange = (newEnd) => {
+      const normalized = normalizeDate(newEnd);
+      if (
+        bookDates.start &&
+        normalized &&
+        dayjs(normalized).isSameOrBefore(dayjs(bookDates.start), "day")
+      ) {
+        return;
+      }
+      setBookedDates((dates) => ({ ...dates, end: normalized }));
+    };
+
+    return (
+      <Box sx={{ mb: 2 }}>
+        {/* Date fields */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 2 },
+            mb: 1,
+          }}
+        >
+          <TextField
+            label={t("order.pickupDate")}
+            type="date"
+            value={bookDates.start || ""}
+            onChange={(e) => handlePickupDateChange(e.target.value)}
+            sx={{ flex: 1 }}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: dayjs().format("YYYY-MM-DD") }}
+          />
+          <TextField
+            label={t("order.returnDate")}
+            type="date"
+            value={bookDates.end || ""}
+            onChange={(e) => handleReturnDateChange(e.target.value)}
+            sx={{ flex: 1 }}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            inputProps={{
+              min: bookDates.start
+                ? dayjs(bookDates.start).add(1, "day").format("YYYY-MM-DD")
+                : dayjs().format("YYYY-MM-DD"),
+            }}
+          />
+        </Box>
+        {/* Time fields */}
+        <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
+          <TextField
+            label={t("order.pickupTime")}
+            type="time"
+            value={startTime.format("HH:mm")}
+            onChange={(e) => setStartTime(dayjs(e.target.value, "HH:mm"))}
+            sx={{ flex: 1 }}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label={t("order.returnTime")}
+            type="time"
+            value={endTime.format("HH:mm")}
+            onChange={(e) => setEndTime(dayjs(e.target.value, "HH:mm"))}
+            sx={{ flex: 1 }}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+          />
+        </Box>
+        {/* Location fields */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 2 },
+            mb: 1,
+          }}
+        >
+          <Autocomplete
+            freeSolo
+            options={locations}
+            value={orderDetails.placeIn || ""}
+            onChange={(_, newValue) =>
+              handleFieldChange("placeIn", newValue || "")
+            }
+            onInputChange={(_, newInputValue) =>
+              handleFieldChange("placeIn", newInputValue)
+            }
+            PaperProps={{
+              sx: {
+                border: "2px solid",
+                borderColor: "text.primary",
+                borderRadius: 1,
+                boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+                backgroundColor: "background.paper",
+              },
+            }}
+            PopperProps={{ style: { zIndex: 1400 } }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={t("order.pickupLocation")}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+            )}
+            sx={{ flex: 1 }}
+          />
+          <Autocomplete
+            freeSolo
+            options={locations}
+            value={orderDetails.placeOut || ""}
+            onChange={(_, newValue) =>
+              handleFieldChange("placeOut", newValue || "")
+            }
+            onInputChange={(_, newInputValue) =>
+              handleFieldChange("placeOut", newInputValue)
+            }
+            PaperProps={{
+              sx: {
+                border: "2px solid",
+                borderColor: "text.primary",
+                borderRadius: 1,
+                boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+                backgroundColor: "background.paper",
+              },
+            }}
+            PopperProps={{ style: { zIndex: 1400 } }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={t("order.returnLocation")}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+            )}
+            sx={{ flex: 1 }}
+          />
+        </Box>
+        {/* Flight number - conditional */}
         {orderDetails.placeIn &&
           orderDetails.placeIn.toLowerCase() === "airport" && (
             <TextField
-              name="flightNumber"
-              label={t("order.flightNumber") || "Номер рейса"}
+              label={t("order.flightNumber")}
               value={orderDetails.flightNumber || ""}
-              onChange={(e) =>
-                handleFieldChange("flightNumber", e.target.value)
-              }
-              size="medium"
-              sx={{ width: "23%", alignSelf: "stretch" }}
-              inputProps={{ maxLength: 20 }}
+              onChange={(e) => handleFieldChange("flightNumber", e.target.value)}
+              size="small"
+              fullWidth
+              sx={{ mb: 1 }}
               InputLabelProps={{ shrink: true }}
             />
           )}
+      </Box>
+    );
+  };
 
-        <Autocomplete
-          freeSolo
-          options={locations}
-          value={orderDetails.placeOut || ""}
-          onChange={(e, newValue) =>
-            handleFieldChange("placeOut", newValue || "")
-          }
-          onInputChange={(e, newInput) =>
-            handleFieldChange("placeOut", newInput || "")
-          }
-          PaperProps={{
-            sx: {
-                      border: "2px solid var(--color-text-primary) !important",
-              borderRadius: 1,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
-              backgroundColor: "background.paper",
-            },
+  const renderCustomerSection = () => {
+    const insuranceOptions =
+      t("order.insuranceOptions", { returnObjects: true }) || [];
+
+    return (
+      <Box sx={{ mb: 2, mt: 0 }}>
+        {/* Insurance and extras */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 2 },
+            mb: 1,
           }}
-          PopperProps={{ style: { zIndex: 1400 } }}
-          renderInput={(params) => (
+        >
+          <FormControl fullWidth size="small" sx={{ flex: orderDetails.insurance === "TPL" ? 2 : 1 }}>
+            <InputLabel>{t("order.insurance")}</InputLabel>
+            <Select
+              value={orderDetails.insurance || "TPL"}
+              label={t("order.insurance")}
+              onChange={(e) => handleFieldChange("insurance", e.target.value)}
+            >
+              {insuranceOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label} {option.price ? `(+€${option.price})` : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {orderDetails.insurance === "CDW" && (
             <TextField
-              {...params}
-              label={t("order.returnLocation")}
-              size="medium"
-              required
-              InputProps={{ ...params.InputProps, style: { minHeight: 48 } }}
+              label={t("order.franchise")}
+              type="number"
+              value={orderDetails.franchiseOrder || 0}
+              onChange={(e) =>
+                handleFieldChange(
+                  "franchiseOrder",
+                  parseFloat(e.target.value) || 0
+                )
+              }
+              size="small"
+              sx={{ flex: 1 }}
+              InputLabelProps={{ shrink: true }}
             />
           )}
-          sx={{
-            width: "50%",
-            mb: 0,
-            mt: 0,
-            minHeight: 48,
-            alignSelf: "stretch",
-          }}
-          fullWidth={false}
-        />
-      </Box>
-    </Box>
-  );
-
-  const renderCustomerSection = () => (
-    <Box sx={{ mb: 2, mt: 0 }}>
-      {/* Динамическая ширина для поля страховки: если выбрано ОСАГО (TPL), ширина 50%, иначе 25% */}
-      {(() => {
-        //const insuranceWidth = orderDetails.insurance === "TPL" ? "50%" : "25%";
-        const insuranceWidth = orderDetails.insurance === "TPL" ? "48%" : "30%";
-        return (
-          <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
-            <FormControl
-              sx={{ flexBasis: insuranceWidth, flexGrow: 0, flexShrink: 0 }}
-              margin="dense"
+          <FormControl fullWidth size="small" sx={{ flex: 1 }}>
+            <InputLabel>{t("order.childSeats")}</InputLabel>
+            <Select
+              value={orderDetails.ChildSeats || 0}
+              label={t("order.childSeats")}
+              onChange={(e) =>
+                handleFieldChange("ChildSeats", parseInt(e.target.value) || 0)
+              }
             >
-              <InputLabel shrink htmlFor="insurance-select">
-                {t("order.insurance")}
-              </InputLabel>
-              <Select
-                label={t("order.insurance")}
-                value={orderDetails.insurance || ""}
-                onChange={(e) => handleFieldChange("insurance", e.target.value)}
-                displayEmpty
-                inputProps={{ id: "insurance-select" }}
-              >
-                {/* Удалён placeholder пункт 'Страховка' */}
-                {(
-                  t("order.insuranceOptions", { returnObjects: true }) || []
-                ).map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.value === "CDW"
-                      ? `${option.label} ${
-                          car?.PriceKacko ? car.PriceKacko : 0
-                        }€/${t("order.perDay")}`
-                      : option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {/* Франшиза показывается только если страховка не ОСАГО (TPL) */}
-            {orderDetails.insurance !== "TPL" && (
-              <TextField
-                sx={{
-                  flexBasis: "15%",
-                  flexGrow: 0,
-                  flexShrink: 0,
-                  minWidth: 0,
-                }}
-                margin="dense"
-                label={t("car.franchise")}
-                type="number"
-                value={orderDetails.franchiseOrder || ""}
-                onChange={(e) =>
-                  handleFieldChange("franchiseOrder", Number(e.target.value))
-                }
-              />
-            )}
-            <FormControl
-              sx={{ flexBasis: "48%", flexGrow: 0, flexShrink: 0 }}
-              margin="dense"
-            >
-              <InputLabel sx={{ whiteSpace: "normal", maxWidth: "100%" }}>
-                {`${t("order.childSeats")} ${
-                  car?.PriceChildSeats ? car.PriceChildSeats : 0
-                }€/${t("order.perDay")}`}
-              </InputLabel>
-              <Select
-                label={`${t("order.childSeats")} ${
-                  car?.PriceChildSeats ? car.PriceChildSeats : 0
-                }€/${t("order.perDay")}`}
-                value={orderDetails.ChildSeats || 0}
-                onChange={(e) =>
-                  handleFieldChange("ChildSeats", Number(e.target.value))
-                }
-                sx={{
-                  flexBasis: "48%",
-                  flexGrow: 0,
-                  flexShrink: 0,
-                  "& .MuiSelect-select": {
-                    whiteSpace: "normal",
-                    display: "block",
-                    maxWidth: "100%",
-                  },
-                }}
-              >
-                <MenuItem value={0}>{t("order.childSeatsNone")}</MenuItem>
-                {[1, 2, 3, 4].map((num) => (
-                  <MenuItem key={num} value={num}>
-                    {num}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        );
-      })()}
-      <TextField
-        fullWidth
-        margin="dense"
-        label={
-          <>
-            <span>{t("order.clientName")}</span>
-            <span style={{ color: "#990606" }}>*</span>
-          </>
-        }
-        value={orderDetails.customerName}
-        onChange={(e) => handleFieldChange("customerName", e.target.value)}
-      />
-      <Box sx={{ display: "flex", gap: 2 }}>
+              {[0, 1, 2, 3].map((num) => (
+                <MenuItem key={num} value={num}>
+                  {num} {num === 1 ? t("order.childSeat") : t("order.childSeats")}
+                  {num > 0 && car?.PriceChildSeats
+                    ? ` (+€${car.PriceChildSeats * num})`
+                    : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        {/* Customer fields */}
         <TextField
+          label={t("order.name")}
+          value={orderDetails.customerName || ""}
+          onChange={(e) => handleFieldChange("customerName", e.target.value)}
+          size="small"
           fullWidth
-          margin="dense"
-          label={
-            <>
-              <span>{t("order.phone")}</span>
-              <span style={{ color: "#990606" }}>*</span>
-            </>
-          }
-          value={orderDetails.phone}
+          required
+          sx={{ mb: 1 }}
+          InputLabelProps={{ shrink: true }}
+        />
+        <TextField
+          label={t("order.phone")}
+          value={orderDetails.phone || ""}
           onChange={(e) => handleFieldChange("phone", e.target.value)}
+          size="small"
+          fullWidth
+          required
+          sx={{ mb: 1 }}
+          InputLabelProps={{ shrink: true }}
         />
         <TextField
-          fullWidth
-          margin="dense"
-          label={
-            <>
-              {t("order.email")}
-              <span
-                style={{
-                  color: "#4CAF50",
-                  fontWeight: 500,
-                  marginLeft: 8,
-                }}
-              >
-                {t("basic.optional")}
-              </span>
-            </>
-          }
-          value={orderDetails.email}
+          label={t("order.email")}
+          value={orderDetails.email || ""}
           onChange={(e) => handleFieldChange("email", e.target.value)}
+          type="email"
+          size="small"
+          fullWidth
+          sx={{ mb: 1 }}
+          InputLabelProps={{ shrink: true }}
         />
       </Box>
-    </Box>
-  );
+    );
+  };
 
   const { t } = useTranslation();
 

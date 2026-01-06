@@ -1,13 +1,25 @@
 import mongoose from "mongoose";
 
 /**
- * User roles enum:
- * 0 = admin (regular admin)
- * 1 = superadmin (can override conflicts, etc.)
+ * User roles enum — SINGLE SOURCE OF TRUTH
+ * 
+ * Values stored in database:
+ * 1 = ADMIN (regular admin)
+ * 2 = SUPERADMIN (can override conflicts, force create orders)
+ * 
+ * ⚠️ Do NOT change these values — they are stored in the database.
  */
-export const USER_ROLES = {
-  ADMIN: 0,
-  SUPERADMIN: 1,
+export const ROLE = {
+  ADMIN: 1,
+  SUPERADMIN: 2,
+};
+
+/**
+ * Role display names
+ */
+export const ROLE_NAME = {
+  [ROLE.ADMIN]: "admin",
+  [ROLE.SUPERADMIN]: "superadmin",
 };
 
 const userSchema = new mongoose.Schema(
@@ -19,12 +31,12 @@ const userSchema = new mongoose.Schema(
       min: 3,
       max: 20,
     },
-    // email: {
-    //   type: String,
-    //   required: true,
-    //   unique: true,
-    //   max: 50,
-    // },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      max: 50,
+    },
     password: {
       type: String,
     },
@@ -34,13 +46,13 @@ const userSchema = new mongoose.Schema(
     },
     /**
      * User role:
-     * 0 = admin (default) - regular admin
-     * 1 = superadmin - can override conflicts, force create orders
+     * 1 = ADMIN (default) - regular admin
+     * 2 = SUPERADMIN - can override conflicts, force create orders
      */
     role: {
       type: Number,
-      enum: [USER_ROLES.ADMIN, USER_ROLES.SUPERADMIN],
-      default: USER_ROLES.ADMIN,
+      enum: [ROLE.ADMIN, ROLE.SUPERADMIN],
+      default: ROLE.ADMIN,
     },
   },
   { timestamps: true }

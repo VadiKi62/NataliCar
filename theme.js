@@ -41,8 +41,10 @@ export const palette = {
     green: "#008900",
     greenLight: "#33a033",
     greenDark: "#005c00",
+    yellowBright: "#ffc107",
     yellow: "rgb(247, 220, 112)",
     yellowLight:"rgb(249, 237, 121)",
+
   },
   neutral: {
     white: "#ffffff",
@@ -544,6 +546,18 @@ export const darkTheme = createTheme({
     secondary: {
       ...palette.secondary,
       main: palette.secondary.light,
+    },
+    triadic: {
+      ...palette.triadic,
+      yellowBright: palette.triadic.yellowBright,
+    },
+    analogous: {
+      ...palette.analogous,
+      amberBright: palette.analogous.amberBright,
+    },
+    neutral: {
+      ...palette.neutral,
+      whiteBright: palette.neutral.whiteBright,
     },
     success: {
       main: palette.triadic.greenLight,

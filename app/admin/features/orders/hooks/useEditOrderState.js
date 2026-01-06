@@ -1,0 +1,799 @@
+/**
+ * useEditOrderState
+ * 
+ * 🎯 STATE & DATA ORCHESTRATION LAYER — The brain
+ * 
+ * This layer is the ONLY OWNER OF STATE:
+ * - editedOrder
+ * - startTime / endTime (Athens timezone)
+ * - isManualTotalPrice
+ * - isFirstOpen
+ * - daysAndPriceState
+ * - loading / updating flags
+ * 
+ * 🔥 SINGLE SOURCE OF TRUTH FOR PRICE 🔥
+ * - totalPrice and numberOfDays live ONLY here
+ * - UI never recalculates price
+ * - UI never mutates numberOfDays directly
+ * 
+ * Price calculation rules:
+ * - Server (`/calcTotalPrice`) is the ONLY calculator
+ * - Manual price override sets `isManualTotalPrice = true`
+ * - Any change in: car, rentalStartDate, rentalEndDate, insurance, childSeats
+ *   resets `isManualTotalPrice = false`
+ * 
+ * Race-condition protection:
+ * - Use requestId / abort logic so outdated calc responses are ignored
+ * 
+ * 🕐 ATHENS TIMEZONE CONTRACT 🕐
+ * - editedOrder.rentalStartDate / rentalEndDate: dayjs in Athens (date-only, startOf("day"))
+ * - startTime / endTime: dayjs in Athens (datetime)
+ * - All time operations use athensTime.js utilities
+ */
+
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import dayjs from "dayjs";
+import {
+  fromServerUTC,
+  createAthensDateTime,
+  toServerUTC,
+  formatTimeHHMM,
+  formatDateYYYYMMDD,
+  reinterpretAsAthens,
+  athensStartOfDay,
+  athensNow,
+} from "@/domain/time/athensTime";
+import { updateOrder } from "@utils/action";
+
+/**
+ * Hook for managing order edit state and price calculation
+ * 
+ * @param {Object} order - Original order object from props
+ * @param {Array} cars - List of cars
+ * @param {Object} company - Company data (for bufferTime)
+ * @param {Object} permissions - Permission flags from useEditOrderPermissions
+ * @param {Function} onSave - Callback when order is saved
+ * @param {Function} onClose - Callback when modal closes
+ * @param {Function} fetchAndUpdateOrders - Function to refetch orders
+ * @param {Function} setCarOrders - Optional function to update car orders
+ * @returns {Object} State and handlers
+ */
+export function useEditOrderState({
+  order,
+  cars,
+  company,
+  permissions,
+  onSave,
+  onClose,
+  fetchAndUpdateOrders,
+  setCarOrders,
+}) {
+  // ============================================================
+  // STATE
+  // ============================================================
+
+  // Main edited order state
+  const [editedOrder, setEditedOrder] = useState(null);
+  
+  // Time picker state (Athens timezone)
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  
+  // Price calculation state
+  const [isManualTotalPrice, setIsManualTotalPrice] = useState(false);
+  const isFirstOpen = useRef(true);
+  const [calcLoading, setCalcLoading] = useState(false);
+  
+  // UI state
+  const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState(null);
+  const [attemptedSave, setAttemptedSave] = useState(false);
+  
+  // Race condition protection
+  const priceCalcRequestId = useRef(0);
+  const priceCalcAbortController = useRef(null);
+
+  // ============================================================
+  // INITIALIZATION (Fix: Athens timezone for dates)
+  // ============================================================
+
+  useEffect(() => {
+    if (!order) {
+      setEditedOrder(null);
+      setStartTime(null);
+      setEndTime(null);
+      setLoading(false);
+      return;
+    }
+
+    // 🔧 FIX ДЫРКА A: rentalStartDate/rentalEndDate инициализируются в Athens
+    // Используем fromServerUTC для правильной конвертации UTC → Athens
+    const rentalStartDateAthens = fromServerUTC(order.rentalStartDate);
+    const rentalEndDateAthens = fromServerUTC(order.rentalEndDate);
+    
+    // Создаём date-only в Athens (startOf("day"))
+    const startDateAthens = athensStartOfDay(formatDateYYYYMMDD(rentalStartDateAthens));
+    const endDateAthens = athensStartOfDay(formatDateYYYYMMDD(rentalEndDateAthens));
+
+    const adjustedOrder = {
+      ...order,
+      // ✅ Dates are now Athens dayjs objects (date-only)
+      rentalStartDate: startDateAthens,
+      rentalEndDate: endDateAthens,
+      // Time fields are kept as-is (will be used for display)
+      timeIn: fromServerUTC(order.timeIn),
+      timeOut: fromServerUTC(order.timeOut),
+    };
+
+    setEditedOrder(adjustedOrder);
+    setIsManualTotalPrice(false);
+    
+    // ✅ Times are Athens dayjs objects
+    setStartTime(fromServerUTC(order.timeIn));
+    setEndTime(fromServerUTC(order.timeOut));
+    
+    isFirstOpen.current = true;
+    setLoading(false);
+  }, [order]);
+
+  // ============================================================
+  // SELECTED CAR
+  // ============================================================
+
+  const selectedCar = useMemo(() => {
+    if (!editedOrder?.car || !cars) return null;
+    // Normalize car ID: handle both object and string formats
+    const carId = editedOrder.car?._id ?? editedOrder.car;
+    if (!carId) return null;
+    return cars.find((c) => {
+      const cId = c._id?._id ?? c._id;
+      return cId?.toString() === carId.toString();
+    }) || null;
+  }, [cars, editedOrder?.car]);
+
+  // ============================================================
+  // PRICE CALCULATION (with race condition protection)
+  // ============================================================
+
+  // 🔧 FIX: Normalize pricing inputs (memoized for dependency tracking)
+  const normalizedInsurance = useMemo(() => {
+    return editedOrder?.insurance || "TPL";
+  }, [editedOrder?.insurance]);
+
+  const normalizedChildSeats = useMemo(() => {
+    return Number(editedOrder?.ChildSeats ?? editedOrder?.childSeats ?? 0);
+  }, [editedOrder?.ChildSeats, editedOrder?.childSeats]);
+
+  useEffect(() => {
+    // Skip calculation on first open
+    if (isFirstOpen.current) return;
+    
+    // Skip if manual price mode
+    if (isManualTotalPrice) return;
+    
+    // Skip if viewOnly mode
+    if (permissions.viewOnly) return;
+    
+    // Skip if required fields are missing
+    if (!selectedCar?.carNumber || !editedOrder?.rentalStartDate || !editedOrder?.rentalEndDate) {
+      return;
+    }
+
+    // Abort previous request
+    if (priceCalcAbortController.current) {
+      priceCalcAbortController.current.abort();
+    }
+
+    // Create new request
+    const requestId = ++priceCalcRequestId.current;
+    const abortController = new AbortController();
+    priceCalcAbortController.current = abortController;
+
+    setCalcLoading(true);
+
+    const fetchTotalPrice = async () => {
+      try {
+        // Format dates as YYYY-MM-DD strings (Athens dates)
+        const startDateStr = formatDateYYYYMMDD(editedOrder.rentalStartDate);
+        const endDateStr = formatDateYYYYMMDD(editedOrder.rentalEndDate);
+
+        // DEV log request
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[useEditOrderState] Price calc request (requestId: ${requestId}):`, {
+            carNumber: selectedCar.carNumber,
+            rentalStartDate: startDateStr,
+            rentalEndDate: endDateStr,
+            insurance: normalizedInsurance,
+            childSeats: normalizedChildSeats,
+          });
+        }
+
+        const res = await fetch("/api/order/calcTotalPrice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: abortController.signal,
+          body: JSON.stringify({
+            carNumber: selectedCar.carNumber,
+            rentalStartDate: startDateStr,
+            rentalEndDate: endDateStr,
+            kacko: normalizedInsurance, // API expects "kacko", not "insurance"
+            childSeats: normalizedChildSeats, // API expects "childSeats" (lowercase), normalized value
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          
+          // Race condition check: only update if this is the latest request
+          if (requestId === priceCalcRequestId.current && !abortController.signal.aborted) {
+            const safeTotalPrice = typeof data.totalPrice === "number" ? data.totalPrice : 0;
+            const safeDays = typeof data.days === "number" ? data.days : 0;
+
+            // 🔧 FIX: Respect manual price override
+            // If manual mode: update ONLY numberOfDays, never totalPrice
+            // If auto mode: update both numberOfDays and totalPrice
+            setEditedOrder((prev) => {
+              if (!prev) return prev;
+              
+              // Check if values actually changed to avoid unnecessary updates
+              const daysChanged = prev.numberOfDays !== safeDays;
+              const priceChanged = prev.totalPrice !== safeTotalPrice;
+              
+              if (!daysChanged && !priceChanged) {
+                return prev; // No changes, avoid update
+              }
+              
+              // If manual mode, only update days
+              if (isManualTotalPrice) {
+                if (!daysChanged) return prev;
+                return { ...prev, numberOfDays: safeDays };
+              }
+              
+              // Auto mode: update both
+              return {
+                ...prev,
+                numberOfDays: safeDays,
+                totalPrice: safeTotalPrice,
+              };
+            });
+            
+            // DEV log
+            if (process.env.NODE_ENV === "development") {
+              console.log(`[useEditOrderState] Price calc response (requestId: ${requestId}):`, {
+                days: safeDays,
+                totalPrice: safeTotalPrice,
+                isManualMode: isManualTotalPrice,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        if (error.name !== "AbortError" && requestId === priceCalcRequestId.current) {
+          console.error("Error calculating price:", error);
+        }
+      } finally {
+        if (requestId === priceCalcRequestId.current) {
+          setCalcLoading(false);
+        }
+      }
+    };
+
+    fetchTotalPrice();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [
+    // 🔧 FIX: Include all pricing inputs in dependencies
+    selectedCar?.carNumber,
+    editedOrder?.rentalStartDate,
+    editedOrder?.rentalEndDate,
+    normalizedInsurance, // Memoized normalized insurance
+    normalizedChildSeats, // Memoized normalized childSeats
+    isManualTotalPrice,
+    permissions.viewOnly, // Respect viewOnly mode
+  ]);
+
+  // ============================================================
+  // RESET MANUAL MODE ON KEY FIELD CHANGES
+  // ============================================================
+
+  useEffect(() => {
+    if (!order || !editedOrder) return;
+
+    // Check if key fields changed compared to original order
+    const isCarChanged = editedOrder.car !== order.car;
+    const isStartChanged =
+      formatDateYYYYMMDD(editedOrder.rentalStartDate) !==
+      formatDateYYYYMMDD(fromServerUTC(order.rentalStartDate));
+    const isEndChanged =
+      formatDateYYYYMMDD(editedOrder.rentalEndDate) !==
+      formatDateYYYYMMDD(fromServerUTC(order.rentalEndDate));
+    const isInsuranceChanged = editedOrder.insurance !== order.insurance;
+    const isChildSeatsChanged = editedOrder.ChildSeats !== order.ChildSeats;
+
+    if (
+      isCarChanged ||
+      isStartChanged ||
+      isEndChanged ||
+      isInsuranceChanged ||
+      isChildSeatsChanged
+    ) {
+      setIsManualTotalPrice(false);
+      isFirstOpen.current = false;
+    }
+  }, [
+    editedOrder?.car,
+    editedOrder?.rentalStartDate,
+    editedOrder?.rentalEndDate,
+    editedOrder?.insurance,
+    editedOrder?.ChildSeats,
+    order,
+    // Note: editedOrder is used for comparison, but we only need specific fields
+  ]);
+
+  // ============================================================
+  // FIELD UPDATERS
+  // ============================================================
+
+  /**
+   * Update a field in editedOrder
+   */
+  const updateField = useCallback((field, value) => {
+    if (permissions.viewOnly) return;
+
+    setEditedOrder((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [field]: value };
+    });
+
+    // Special handling for totalPrice: set manual mode
+    if (field === "totalPrice") {
+      setIsManualTotalPrice(true);
+    }
+  }, [permissions.viewOnly]);
+
+  /**
+   * Update start date (Athens timezone)
+   * 🔧 FIX ДЫРКА B: DatePicker парсит как Athens дату
+   */
+  const updateStartDate = useCallback((dateStr) => {
+    if (permissions.viewOnly || permissions.isCurrentOrder) return;
+    
+    // Create Athens date from YYYY-MM-DD string
+    const newStartDate = athensStartOfDay(dateStr);
+    
+    // Validate: cannot set past date
+    const todayAthens = athensStartOfDay(formatDateYYYYMMDD(athensNow()));
+    if (newStartDate.isBefore(todayAthens, "day")) {
+      return; // Ignore invalid selection
+    }
+
+    setEditedOrder((prev) => {
+      if (!prev) return prev;
+      const currentEnd = prev.rentalEndDate;
+      
+      // Validate: end date must be after start date
+      if (currentEnd && !currentEnd.isAfter(newStartDate, "day")) {
+        return prev; // Keep previous value
+      }
+      
+      return { ...prev, rentalStartDate: newStartDate };
+    });
+    
+    setIsManualTotalPrice(false);
+    isFirstOpen.current = false;
+  }, [permissions.viewOnly, permissions.isCurrentOrder]);
+
+  /**
+   * Update end date (Athens timezone)
+   */
+  const updateEndDate = useCallback((dateStr) => {
+    if (permissions.viewOnly) return;
+    
+    // Create Athens date from YYYY-MM-DD string
+    const newEndDate = athensStartOfDay(dateStr);
+    
+    // Validate: for current order, cannot set past date
+    if (permissions.isCurrentOrder) {
+      const todayAthens = athensStartOfDay(formatDateYYYYMMDD(athensNow()));
+      if (newEndDate.isBefore(todayAthens, "day")) {
+        return; // Ignore invalid selection
+      }
+    }
+
+    setEditedOrder((prev) => {
+      if (!prev) return prev;
+      const currentStart = prev.rentalStartDate;
+      
+      // Validate: end date must be after start date
+      if (currentStart && !newEndDate.isAfter(currentStart, "day")) {
+        return prev; // Keep previous value
+      }
+      
+      return { ...prev, rentalEndDate: newEndDate };
+    });
+    
+    setIsManualTotalPrice(false);
+    isFirstOpen.current = false;
+  }, [permissions.viewOnly, permissions.isCurrentOrder]);
+
+  /**
+   * Update start time (Athens timezone)
+   * 🔧 FIX ДЫРКА C: TimePicker даёт dayjs в локальной TZ, переинтерпретируем как Athens
+   */
+  const updateStartTime = useCallback((localDayjs) => {
+    if (permissions.viewOnly || permissions.isCurrentOrder) return;
+    
+    if (!localDayjs || !dayjs.isDayjs(localDayjs)) return;
+    
+    // Get date string from editedOrder
+    const dateStr = formatDateYYYYMMDD(editedOrder?.rentalStartDate);
+    if (!dateStr) return;
+    
+    // Reinterpret as Athens (extract HH:mm, create new Athens datetime)
+    const athensTime = reinterpretAsAthens(localDayjs, dateStr);
+    if (athensTime) {
+      setStartTime(athensTime);
+      setIsManualTotalPrice(false);
+      isFirstOpen.current = false;
+    }
+  }, [permissions.viewOnly, permissions.isCurrentOrder, editedOrder?.rentalStartDate]);
+
+  /**
+   * Update end time (Athens timezone)
+   */
+  const updateEndTime = useCallback((localDayjs) => {
+    if (permissions.viewOnly) return;
+    
+    if (!localDayjs || !dayjs.isDayjs(localDayjs)) return;
+    
+    // Get date string from editedOrder
+    const dateStr = formatDateYYYYMMDD(editedOrder?.rentalEndDate);
+    if (!dateStr) return;
+    
+    // Reinterpret as Athens (extract HH:mm, create new Athens datetime)
+    const athensTime = reinterpretAsAthens(localDayjs, dateStr);
+    if (athensTime) {
+      setEndTime(athensTime);
+      setIsManualTotalPrice(false);
+      isFirstOpen.current = false;
+    }
+  }, [permissions.viewOnly, editedOrder?.rentalEndDate]);
+
+  // ============================================================
+  // HANDLERS
+  // ============================================================
+
+  /**
+   * Handle save (unified update)
+   */
+  const handleSave = useCallback(async () => {
+    if (permissions.viewOnly) return;
+    
+    setAttemptedSave(true);
+    setIsUpdating(true);
+    setUpdateMessage(null);
+
+    try {
+      if (!editedOrder) {
+        throw new Error("No order to save");
+      }
+
+      // Use memoized selectedCar from hook (already normalized)
+      if (!selectedCar) {
+        throw new Error("Car not found");
+      }
+
+      // Build payload with only allowed fields
+      const payload = {};
+      const { fieldPermissions } = permissions;
+
+      // Date/time fields
+      if (fieldPermissions.rentalStartDate) {
+        // Convert Athens date to Date (for server)
+        payload.rentalStartDate = editedOrder.rentalStartDate.toDate();
+      }
+      if (fieldPermissions.rentalEndDate) {
+        payload.rentalEndDate = editedOrder.rentalEndDate.toDate();
+      }
+      if (fieldPermissions.timeIn && startTime) {
+        const startDateStr = formatDateYYYYMMDD(editedOrder.rentalStartDate);
+        const timeInAthens = createAthensDateTime(
+          startDateStr,
+          formatTimeHHMM(startTime)
+        );
+        payload.timeIn = toServerUTC(timeInAthens);
+      }
+      if (fieldPermissions.timeOut && endTime) {
+        const endDateStr = formatDateYYYYMMDD(editedOrder.rentalEndDate);
+        const timeOutAthens = createAthensDateTime(
+          endDateStr,
+          formatTimeHHMM(endTime)
+        );
+        payload.timeOut = toServerUTC(timeOutAthens);
+      }
+
+      // Other fields
+      if (fieldPermissions.car) payload.car = editedOrder.car;
+      if (fieldPermissions.placeIn) payload.placeIn = editedOrder.placeIn;
+      if (fieldPermissions.placeOut) payload.placeOut = editedOrder.placeOut;
+      if (fieldPermissions.ChildSeats !== undefined) {
+        payload.ChildSeats = editedOrder.ChildSeats;
+      }
+      if (fieldPermissions.insurance !== undefined) {
+        payload.insurance = editedOrder.insurance;
+      }
+      if (fieldPermissions.franchiseOrder !== undefined) {
+        payload.franchiseOrder = editedOrder.franchiseOrder;
+      }
+      if (fieldPermissions.totalPrice !== undefined) {
+        payload.totalPrice = Number(editedOrder.totalPrice);
+      }
+      if (editedOrder.numberOfDays !== undefined) {
+        payload.numberOfDays = Number(editedOrder.numberOfDays);
+      }
+
+      // 🔧 FIX: Customer fields - always include if permission allows AND field exists in editedOrder
+      // Include even if empty string (for email) or if value changed
+      if (fieldPermissions.customerName !== false) {
+        // Always include customerName if permission allows (required field)
+        if (editedOrder.customerName !== undefined) {
+          payload.customerName = editedOrder.customerName || "";
+        }
+      }
+      if (fieldPermissions.phone !== false) {
+        // Always include phone if permission allows (required field)
+        if (editedOrder.phone !== undefined) {
+          payload.phone = editedOrder.phone || "";
+        }
+      }
+      if (fieldPermissions.email !== false) {
+        // Always include email if permission allows (optional field, can be empty)
+        // Use ?? to handle null/undefined as empty string
+        payload.email = editedOrder.email ?? "";
+      }
+      if (fieldPermissions.flightNumber !== false) {
+        // Always include flightNumber if permission allows (optional field)
+        payload.flightNumber = editedOrder.flightNumber ?? "";
+      }
+
+      // Check if we have any changes
+      if (Object.keys(payload).length === 0) {
+        setUpdateMessage("⛔ Нет прав на изменение полей этого заказа");
+        return;
+      }
+
+      // Validation
+      if (fieldPermissions.rentalStartDate) {
+        const originalStart = fromServerUTC(order.rentalStartDate);
+        const todayAthens = athensNow();
+        if (
+          editedOrder.rentalStartDate.isBefore(todayAthens, "day") &&
+          !originalStart.isSame(editedOrder.rentalStartDate, "day")
+        ) {
+          setUpdateMessage(
+            "Нельзя устанавливать новую дату начала раньше сегодняшнего дня"
+          );
+          return;
+        }
+      }
+
+      if (fieldPermissions.rentalEndDate && permissions.isCurrentOrder) {
+        const todayAthens = athensNow();
+        if (editedOrder.rentalEndDate.isBefore(todayAthens, "day")) {
+          setUpdateMessage(
+            "Для текущего заказа дата окончания не может быть раньше сегодняшнего дня"
+          );
+          return;
+        }
+      }
+
+      if (
+        fieldPermissions.timeOut &&
+        permissions.isCurrentOrder &&
+        editedOrder.rentalEndDate.isSame(athensNow(), "day")
+      ) {
+        const endDateStr = formatDateYYYYMMDD(editedOrder.rentalEndDate);
+        const attemptedEndTime = createAthensDateTime(
+          endDateStr,
+          formatTimeHHMM(endTime)
+        );
+        const nowAthens = athensNow();
+        if (attemptedEndTime.isBefore(nowAthens, "minute")) {
+          setUpdateMessage(
+            "Для текущего заказа время окончания не может быть в прошлом"
+          );
+          return;
+        }
+      }
+
+      // DEV log payload - verify customer fields are included
+      if (process.env.NODE_ENV === "development") {
+        console.log("[useEditOrderState] Save payload:", {
+          customerName: payload.customerName,
+          phone: payload.phone,
+          email: payload.email,
+          flightNumber: payload.flightNumber,
+          totalPrice: payload.totalPrice,
+          numberOfDays: payload.numberOfDays,
+          allFields: Object.keys(payload),
+          customerFieldsIncluded: {
+            customerName: "customerName" in payload,
+            phone: "phone" in payload,
+            email: "email" in payload,
+            flightNumber: "flightNumber" in payload,
+          },
+          fieldPermissions: {
+            customerName: fieldPermissions.customerName,
+            phone: fieldPermissions.phone,
+            email: fieldPermissions.email,
+            flightNumber: fieldPermissions.flightNumber,
+          },
+          editedOrderValues: {
+            customerName: editedOrder.customerName,
+            phone: editedOrder.phone,
+            email: editedOrder.email,
+            flightNumber: editedOrder.flightNumber,
+          },
+        });
+      }
+
+      // Call unified API
+      const response = await updateOrder(editedOrder._id, payload);
+
+      // Handle response
+      if (response.status === 201 || response.status === 202) {
+        // 🔧 FIX: Sync editedOrder with server response to prevent stale data
+        if (response.updatedOrder) {
+          // Convert server dates to Athens timezone
+          const updatedOrder = {
+            ...response.updatedOrder,
+            rentalStartDate: athensStartOfDay(formatDateYYYYMMDD(fromServerUTC(response.updatedOrder.rentalStartDate))),
+            rentalEndDate: athensStartOfDay(formatDateYYYYMMDD(fromServerUTC(response.updatedOrder.rentalEndDate))),
+            timeIn: fromServerUTC(response.updatedOrder.timeIn),
+            timeOut: fromServerUTC(response.updatedOrder.timeOut),
+          };
+          
+          setEditedOrder(updatedOrder);
+          
+          // DEV log response - verify customer fields were saved
+          if (process.env.NODE_ENV === "development") {
+            console.log("[useEditOrderState] Save response:", {
+              customerName: updatedOrder.customerName,
+              phone: updatedOrder.phone,
+              email: updatedOrder.email,
+              flightNumber: updatedOrder.flightNumber,
+              totalPrice: updatedOrder.totalPrice,
+              numberOfDays: updatedOrder.numberOfDays,
+              customerFieldsMatch: {
+                customerName: updatedOrder.customerName === (payload.customerName ?? order.customerName),
+                phone: updatedOrder.phone === (payload.phone ?? order.phone),
+                email: updatedOrder.email === (payload.email ?? order.email),
+                flightNumber: updatedOrder.flightNumber === (payload.flightNumber ?? order.flightNumber),
+              },
+            });
+          }
+        }
+        
+        onSave(response.updatedOrder);
+        setUpdateMessage("Order updated successfully");
+        setAttemptedSave(false);
+      } else if (response.status === 408 || response.status === 409) {
+        setUpdateMessage(response.message || "Conflict detected");
+      } else {
+        setUpdateMessage(response.message || "Failed to update order");
+      }
+    } catch (error) {
+      console.error("Error updating order:", error);
+      setUpdateMessage(error?.message || "Failed to update order");
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [
+    permissions,
+    editedOrder,
+    startTime,
+    endTime,
+    selectedCar, // Use memoized selectedCar instead of cars
+    order,
+    onSave,
+    // Note: isManualTotalPrice is checked inside callback, not needed in deps
+    // Note: cars removed from deps - we use memoized selectedCar instead
+  ]);
+
+  /**
+   * Handle delete
+   */
+  const handleDelete = useCallback(async () => {
+    if (permissions.viewOnly || !permissions.canDelete) return;
+
+    // Check if current order (admin cannot delete)
+    if (
+      permissions.isCurrentOrder &&
+      !permissions.canDelete // This already checks superadmin
+    ) {
+      setUpdateMessage("Текущий заказ нельзя удалить");
+      return;
+    }
+
+    const isConfirmed = window.confirm("Are you sure you want to delete this order?");
+    if (!isConfirmed) return;
+
+    setIsUpdating(true);
+    setUpdateMessage(null);
+
+    try {
+      const response = await fetch(`/api/order/deleteOne/${editedOrder._id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: Failed to delete order`);
+      }
+
+      if (setCarOrders) {
+        setCarOrders((prevOrders) =>
+          prevOrders.filter((o) => o._id !== editedOrder._id)
+        );
+      }
+
+      await fetchAndUpdateOrders();
+      setUpdateMessage("Order deleted successfully");
+      onClose();
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      setUpdateMessage("Failed to delete order. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [
+    permissions,
+    editedOrder,
+    setCarOrders,
+    fetchAndUpdateOrders,
+    onClose,
+  ]);
+
+  // Reset attemptedSave when time/date changes
+  useEffect(() => {
+    setAttemptedSave(false);
+  }, [startTime, endTime, editedOrder?.rentalStartDate, editedOrder?.rentalEndDate]);
+
+  // ============================================================
+  // RETURN
+  // ============================================================
+
+  return {
+    // State
+    editedOrder,
+    startTime,
+    endTime,
+    loading,
+    isUpdating,
+    setIsUpdating,
+    updateMessage,
+    attemptedSave,
+    setAttemptedSave,
+    calcLoading,
+    
+    // Derived
+    selectedCar,
+    
+    // Updaters
+    updateField,
+    updateStartDate,
+    updateEndDate,
+    updateStartTime,
+    updateEndTime,
+    
+    // Handlers
+    handleSave,
+    handleDelete,
+    setUpdateMessage,
+  };
+}
+
+export default useEditOrderState;
+

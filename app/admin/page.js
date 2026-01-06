@@ -5,5 +5,5 @@ import { DataLoader } from "@/app/admin/features/shared";
  * Редирект на /admin/cars
  */
 export default function AdminPage() {
-  return <DataLoader viewType="cars" />;
+  return <DataLoader viewType="orders-big-calendar" />;
 }

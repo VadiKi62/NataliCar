@@ -1,96 +1,108 @@
 /**
  * Order colors configuration
  * 
- * Colors based on:
- * - confirmed status (подтверждён или нет)
- * - my_order flag (клиентский заказ или внутренний)
+ * 🎯 ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ для цветов заказов
  * 
- * my_order = true  → клиентский заказ (от клиента или суперадмина)
- * my_order = false → внутренний заказ (админ блокирует даты)
+ * Colors depend ONLY on:
+ * - order.confirmed (boolean)
+ * - order.my_order (boolean)
+ * 
+ * my_order = true  → клиентский заказ (CLIENT)
+ * my_order = false → админский заказ (ADMIN)
  * 
  * ЦВЕТОВАЯ ЛОГИКА:
- * - Клиентские заказы (my_order=true): красный тон (primary)
- *   - Confirmed: тёмно-красный (высокая насыщенность)
- *   - Pending: светло-красный (низкая насыщенность)
+ * - Клиентские заказы (my_order=true):
+ *   - Confirmed: красный (primary.main)
+ *   - Pending: желтый (triadic.yellow)
  * 
- * - Внутренние заказы (my_order=false): янтарный/оранжевый тон (analogous.amber)
- *   - Confirmed: тёмно-янтарный (высокая насыщенность)
- *   - Pending: светло-янтарный (низкая насыщенность)
+ * - Админские заказы (my_order=false):
+ *   - Confirmed: зеленый (triadic.green)
+ *   - Pending: оливковый (triadic.olive)
  * 
  * ВСЕ ЦВЕТА ИЗ ПАЛИТРЫ theme.js!
  */
 
+import { alpha } from "@mui/material/styles";
 import { palette } from "@/theme";
 
+/**
+ * ORDER_COLORS - строгая структура с обязательными полями
+ * Каждый объект содержит: key, main, light, dark, text, bg, label, labelEn
+ */
 export const ORDER_COLORS = {
-  // ============================================
-  // КЛИЕНТСКИЕ ЗАКАЗЫ (my_order = true)
-  // Красный тон (primary palette)
-  // ============================================
-
-  // Подтверждённый клиентский заказ (confirmed + my_order)
-  // Приоритетный, блокирующий — тёмно-красный (максимальная яркость)
-  CONFIRMED_BUSINESS: {
-    main: palette.primary.main,         // "#5c0000" — очень тёмный красный
-    light: palette.primary.light,        // "#890000" — тёмно-красный
-    bg: `rgba(92, 0, 0, 0.15)`,
+  // Подтверждённый клиентский заказ (confirmed + my_order=true) - КРАСНЫЙ
+  CONFIRMED_CLIENT: {
+    key: "CONFIRMED_CLIENT",
+    main: palette.primary.main,        // "#890000" - красный
+    light: palette.primary.light,       // "#b33333"
+    dark: palette.primary.dark,         // "#5c0000"
+    text: palette.primary.main,          // "#890000"
+    bg: alpha(palette.primary.main, 0.12),
     label: "Подтверждён (клиент)",
     labelEn: "Confirmed (client)",
   },
 
-  // Ожидающий клиентский заказ (pending + my_order)
-  // Важный, требует внимания — светло-красный (низкая яркость)
-  PENDING_BUSINESS: {
-    main: palette.triadic.yellow,        // "#b33333" — светлый красный
-    light: palette.triadic.yellowLight,                   // ещё светлее для hover
-    bg: `rgba(179, 51, 51, 0.15)`,
+  // Ожидающий клиентский заказ (pending + my_order=true) - ЖЕЛТЫЙ
+  PENDING_CLIENT: {
+    key: "PENDING_CLIENT",
+    main: palette.triadic.yellow,      // "rgb(247, 220, 112)" - желтый
+    light: palette.triadic.yellowLight, // "rgb(249, 237, 121)"
+    dark: palette.triadic.yellow,       // желтый
+    text: palette.triadic.yellow,       // желтый
+    bg: "rgba(247, 220, 112, 0.12)",   // желтый с прозрачностью
     label: "Ожидает (клиент)",
     labelEn: "Pending (client)",
   },
 
-  // ============================================
-  // ВНУТРЕННИЕ ЗАКАЗЫ (my_order = false)
-  // Янтарный/оранжевый тон (analogous.amber palette)
-  // ============================================
-
-  // Подтверждённый внутренний заказ (confirmed + !my_order)
-  // Блокирующий — тёмно-янтарный (максимальная яркость)
-  CONFIRMED_INTERNAL: {
-    main: palette.triadic.green,  // "#5c2e00" — тёмно-янтарный
-    light: palette.triadic.greenLight,     // "#894500" — янтарный
-    bg: `rgba(92, 46, 0, 0.15)`,
-    label: "Подтверждён (внутр.)",
-    labelEn: "Confirmed (internal)",
+  // Подтверждённый админский заказ (confirmed + my_order=false) - ЗЕЛЕНЫЙ
+  CONFIRMED_ADMIN: {
+    key: "CONFIRMED_ADMIN",
+    main: palette.triadic.green,        // "#008900" - зеленый
+    light: palette.triadic.greenLight,  // "#33a033"
+    dark: palette.triadic.greenDark,    // "#005c00"
+    text: palette.triadic.green,        // "#008900"
+    bg: alpha(palette.triadic.green, 0.12),
+    label: "Подтверждён (админ)",
+    labelEn: "Confirmed (admin)",
   },
 
-  // Ожидающий внутренний заказ (pending + !my_order)
-  // Информационный — светло-янтарный (низкая яркость)
-  PENDING_INTERNAL: {
-    main: palette.triadic.olive, // "#b36a33" — светло-янтарный
-    light: palette.triadic.oliveLight,                   // ещё светлее для hover
-    bg: `rgba(179, 106, 51, 0.15)`,
-    label: "Ожидает (внутр.)",
-    labelEn: "Pending (internal)",
+  // Ожидающий админский заказ (pending + my_order=false) - ОЛИВКОВЫЙ
+  PENDING_ADMIN: {
+    key: "PENDING_ADMIN",
+    main: palette.triadic.olive,        // "#898900" - оливковый
+    light: palette.triadic.oliveLight,  // "#a0a033"
+    dark: palette.triadic.oliveDark,    // "#5c5c00"
+    text: palette.triadic.olive,        // "#898900"
+    bg: alpha(palette.triadic.olive, 0.12),
+    label: "Ожидает (админ)",
+    labelEn: "Pending (admin)",
   },
+};
 
-  // ============================================
-  // СПЕЦИАЛЬНЫЕ СТАТУСЫ
-  // ============================================
-
+/**
+ * ORDER_UI_COLORS - дополнительные цвета для UI (не используются в getOrderColor)
+ */
+export const ORDER_UI_COLORS = {
   // Заказ который нельзя подтвердить (конфликт)
   BLOCKED: {
-    main: palette.neutral.gray600,      // "#757575" — серый
-    light: palette.neutral.gray500,     // "#9e9e9e" — светло-серый
-    bg: `rgba(117, 117, 117, 0.15)`,
+    key: "BLOCKED",
+    main: palette.neutral.gray600,
+    light: palette.neutral.gray500,
+    dark: palette.neutral.gray700,
+    text: palette.neutral.gray600,
+    bg: alpha(palette.neutral.gray600, 0.12),
     label: "Заблокирован",
     labelEn: "Blocked",
   },
 
-  // Завершённый заказ (в прошлом)
+  // Завершённый заказ (в прошлом) - для UI только
   COMPLETED: {
-    main: palette.secondary.main,    // "#005c00" — тёмно-зелёный
-    light: palette.secondary.light,       // "#008900" — зелёный
-    bg: `rgba(0, 92, 0, 0.15)`,
+    key: "COMPLETED",
+    main: palette.secondary.main,
+    light: palette.secondary.light,
+    dark: palette.secondary.dark,
+    text: palette.secondary.main,
+    bg: alpha(palette.secondary.main, 0.12),
     label: "Завершён",
     labelEn: "Completed",
   },
@@ -98,13 +110,14 @@ export const ORDER_COLORS = {
 
 /**
  * Получить все цвета для легенды календаря
+ * Возвращает 4 состояния в фиксированном порядке
  */
 export function getOrderColorsForLegend() {
   return [
-    ORDER_COLORS.CONFIRMED_BUSINESS,
-    ORDER_COLORS.CONFIRMED_INTERNAL,
-    ORDER_COLORS.PENDING_BUSINESS,
-    ORDER_COLORS.PENDING_INTERNAL,
+    ORDER_COLORS.CONFIRMED_CLIENT,
+    ORDER_COLORS.CONFIRMED_ADMIN,
+    ORDER_COLORS.PENDING_CLIENT,
+    ORDER_COLORS.PENDING_ADMIN,
   ];
 }
 

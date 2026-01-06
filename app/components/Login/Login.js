@@ -8,27 +8,47 @@ const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setIsLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      console.log("Attempting login with email:", email);
+      
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (result.error) {
-      console.log(result);
-      if (result.error === "CredentialsSignin")
-        setError(
-          "Access Denied: Invalid Email or Password. Give It Another Shot."
-        );
-      else setError(result.error);
-    } else if (result.ok) {
-      router.push("/admin");
+      console.log("SignIn result:", result);
+
+      if (result?.error) {
+        console.error("Login error:", result.error);
+        if (result.error === "CredentialsSignin") {
+          setError(
+            "Access Denied: Invalid Email or Password. Give It Another Shot."
+          );
+        } else {
+          setError(result.error || "An error occurred during login");
+        }
+      } else if (result?.ok) {
+        console.log("Login successful, redirecting to /admin");
+        // Используем window.location для надежного редиректа
+        window.location.href = "/admin";
+      } else {
+        console.warn("Unexpected result format:", result);
+        setError("Unexpected response. Please try again.");
+      }
+    } catch (error) {
+      console.error("Login exception:", error);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -49,7 +69,9 @@ const LoginForm = () => {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      <button type="submit">Login</button>
+      <button type="submit" disabled={isLoading}>
+        {isLoading ? "Logging in..." : "Login"}
+      </button>
       {error && <h2 style={{ color: "red" }}>{error}</h2>}
     </form>
   );

@@ -2,16 +2,7 @@
  * Calendar helpers — barrel export
  */
 
-// Colors
-export {
-  CELL_COLOR_KEYS,
-  buildCellColors,
-  resolveConfirmedColor,
-  resolveBaseCellColor,
-  getOrderCellColor,
-  getPendingColor,
-  getConfirmedColor,
-} from "./colors";
+// Colors - теперь используется getOrderColor из domain/orders/getOrderColor.js
 
 // Dates
 export {

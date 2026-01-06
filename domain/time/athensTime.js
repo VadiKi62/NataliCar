@@ -295,6 +295,17 @@ export function isValidAthensTime(time) {
 }
 
 /**
+ * Получает текущее время в Athens timezone.
+ * 
+ * ⚠️ КРИТИЧНО: Используется вместо dayjs() для получения "сегодня" в Athens.
+ * 
+ * @returns {dayjs.Dayjs} - Текущее время в Athens timezone
+ */
+export function athensNow() {
+  return dayjs().tz(ATHENS_TZ);
+}
+
+/**
  * Создаёт Athens datetime из dayjs объекта (который может быть в любой таймзоне).
  * Извлекает HH:mm и дату, затем создаёт заново в Athens.
  *
@@ -328,4 +339,5 @@ export default {
   athensEndOfDay,
   isValidAthensTime,
   reinterpretAsAthens,
+  athensNow,
 };

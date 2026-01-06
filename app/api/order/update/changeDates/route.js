@@ -1,6 +1,8 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
+import { requireAdmin } from "@/lib/adminAuth";
+import { canEditPricing } from "@/domain/orders/orderPermissions";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -81,6 +83,10 @@ function checkConflictsFixed(allOrders, newStart, newEnd) {
 export const PUT = async (req) => {
   try {
     await connectToDB();
+    
+    // Check admin authentication
+    const { session, errorResponse } = await requireAdmin(req);
+    if (errorResponse) return errorResponse;
 
     const {
       _id,
@@ -107,6 +113,20 @@ export const PUT = async (req) => {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
+    }
+    
+    // Check if admin has permission to edit pricing/dates of this order
+    const permission = canEditPricing(order, session.user);
+    
+    if (!permission.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          message: permission.reason,
+          code: "PERMISSION_DENIED",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // Если выбран новый автомобиль, обновляем его в заказе
@@ -341,14 +361,50 @@ export const PUT = async (req) => {
       my_order: order.my_order,
     });
 
-    await order.save();
+    const savedOrder = await order.save();
 
     console.log("Order updated successfully");
 
+    // In dev mode, re-read from DB to verify persistence
+    if (process.env.NODE_ENV !== "production") {
+      const reReadOrder = await Order.findById(_id);
+      if (reReadOrder) {
+        const requestedFields = { rentalStartDate, rentalEndDate, timeIn, timeOut };
+        const persistedFields = {
+          rentalStartDate: reReadOrder.rentalStartDate?.toISOString(),
+          rentalEndDate: reReadOrder.rentalEndDate?.toISOString(),
+          timeIn: reReadOrder.timeIn?.toISOString(),
+          timeOut: reReadOrder.timeOut?.toISOString(),
+        };
+        
+        // Check if requested fields match persisted fields
+        const mismatches = [];
+        if (rentalStartDate && persistedFields.rentalStartDate !== dayjs(rentalStartDate).utc().toISOString()) {
+          mismatches.push(`rentalStartDate: requested=${dayjs(rentalStartDate).utc().toISOString()}, persisted=${persistedFields.rentalStartDate}`);
+        }
+        if (rentalEndDate && persistedFields.rentalEndDate !== dayjs(rentalEndDate).utc().toISOString()) {
+          mismatches.push(`rentalEndDate: requested=${dayjs(rentalEndDate).utc().toISOString()}, persisted=${persistedFields.rentalEndDate}`);
+        }
+        if (timeIn && persistedFields.timeIn !== dayjs(timeIn).utc().toISOString()) {
+          mismatches.push(`timeIn: requested=${dayjs(timeIn).utc().toISOString()}, persisted=${persistedFields.timeIn}`);
+        }
+        if (timeOut && persistedFields.timeOut !== dayjs(timeOut).utc().toISOString()) {
+          mismatches.push(`timeOut: requested=${dayjs(timeOut).utc().toISOString()}, persisted=${persistedFields.timeOut}`);
+        }
+        
+        if (mismatches.length > 0) {
+          console.warn("[changeDates] Update not persisted correctly:", mismatches);
+        } else {
+          console.log("[changeDates] Update persisted correctly");
+        }
+      }
+    }
+
+    // Return updated order (use savedOrder which has all calculated fields)
     return new Response(
       JSON.stringify({
         message: `ВСЕ ОТЛИЧНО! Даты изменены.`,
-        data: order,
+        data: savedOrder,
       }),
       {
         status: 201,

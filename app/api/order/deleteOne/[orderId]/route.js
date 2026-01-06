@@ -1,12 +1,18 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
+import { requireAdmin } from "@/lib/adminAuth";
+import { canDeleteOrder } from "@/domain/orders/orderPermissions";
 
 export const DELETE = async (request, { params }) => {
   try {
     await connectToDB();
+    
+    // Check admin authentication
+    const { session, errorResponse } = await requireAdmin(request);
+    if (errorResponse) return errorResponse;
+    
     const { orderId } = params;
-
     console.log("orderId", orderId);
 
     // Find the order to be deleted
@@ -16,6 +22,20 @@ export const DELETE = async (request, { params }) => {
       return new Response(JSON.stringify({ message: "Order not found" }), {
         status: 404,
       });
+    }
+    
+    // Check if admin has permission to delete this order
+    const permission = canDeleteOrder(orderToDelete, session.user);
+    
+    if (!permission.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          message: permission.reason,
+          code: "PERMISSION_DENIED",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
     }
     const carOfTheOrder = await Car.findById(orderToDelete.car);
     if (!carOfTheOrder) {

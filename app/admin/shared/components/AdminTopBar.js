@@ -33,8 +33,10 @@ export default function AdminTopBar({ feature, onAddClick }) {
   const isCars = feature === "cars";
   const isOrdersCalendar = feature === "orders-calendar";
   const isBigCalendar = feature === "calendar";
+  const isOrdersTable = feature === "orders-table";
 
   // BigCalendar имеет встроенную легенду
+  // OrdersTable has its own title and filters built-in
   const showTopBar = isCars || isOrdersCalendar;
 
   if (!showTopBar) return null;

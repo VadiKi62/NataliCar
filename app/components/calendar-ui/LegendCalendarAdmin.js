@@ -89,7 +89,7 @@ function LegendCalendarAdmin({ client }) {
         }}
       >
         <LegendItem
-          color={ORDER_COLORS.CONFIRMED_BUSINESS.main}
+          color={ORDER_COLORS.CONFIRMED_CLIENT.main}
           label={t("order.unavailable-dates")}
           tooltip="Эти даты уже забронированы"
         />
@@ -119,30 +119,30 @@ function LegendCalendarAdmin({ client }) {
     >
       {/* 1. Подтверждён (клиент) — красный */}
       <LegendItem
-        color={ORDER_COLORS.CONFIRMED_BUSINESS.main}
-        label={ORDER_COLORS.CONFIRMED_BUSINESS.label}
+        color={ORDER_COLORS.CONFIRMED_CLIENT.main}
+        label={ORDER_COLORS.CONFIRMED_CLIENT.label}
         tooltip="Клиентский заказ подтверждён. Приоритетный."
       />
 
-      {/* 2. Подтверждён (внутр.) — горчичный */}
+      {/* 2. Подтверждён (админ) — горчичный */}
       <LegendItem
-        color={ORDER_COLORS.CONFIRMED_INTERNAL.main}
-        label={ORDER_COLORS.CONFIRMED_INTERNAL.label}
-        tooltip="Внутренний заказ (блокировка дат). Подтверждён."
+        color={ORDER_COLORS.CONFIRMED_ADMIN.main}
+        label={ORDER_COLORS.CONFIRMED_ADMIN.label}
+        tooltip="Админский заказ (блокировка дат). Подтверждён."
       />
 
-      {/* 3. Ожидает (клиент) — фиолетовый */}
+      {/* 3. Ожидает (клиент) — светло-красный */}
       <LegendItem
-        color={ORDER_COLORS.PENDING_BUSINESS.main}
-        label={ORDER_COLORS.PENDING_BUSINESS.label}
+        color={ORDER_COLORS.PENDING_CLIENT.main}
+        label={ORDER_COLORS.PENDING_CLIENT.label}
         tooltip="Клиентский заказ ожидает подтверждения."
       />
 
-      {/* 4. Ожидает (внутр.) — жёлтый */}
+      {/* 4. Ожидает (админ) — светло-янтарный */}
       <LegendItem
-        color={ORDER_COLORS.PENDING_INTERNAL.main}
-        label={ORDER_COLORS.PENDING_INTERNAL.label}
-        tooltip="Внутренний заказ (черновик). Ожидает подтверждения."
+        color={ORDER_COLORS.PENDING_ADMIN.main}
+        label={ORDER_COLORS.PENDING_ADMIN.label}
+        tooltip="Админский заказ (черновик). Ожидает подтверждения."
       />
 
       {/* 5. Заблокированный pending (⛔) */}

@@ -29,6 +29,10 @@ const MainContext = createContext({
   scrolled: false,
   company: {},
   pendingConfirmBlockById: {}, // Map pending order ID -> block message
+  conflictHighlightById: {}, // Map orderId -> { level: "block"|"warning", message: string, sourceOrderId?: string }
+  setConflictHighlightsFromResult: () => {},
+  clearConflictHighlights: () => {},
+  clearConflictHighlightsAfter: () => {},
 });
 
 export function useMainContext() {
@@ -309,6 +313,66 @@ export const MainContextProvider = ({
     return buildPendingConfirmBlockMap(allOrders, company);
   }, [allOrders, company]);
 
+  // 🎯 Conflict highlight state for calendar visualization
+  const [conflictHighlightById, setConflictHighlightById] = useState({});
+
+  // Helper: Build conflict highlight map from API result
+  const setConflictHighlightsFromResult = useCallback(({ sourceOrderId, result }) => {
+    if (!result || !sourceOrderId) return;
+
+    const map = {};
+
+    // Highlight the source order (the one being updated)
+    map[sourceOrderId] = {
+      level: result.level || "block",
+      message: result.message || "Update blocked",
+      sourceOrderId: sourceOrderId,
+    };
+
+    // Highlight conflicting orders (blockedByConfirmed)
+    if (result.conflicts && Array.isArray(result.conflicts)) {
+      result.conflicts.forEach((conflict) => {
+        const conflictOrderId = conflict.orderId || conflict._id;
+        if (conflictOrderId) {
+          map[conflictOrderId] = {
+            level: "block",
+            message: result.message || "Conflicts with this order",
+            sourceOrderId: sourceOrderId,
+          };
+        }
+      });
+    }
+
+    // Highlight affected pending orders (optional warning)
+    if (result.affectedOrders && Array.isArray(result.affectedOrders)) {
+      result.affectedOrders.forEach((affected) => {
+        const affectedOrderId = affected.orderId || affected._id;
+        if (affectedOrderId && !map[affectedOrderId]) {
+          map[affectedOrderId] = {
+            level: "warning",
+            message: "Pending order affected by confirmation",
+            sourceOrderId: sourceOrderId,
+          };
+        }
+      });
+    }
+
+    setConflictHighlightById(map);
+  }, []);
+
+  // Helper: Clear all conflict highlights
+  const clearConflictHighlights = useCallback(() => {
+    setConflictHighlightById({});
+  }, []);
+
+  // Helper: Clear conflict highlights after delay
+  const clearConflictHighlightsAfter = useCallback((ms = 20000) => {
+    const timer = setTimeout(() => {
+      setConflictHighlightById({});
+    }, ms);
+    return () => clearTimeout(timer);
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       cars,
@@ -340,6 +404,10 @@ export const MainContextProvider = ({
       companyError,
       updateCompanyInContext, // Функция для обновления компании
       pendingConfirmBlockById, // 🎯 Map pending order ID -> block message
+      conflictHighlightById, // 🎯 Map orderId -> conflict highlight info
+      setConflictHighlightsFromResult, // Helper to set highlights from API result
+      clearConflictHighlights, // Helper to clear all highlights
+      clearConflictHighlightsAfter, // Helper to clear highlights after delay
     }),
     [
       cars,
@@ -364,6 +432,10 @@ export const MainContextProvider = ({
       updateCarInContext,
       deleteCarInContext,
       pendingConfirmBlockById,
+      conflictHighlightById,
+      setConflictHighlightsFromResult,
+      clearConflictHighlights,
+      clearConflictHighlightsAfter,
     ]
   );
 

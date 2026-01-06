@@ -1,8 +1,10 @@
-import { DataLoader } from "@/app/admin/features/shared";
+import { redirect } from "next/navigation";
 
 /**
- * /admin/orders-table - страница таблицы заказов
+ * /admin/orders-table - redirect to canonical route /admin/orders
+ * 
+ * @deprecated Use /admin/orders instead
  */
 export default function PageOrdersTable() {
-  return <DataLoader viewType="orders-table" />;
+  redirect("/admin/orders");
 }

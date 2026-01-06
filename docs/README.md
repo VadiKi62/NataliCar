@@ -9,6 +9,7 @@
 | [ORDER_FLOW.md](./ORDER_FLOW.md) | Полное описание flow создания заказа |
 | [ORDER_IMPROVEMENTS.md](./ORDER_IMPROVEMENTS.md) | Руководство по улучшениям системы |
 | [TIMEZONE_GUIDE.md](./TIMEZONE_GUIDE.md) | Работа с временными зонами |
+| [EDIT_ORDER_MODAL.md](./EDIT_ORDER_MODAL.md) | **Последняя рабочая версия EditOrderModal** ⭐ |
 
 ---
 
@@ -55,7 +56,7 @@ car/
 │   ├── components/
 │   │   ├── Admin/Order/
 │   │   │   ├── AddOrderModal.js     # Форма создания (админ)
-│   │   │   ├── EditOrderModal.js    # Форма редактирования
+│   │   │   ├── EditOrderModal.js    # Форма редактирования ⭐ (см. EDIT_ORDER_MODAL.md)
 │   │   │   └── CalendarAdmin.js     # Календарь админа
 │   │   ├── CarComponent/
 │   │   │   ├── BookingModal.js      # Форма создания (клиент)
@@ -77,7 +78,8 @@ car/
     ├── README.md                    # Этот файл
     ├── ORDER_FLOW.md                # Flow заказов
     ├── ORDER_IMPROVEMENTS.md        # Улучшения
-    └── TIMEZONE_GUIDE.md            # Временные зоны
+    ├── TIMEZONE_GUIDE.md            # Временные зоны
+    └── EDIT_ORDER_MODAL.md          # ⭐ Последняя рабочая версия EditOrderModal
 ```
 
 ---
@@ -95,6 +97,15 @@ car/
 ## Контакты
 
 По вопросам документации обращаться к разработчикам.
+
+---
+
+---
+
+## ⭐ Важно
+
+**EditOrderModal** — последняя рабочая версия зафиксирована в [EDIT_ORDER_MODAL.md](./EDIT_ORDER_MODAL.md).  
+Все изменения должны быть согласованы и протестированы.
 
 ---
 

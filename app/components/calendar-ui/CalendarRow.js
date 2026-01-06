@@ -19,13 +19,8 @@ import { useSnackbar } from "notistack";
 // ============================================
 // Импорт helpers и hooks
 // ============================================
+import { getOrderColor } from "@/domain/orders/getOrderColor";
 import {
-  // Colors
-  buildCellColors,
-  resolveConfirmedColor,
-  resolveBaseCellColor,
-  getPendingColor,
-  getConfirmedColor,
   // Dates
   isDateWithinOrder,
   isOrderCompleted,
@@ -83,8 +78,7 @@ export default function CarTableRow({
   const [longPressOrder, setLongPressOrder] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
 
-  // Цвета ячеек из централизованной конфигурации
-  const colors = buildCellColors(theme);
+  // Цвета из единого источника правды (getOrderColor)
 
   // Заказы и производные данные из кастомного хука
   const {
@@ -361,9 +355,8 @@ export default function CarTableRow({
                 order._id !== selectedOrder._id
             );
             if (prevOrder) {
-              // my_order=true → клиентский (красный), my_order=false → внутренний (янтарный)
-              const prevColor =
-                prevOrder.my_order === true ? colors.confirmed : colors.confirmedMine;
+              // Используем getOrderColor для получения цвета заказа
+              const prevColor = getOrderColor(prevOrder).main;
               // console.log(
               //   `[BigCalendar][${dateStr}] EDGE-CASE: Первый день выделенного заказа. Левая половина ${
               //     prevOrder.my_order ? "зелёная" : "красная"
@@ -391,7 +384,7 @@ export default function CarTableRow({
                     sx={{
                       width: "50%",
                       height: "100%",
-                      backgroundColor: colors.selected, // Синий
+                      backgroundColor: theme.palette.primary.main, // Синий
                       borderRadius: "50% 0 0 50%",
                     }}
                   />
@@ -409,9 +402,8 @@ export default function CarTableRow({
                 order._id !== selectedOrder._id
             );
             if (nextOrder) {
-              // my_order=true → клиентский (красный), my_order=false → внутренний (янтарный)
-              const nextColor =
-                nextOrder.my_order === true ? colors.confirmed : colors.confirmedMine;
+              // Используем getOrderColor для получения цвета заказа
+              const nextColor = getOrderColor(nextOrder).main;
               // console.log(
               //   `[BigCalendar][${dateStr}] EDGE-CASE: Последний день выделенного заказа. Левая половина синяя, правая ${
               //     nextOrder.my_order ? "зелёная" : "красная"
@@ -431,7 +423,7 @@ export default function CarTableRow({
                     sx={{
                       width: "50%",
                       height: "100%",
-                      backgroundColor: colors.selected, // Синий
+                      backgroundColor: theme.palette.primary.main, // Синий
                       borderRadius: "0 50% 50% 0",
                     }}
                   />
@@ -491,7 +483,7 @@ export default function CarTableRow({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: colors.moveHighlightAlpha,
+                backgroundColor: "rgba(255, 235, 59, 0.8)", // Желтый overlay для режима перемещения
                 pointerEvents: "none",
                 zIndex: 2,
               }}
@@ -507,7 +499,7 @@ export default function CarTableRow({
                 right: 0,
                 width: "50%",
                 height: "100%",
-                backgroundColor: colors.moveHighlightAlpha,
+                backgroundColor: "rgba(255, 235, 59, 0.8)", // Желтый overlay для режима перемещения
                 pointerEvents: "none",
                 zIndex: 2,
                 borderRadius: "50% 0 0 50%",
@@ -524,7 +516,7 @@ export default function CarTableRow({
                 left: 0,
                 width: "50%",
                 height: "100%",
-                backgroundColor: colors.moveHighlightAlpha,
+                backgroundColor: "rgba(255, 235, 59, 0.8)", // Желтый overlay для режима перемещения
                 pointerEvents: "none",
                 zIndex: 2,
                 borderRadius: "0 50% 50% 0",
@@ -563,23 +555,30 @@ export default function CarTableRow({
       // Base cell styling
       // =======================
       const ordersForDate = returnOverlapOrders(carOrders, dateStr);
-      // Определяем hasMyOrder в зависимости от типа ячейки:
-      // - Для confirmed ячеек проверяем confirmed заказы
-      // - Для pending ячеек проверяем pending заказы
-      const hasMyOrder = isConfirmed
-        ? ordersForDate?.some((order) => order.confirmed && order.my_order)
-        : ordersForDate?.some((order) => !order.confirmed && order.my_order);
-      const baseColors = resolveBaseCellColor({
-        isConfirmed,
-        isUnavailable,
-        hasMyOrder,
-        colors,
-      });
-
-      let backgroundColor = baseColors.backgroundColor;
-      let color = baseColors.color;
+      
+      // Определяем цвет ячейки на основе заказов используя getOrderColor
+      let backgroundColor = "transparent";
+      let color = "inherit";
+      
+      if (isConfirmed) {
+        // Для confirmed ячеек берем первый confirmed заказ
+        const confirmedOrder = ordersForDate?.find((order) => order.confirmed);
+        if (confirmedOrder) {
+          const orderColor = getOrderColor(confirmedOrder);
+          backgroundColor = orderColor.main;
+          color = "white";
+        }
+      } else if (isUnavailable) {
+        // Для pending ячеек берем первый pending заказ
+        const pendingOrder = ordersForDate?.find((order) => !order.confirmed);
+        if (pendingOrder) {
+          const orderColor = getOrderColor(pendingOrder);
+          backgroundColor = orderColor.main;
+          color = "text.primary";
+        }
+      }
       let borderRadius = "1px";
-      let border = `1px solid ${colors.cellBorder}`;
+      let border = `1px solid ${theme.palette.divider || "#e0e0e0"}`;
       let width;
 
       // =======================
@@ -603,13 +602,13 @@ export default function CarTableRow({
         if (backgroundColor === "transparent") {
           if (isFirstMoveDay) {
             // Желтый фон в правой половине первого дня
-            gradientBackground = `linear-gradient(to right, transparent 50%, ${colors.moveHighlight} 50%)`;
+            gradientBackground = `linear-gradient(to right, transparent 50%, ${theme.palette.warning.main || "#ffeb3b"} 50%)`;
           } else if (isLastMoveDay) {
             // Желтый фон в левой половине последнего дня
-            gradientBackground = `linear-gradient(to right, ${colors.moveHighlight} 50%, transparent 50%)`;
+            gradientBackground = `linear-gradient(to right, ${theme.palette.warning.main || "#ffeb3b"} 50%, transparent 50%)`;
           } else {
             // Полный желтый фон для средних дней
-            backgroundColor = colors.moveHighlight;
+            backgroundColor = theme.palette.warning.main || "#ffeb3b";
           }
           isInMoveModeDateRange = true;
         } else {
@@ -640,7 +639,7 @@ export default function CarTableRow({
         );
 
         if (shouldApplyImperativeBlue) {
-          backgroundColor = colors.selected; // Синий цвет для выбранного заказа
+          backgroundColor = theme.palette.primary.main; // Синий цвет для выбранного заказа
           color = "white";
         }
       }
@@ -652,8 +651,10 @@ export default function CarTableRow({
           // Определяем цвет pending на основе my_order заказа
           // Используем toString() для корректного сравнения ObjectId и строки
           const orderForColor = carOrders?.find((order) => order._id?.toString() === startEndInfo?.orderId?.toString());
-          backgroundColor = getPendingColor(orderForColor?.my_order);
-          color = "common.white";
+          if (orderForColor) {
+            backgroundColor = getOrderColor(orderForColor).main;
+            color = "common.white";
+          }
         }
       }
       if (!isStartDate && isEndDate) {
@@ -670,8 +671,10 @@ export default function CarTableRow({
           // Определяем цвет pending на основе my_order заказа
           // Используем toString() для корректного сравнения ObjectId и строки
           const orderForColor = carOrders?.find((order) => order._id?.toString() === startEndInfo?.orderId?.toString());
-          backgroundColor = getPendingColor(orderForColor?.my_order);
-          color = "common.white";
+          if (orderForColor) {
+            backgroundColor = getOrderColor(orderForColor).main;
+            color = "common.white";
+          }
         }
       }
 
@@ -889,7 +892,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: colors.moveHighlight,
+                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
                   borderRadius: "50% 0 0 50%",
                 }}
               ></Box>
@@ -922,7 +925,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: colors.moveHighlight,
+                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
                   borderRadius: "0 50% 50% 0",
                 }}
               ></Box>
@@ -982,23 +985,25 @@ export default function CarTableRow({
         const circlesConfirmed = isOverlapDateInfo.confirmed || 0;
 
         // Определяем цвет фона для overlap даты на основе заказов
-        let overlapBackgroundColor = colors.nonConfirmed; // по умолчанию
+        let overlapBackgroundColor = "transparent"; // по умолчанию
         if (!isPartOfSelectedOrder(dateStr)) {
           // Приоритет: confirmed > pending
           if (circlesConfirmed > 0) {
-            // Есть confirmed заказы - проверяем есть ли клиентские
-            const hasClientConfirmed = ordersForDate?.some(
-              (order) => order.confirmed && order.my_order
+            // Есть confirmed заказы - берем первый confirmed заказ
+            const confirmedOrder = ordersForDate?.find(
+              (order) => order.confirmed
             );
-            overlapBackgroundColor = hasClientConfirmed
-              ? colors.confirmed
-              : colors.confirmedMine;
+            if (confirmedOrder) {
+              overlapBackgroundColor = getOrderColor(confirmedOrder).main;
+            }
           } else if (circlesPending > 0) {
             // Только pending заказы - проверяем есть ли клиентские
-            const hasClientPending = ordersForDate?.some(
-              (order) => !order.confirmed && order.my_order
+            const pendingOrder = ordersForDate?.find(
+              (order) => !order.confirmed
             );
-            overlapBackgroundColor = getPendingColor(hasClientPending);
+            if (pendingOrder) {
+              overlapBackgroundColor = getOrderColor(pendingOrder).main;
+            }
           }
         }
 
@@ -1029,9 +1034,15 @@ export default function CarTableRow({
               justifyContent: "center",
               color: isPartOfSelectedOrder(dateStr)
                 ? "common.white"
-                : colors.confirmed,
+                : (() => {
+                    // Находим заказ для этой даты
+                    const orderForDate = ordersForDate?.[0];
+                    return orderForDate && orderForDate.confirmed
+                      ? getOrderColor(orderForDate).main
+                      : "text.primary";
+                  })(),
               backgroundColor: isPartOfSelectedOrder(dateStr)
-                ? colors.selected
+                ? theme.palette.primary.main
                 : overlapBackgroundColor,
               cursor:
                 isPastDay && isEndDate && !isStartDate
@@ -1059,9 +1070,14 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: colors.indicatorConfirmed,
+                    backgroundColor: theme.palette.neutral?.black || "#000",
                     borderRadius: "50%",
-                    border: `1px solid ${colors.confirmed}`,
+                    border: (() => {
+                      const confirmedOrder = ordersForDate?.find((o) => o.confirmed);
+                      return confirmedOrder
+                        ? `1px solid ${getOrderColor(confirmedOrder).main}`
+                        : "1px solid transparent";
+                    })(),
                   }}
                 />
               ))}
@@ -1082,9 +1098,14 @@ export default function CarTableRow({
                   sx={{
                     width: 6,
                     height: 6,
-                    backgroundColor: colors.indicatorConfirmed,
+                    backgroundColor: theme.palette.neutral?.black || "#000",
                     borderRadius: "50%",
-                    border: `1px solid ${colors.confirmed}`,
+                    border: (() => {
+                      const confirmedOrder = ordersForDate?.find((o) => o.confirmed);
+                      return confirmedOrder
+                        ? `1px solid ${getOrderColor(confirmedOrder).main}`
+                        : "1px solid transparent";
+                    })(),
                   }}
                 />
               ))}
@@ -1200,9 +1221,9 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowLastMoveDay
-                  ? colors.moveHighlight
+                  ? theme.palette.warning.main || "#ffeb3b"
                   : shouldHighlightLeft
-                  ? colors.selected
+                  ? theme.palette.primary.main
                   : isStartAndEndDateOverlapInfo.endConfirmed
                   ? (() => {
                       // Ищем только заказ, который заканчивается в этот день
@@ -1212,7 +1233,9 @@ export default function CarTableRow({
                             dateStr && order.confirmed === true
                       );
                       // my_order=true → клиентский (красный), my_order=false → внутренний (янтарный)
-                      return endingOrder?.my_order ? colors.confirmed : colors.confirmedMine;
+                      return endingOrder
+                        ? getOrderColor(endingOrder).main
+                        : "transparent";
                     })()
                   : (() => {
                       // Для pending заказа — ищем заказ, который заканчивается в этот день И не подтверждён
@@ -1221,7 +1244,9 @@ export default function CarTableRow({
                           formatDate(order.rentalEndDate, "YYYY-MM-DD") === dateStr &&
                           !order.confirmed
                       );
-                      return getPendingColor(endingPendingOrder?.my_order);
+                      return endingPendingOrder
+                        ? getOrderColor(endingPendingOrder).main
+                        : "transparent";
                     })(),
                 borderRadius: "0 50% 50% 0",
                 display: "flex",
@@ -1235,9 +1260,9 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? colors.moveHighlight
+                  ? theme.palette.warning.main || "#ffeb3b"
                   : shouldHighlightRight
-                  ? colors.selected
+                  ? theme.palette.primary.main
                   : isStartAndEndDateOverlapInfo.startConfirmed
                   ? (() => {
                       // Ищем только заказ, который начинается в этот день
@@ -1246,10 +1271,9 @@ export default function CarTableRow({
                           formatDate(order.rentalStartDate, "YYYY-MM-DD") ===
                             dateStr && order.confirmed === true
                       );
-                      // my_order=true → клиентский (красный), my_order=false → внутренний (янтарный)
-                      return startingOrder?.my_order
-                        ? colors.confirmed
-                        : colors.confirmedMine;
+                      return startingOrder
+                        ? getOrderColor(startingOrder).main
+                        : "transparent";
                     })()
                   : (() => {
                       // Для pending заказа — ищем заказ, который начинается в этот день И не подтверждён
@@ -1258,7 +1282,9 @@ export default function CarTableRow({
                           formatDate(order.rentalStartDate, "YYYY-MM-DD") === dateStr &&
                           !order.confirmed
                       );
-                      return getPendingColor(startingPendingOrder?.my_order);
+                      return startingPendingOrder
+                        ? getOrderColor(startingPendingOrder).main
+                        : "transparent";
                     })(),
                 borderRadius: "50% 0 0 50%",
                 display: "flex",
@@ -1371,26 +1397,27 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "50% 0 0 50%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? colors.moveHighlight
+                  ? theme.palette.warning.main || "#ffeb3b"
                   : shouldHighlightRight
-                  ? colors.selected
+                  ? theme.palette.primary.main
                   : startEndInfo.confirmed
                   ? (() => {
                       // Получаем заказ для startEndInfo
                       const orderForStartEnd = carOrders?.find(
                         (order) => order._id?.toString() === startEndInfo.orderId?.toString()
                       );
-                      // my_order=true → клиентский (красный), my_order=false → внутренний (янтарный)
-                      return orderForStartEnd?.my_order
-                        ? colors.confirmed
-                        : colors.confirmedMine;
+                      return orderForStartEnd
+                        ? getOrderColor(orderForStartEnd).main
+                        : "transparent";
                     })()
                   : (() => {
                       // Для pending — используем my_order из startEndInfo
                       const orderForStartEnd = carOrders?.find(
                         (order) => order._id?.toString() === startEndInfo.orderId?.toString()
                       );
-                      return getPendingColor(orderForStartEnd?.my_order);
+                      return orderForStartEnd
+                        ? getOrderColor(orderForStartEnd).main
+                        : "transparent";
                     })(),
                 display: "flex",
                 alignItems: "center",
@@ -1507,26 +1534,27 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "0 50% 50% 0",
                 backgroundColor: shouldShowLastMoveDay
-                  ? colors.moveHighlight
+                  ? theme.palette.warning.main || "#ffeb3b"
                   : shouldHighlightLeft
-                  ? colors.selected
+                  ? theme.palette.primary.main
                   : startEndInfo.confirmed
                   ? (() => {
                       // Получаем заказ для startEndInfo
                       const orderForStartEnd = carOrders?.find(
                         (order) => order._id?.toString() === startEndInfo.orderId?.toString()
                       );
-                      // my_order=true → клиентский (красный), my_order=false → внутренний (янтарный)
-                      return orderForStartEnd?.my_order
-                        ? colors.confirmed
-                        : colors.confirmedMine;
+                      return orderForStartEnd
+                        ? getOrderColor(orderForStartEnd).main
+                        : "transparent";
                     })()
                   : (() => {
                       // Для pending — используем my_order из startEndInfo
                       const orderForStartEnd = carOrders?.find(
                         (order) => order._id?.toString() === startEndInfo.orderId?.toString()
                       );
-                      return getPendingColor(orderForStartEnd?.my_order);
+                      return orderForStartEnd
+                        ? getOrderColor(orderForStartEnd).main
+                        : "transparent";
                     })(),
                 display: "flex",
                 alignItems: "center",
@@ -1539,7 +1567,7 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 borderRadius: shouldHighlightRight ? "50% 0 0 50%" : undefined,
-                backgroundColor: shouldHighlightRight ? colors.selected : undefined,
+                backgroundColor: shouldHighlightRight ? theme.palette.primary.main : undefined,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1595,7 +1623,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: colors.moveHighlight,
+                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
                   borderRadius: "0 50% 50% 0",
                   position: "absolute",
                   left: 0,
@@ -1610,7 +1638,7 @@ export default function CarTableRow({
                 sx={{
                   width: "50%",
                   height: "100%",
-                  backgroundColor: colors.moveHighlight,
+                  backgroundColor: theme.palette.warning.main || "#ffeb3b",
                   borderRadius: "50% 0 0 50%",
                   position: "absolute",
                   right: 0,

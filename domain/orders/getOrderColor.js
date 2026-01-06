@@ -1,51 +1,46 @@
 /**
  * getOrderColor
  * 
+ * 🎯 ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ для цветов заказов
+ * 
  * Возвращает цветовую конфигурацию для заказа на основе:
  * - confirmed (подтверждён или нет)
- * - my_order (клиентский или внутренний)
+ * - my_order (клиентский или админский)
  * 
  * ❗ БИЗНЕС-ЛОГИКА: не в JSX, только в domain
+ * ❗ Цвета НЕ зависят от времени (прошлое/будущее)
  */
 
 import { ORDER_COLORS } from "@/config/orderColors";
-import dayjs from "dayjs";
 
 /**
  * Определяет цветовую схему для заказа
  * 
  * @param {Object} order - заказ
  * @param {boolean} order.confirmed - подтверждён ли заказ
- * @param {boolean} order.my_order - клиентский ли заказ (true = клиент, false = внутренний)
- * @param {Date|string} [order.rentalEndDate] - дата окончания (для определения завершённости)
- * @returns {Object} - цветовая конфигурация { main, light, bg, label, labelEn }
+ * @param {boolean} order.my_order - клиентский ли заказ (true = клиент, false = админ)
+ * @returns {Object} - цветовая конфигурация { key, main, light, dark, text, bg, label, labelEn }
  */
 export function getOrderColor(order) {
   if (!order) {
-    return ORDER_COLORS.PENDING_INTERNAL;
+    return ORDER_COLORS.PENDING_ADMIN;
   }
 
   const { confirmed, my_order } = order;
 
-  // Проверяем, завершён ли заказ (в прошлом)
-  if (order.rentalEndDate) {
-    const endDate = dayjs(order.rentalEndDate);
-    const today = dayjs().startOf("day");
-    if (endDate.isBefore(today)) {
-      return ORDER_COLORS.COMPLETED;
-    }
-  }
-
   // Определяем цвет на основе confirmed + my_order
-  if (confirmed) {
-    return my_order 
-      ? ORDER_COLORS.CONFIRMED_BUSINESS 
-      : ORDER_COLORS.CONFIRMED_INTERNAL;
-  } else {
-    return my_order 
-      ? ORDER_COLORS.PENDING_BUSINESS 
-      : ORDER_COLORS.PENDING_INTERNAL;
+  // 4 возможных комбинации:
+  if (confirmed && my_order) {
+    return ORDER_COLORS.CONFIRMED_CLIENT;
   }
+  if (confirmed && !my_order) {
+    return ORDER_COLORS.CONFIRMED_ADMIN;
+  }
+  if (!confirmed && my_order) {
+    return ORDER_COLORS.PENDING_CLIENT;
+  }
+  // !confirmed && !my_order
+  return ORDER_COLORS.PENDING_ADMIN;
 }
 
 /**
@@ -59,7 +54,7 @@ export function getOrderMainColor(order) {
 }
 
 /**
- * Получает светлый цвет (для фона)
+ * Получает светлый цвет (для фона/hover)
  * 
  * @param {Object} order
  * @returns {string} - hex цвет
@@ -82,17 +77,17 @@ export function getOrderBgColor(order) {
  * Определяет тип заказа для группировки
  * 
  * @param {Object} order
- * @returns {"confirmedBusiness" | "confirmedInternal" | "pendingBusiness" | "pendingInternal"}
+ * @returns {"confirmedClient" | "confirmedAdmin" | "pendingClient" | "pendingAdmin"}
  */
 export function getOrderType(order) {
-  if (!order) return "pendingInternal";
+  if (!order) return "pendingAdmin";
   
   const { confirmed, my_order } = order;
   
   if (confirmed) {
-    return my_order ? "confirmedBusiness" : "confirmedInternal";
+    return my_order ? "confirmedClient" : "confirmedAdmin";
   } else {
-    return my_order ? "pendingBusiness" : "pendingInternal";
+    return my_order ? "pendingClient" : "pendingAdmin";
   }
 }
 

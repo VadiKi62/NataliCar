@@ -1,54 +1,4 @@
-// Хук для получения количества дней и стоимости аренды через API (как в AddOrderModal)
-function useDaysAndTotal(
-  car,
-  rentalStartDate,
-  rentalEndDate,
-  insurance,
-  childSeats
-) {
-  const [daysAndTotal, setDaysAndTotal] = React.useState({
-    days: 0,
-    totalPrice: 0,
-  });
-  const [calcLoading, setCalcLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    const fetchTotalPrice = async () => {
-      if (!car?.carNumber || !rentalStartDate || !rentalEndDate) {
-        setDaysAndTotal({ days: 0, totalPrice: 0 });
-        return;
-      }
-      setCalcLoading(true);
-      try {
-        const res = await fetch("/api/order/calcTotalPrice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            carNumber: car.carNumber,
-            rentalStartDate,
-            rentalEndDate,
-            kacko: insurance,
-            childSeats: childSeats,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setDaysAndTotal({ days: data.days, totalPrice: data.totalPrice });
-        } else {
-          setDaysAndTotal({ days: 0, totalPrice: 0 });
-        }
-      } catch {
-        setDaysAndTotal({ days: 0, totalPrice: 0 });
-      } finally {
-        setCalcLoading(false);
-      }
-    };
-    fetchTotalPrice();
-  }, [car?.carNumber, rentalStartDate, rentalEndDate, insurance, childSeats]);
-
-  return { daysAndTotal, calcLoading };
-}
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Paper,
   Typography,
@@ -76,6 +26,10 @@ import { useMainContext } from "@app/Context";
 import TimePicker from "@/app/components/calendar-ui/MuiTimePicker";
 import { companyData } from "@utils/companyData";
 import { useEditOrderConflicts } from "../hooks/useEditOrderConflicts";
+import { useEditOrderPermissions } from "../hooks/useEditOrderPermissions";
+import { useEditOrderState } from "../hooks/useEditOrderState";
+import { useSession } from "next-auth/react";
+import { isSuperAdmin } from "@/domain/orders/admin-rbac";
 // 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
 import {
   ATHENS_TZ,
@@ -84,6 +38,7 @@ import {
   toServerUTC,
   formatTimeHHMM,
   formatDateYYYYMMDD,
+  athensNow,
 } from "@/domain/time/athensTime";
 // 🎯 Утилита для проверки возможности подтверждения заказа
 import { canPendingOrderBeConfirmed } from "@/domain/booking/analyzeConfirmationConflicts";
@@ -92,9 +47,7 @@ import BufferSettingsModal from "@/app/admin/features/settings/BufferSettingsMod
 import { ORDER_COLORS } from "@/config/orderColors";
 
 import {
-  changeRentalDates,
   toggleConfirmedStatus,
-  updateCustomerInfo,
   getConfirmedOrders,
 } from "@utils/action";
 import { RenderSelectField } from "@/app/components/ui/inputs/Fields";
@@ -120,45 +73,64 @@ const EditOrderModal = ({
   isViewOnly, // <-- режим просмотра (передаётся из BigCalendar для завершённых заказов)
 }) => {
   const { allOrders, fetchAndUpdateOrders, company, pendingConfirmBlockById } = useMainContext();
-  // Сегодня (локально) для ограничения выбора начала аренды
-  const todayStr = dayjs().format("YYYY-MM-DD");
-  const locations = company.locations.map((loc) => loc.name);
-  const [editedOrder, setEditedOrder] = useState({ ...order });
-  // Определяем завершён ли заказ (конец раньше сегодняшнего дня)
-  const isCompletedOrder = useMemo(
-    () => !!order && dayjs(order.rentalEndDate).isBefore(dayjs(), "day"),
-    [order]
-  );
-  // Определяем "текущий" заказ: старт до сегодня, окончание сегодня или позже
-  const isCurrentOrder = useMemo(
-    () =>
-      !!order &&
-      dayjs(order.rentalStartDate).isBefore(dayjs(), "day") &&
-      !dayjs(order.rentalEndDate).isBefore(dayjs(), "day"),
-    [order]
-  );
-  // Итоговый флаг режима только просмотра (для завершённых). Текущий не viewOnly, но часть полей блокируется выборочно.
-  const viewOnly = isViewOnly || isCompletedOrder;
-  // Флаг: первое открытие модального окна (не запускать автосинхронизацию totalPrice)
-  const isFirstOpen = React.useRef(true);
-  // Флаг: редактирует ли админ вручную поле totalPrice
-  const [isManualTotalPrice, setIsManualTotalPrice] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { data: session } = useSession();
+  const { t } = useTranslation();
+  
+  // Get current user for permission checks
+  const currentUser = useMemo(() => {
+    if (!session?.user?.isAdmin) return null;
+    return {
+      isAdmin: true,
+      role: session.user.role,
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+    };
+  }, [session]);
+  
+  // 🎯 LAYER 1: Permissions (Domain/Logic Layer)
+  const permissions = useEditOrderPermissions(order, currentUser, isViewOnly);
+  
+  // 🎯 LAYER 2: State & Data Orchestration Layer
+  const {
+    editedOrder,
+    startTime,
+    endTime,
+    loading,
+    isUpdating,
+    setIsUpdating,
+    updateMessage,
+    attemptedSave,
+    setAttemptedSave,
+    calcLoading,
+    selectedCar,
+    updateField,
+    updateStartDate,
+    updateEndDate,
+    updateStartTime,
+    updateEndTime,
+    handleSave,
+    handleDelete,
+    setUpdateMessage,
+  } = useEditOrderState({
+    order,
+    cars,
+    company,
+    permissions,
+    onSave,
+    onClose,
+    fetchAndUpdateOrders,
+    setCarOrders,
+  });
+  
+  // UI state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  
+  // Сегодня (Athens timezone) для ограничения выбора начала аренды
+  const todayStr = athensNow().format("YYYY-MM-DD");
+  const locations = company.locations.map((loc) => loc.name);
 
-  // ⚠️ УДАЛЕНЫ: conflictMessage1/2/3, timeInMessage, timeOutMessage, availableTimes
-  // Теперь единственный источник истины — useEditOrderConflicts
-
-  const [startTime, setStartTime] = useState(
-    editedOrder?.timeIn || editedOrder.rentalStartDate
-  );
-  const [endTime, setEndTime] = useState(
-    editedOrder?.timeOut || editedOrder.rentalEndDate
-  );
-
-  // ⚠️ УДАЛЁН: calculateAvailableTimes useEffect
-  // Теперь анализ конфликтов делается ТОЛЬКО в useEditOrderConflicts
-
+  // Conflict check for conflict order badge
   useEffect(() => {
     if (order?.hasConflictDates) {
       const ordersIdSet = new Set(order?.hasConflictDates);
@@ -172,75 +144,10 @@ const EditOrderModal = ({
     }
   }, [order]);
 
-  const handleDelete = async () => {
-    if (viewOnly) return; // Блокируем удаление в режиме просмотра
-    // Запрет удаления текущего (идущего) заказа
-    if (
-      dayjs(order.rentalStartDate).isBefore(dayjs(), "day") &&
-      !dayjs(order.rentalEndDate).isBefore(dayjs(), "day")
-    ) {
-      setUpdateMessage("Текущий заказ нельзя удалить");
-      return;
-    }
-    const isConfirmed = window.confirm(t("order.sureDelOrder"));
-    if (!isConfirmed) return;
-
-    setIsUpdating(true);
-    setUpdateMessage("");
-
-    try {
-      const response = await fetch(`/api/order/deleteOne/${editedOrder._id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: Failed to delete order`);
-      }
-
-      setCarOrders &&
-        setCarOrders((prevOrders) =>
-          prevOrders.filter((order) => order._id !== editedOrder._id)
-        );
-      // 🔹 Перезагружаем список заказов из базы, чтобы таблица обновилась
-      await fetchAndUpdateOrders();
-
-      showMessage("Order deleted successfully.");
-      onClose();
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      setUpdateMessage("Failed to delete order. Please try again.");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  useEffect(() => {
-    if (order) {
-      // 🎯 Используем fromServerUTC для правильной конвертации UTC → Athens
-      const adjustedOrder = {
-        ...order,
-        rentalStartDate: dayjs(order.rentalStartDate),
-        rentalEndDate: dayjs(order.rentalEndDate),
-        // Отображаем время заказа в Athens timezone
-        timeIn: fromServerUTC(order.timeIn),
-        timeOut: fromServerUTC(order.timeOut),
-      };
-      setEditedOrder(adjustedOrder);
-      setIsManualTotalPrice(false); // Сброс ручного режима при открытии
-      // Таймпикеры также в Athens timezone
-      setStartTime(fromServerUTC(order.timeIn));
-      setEndTime(fromServerUTC(order.timeOut));
-      isFirstOpen.current = true; // Сбросить флаг при каждом открытии
-      setLoading(false);
-    }
-  }, [order]);
-
-  // --- Серверный расчет количества дней и стоимости ---
-  const selectedCar = React.useMemo(() => {
-    return cars?.find((c) => c._id === editedOrder.car) || null;
-  }, [cars, editedOrder.car]);
+  // handleDelete is now provided by useEditOrderState hook
 
   // --- Централизованный анализ конфликтов времени ---
+
   const {
     pickupSummary,
     returnSummary,
@@ -250,119 +157,14 @@ const EditOrderModal = ({
     editingOrder: order,
     carId: editedOrder?.car,
     pickupDate: editedOrder?.rentalStartDate,
-    pickupTime: startTime, // ← ДОБАВЛЕНО: время для анализа
+    pickupTime: startTime,
     returnDate: editedOrder?.rentalEndDate,
-    returnTime: endTime, // ← ДОБАВЛЕНО: время для анализа
-    company, // ← ДОБАВЛЕНО: компания для получения bufferTime
+    returnTime: endTime,
+    company,
   });
-
-  // State для отображения block-сообщения ТОЛЬКО после попытки сохранения
-  const [attemptedSave, setAttemptedSave] = useState(false);
   
   // State для модального окна настройки буфера
   const [bufferModalOpen, setBufferModalOpen] = useState(false);
-
-  // Сбрасываем attemptedSave при изменении времени ИЛИ дат (чтобы сообщение исчезло)
-  useEffect(() => {
-    setAttemptedSave(false);
-  }, [startTime, endTime, editedOrder.rentalStartDate, editedOrder.rentalEndDate]);
-
-  const { daysAndTotal, calcLoading } = useDaysAndTotal(
-    selectedCar,
-    editedOrder.rentalStartDate
-      ? dayjs(editedOrder.rentalStartDate).format("YYYY-MM-DD")
-      : null,
-    editedOrder.rentalEndDate
-      ? dayjs(editedOrder.rentalEndDate).format("YYYY-MM-DD")
-      : null,
-    editedOrder.insurance,
-    editedOrder.ChildSeats
-  );
-
-  // Синхронизация numberOfDays и totalPrice с сервером (если не ручной режим)
-  useEffect(() => {
-    // На первом открытии не трогаем ни numberOfDays, ни totalPrice
-    if (isFirstOpen.current) return;
-    if (!isManualTotalPrice) {
-      // daysAndTotal может случайно стать объектом вида { totalPrice, days }
-      const safeTotalPrice =
-        typeof daysAndTotal.totalPrice === "number"
-          ? daysAndTotal.totalPrice
-          : typeof daysAndTotal.totalPrice === "object" &&
-            daysAndTotal.totalPrice !== null &&
-            typeof daysAndTotal.totalPrice.totalPrice === "number"
-          ? daysAndTotal.totalPrice.totalPrice
-          : 0;
-      const safeDays =
-        typeof daysAndTotal.days === "number"
-          ? daysAndTotal.days
-          : typeof daysAndTotal.days === "object" &&
-            daysAndTotal.days !== null &&
-            typeof daysAndTotal.days.days === "number"
-          ? daysAndTotal.days.days
-          : 0;
-      if (
-        safeDays !== editedOrder.numberOfDays ||
-        safeTotalPrice !== editedOrder.totalPrice
-      ) {
-        setEditedOrder((prev) => ({
-          ...prev,
-          numberOfDays: safeDays,
-          totalPrice: safeTotalPrice,
-        }));
-      }
-    } else {
-      // Если ручной режим, только количество дней обновляем
-      const safeDays =
-        typeof daysAndTotal.days === "number"
-          ? daysAndTotal.days
-          : typeof daysAndTotal.days === "object" &&
-            daysAndTotal.days !== null &&
-            typeof daysAndTotal.days.days === "number"
-          ? daysAndTotal.days.days
-          : 0;
-      if (safeDays !== editedOrder.numberOfDays) {
-        setEditedOrder((prev) => ({
-          ...prev,
-          numberOfDays: safeDays,
-        }));
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [daysAndTotal.days, daysAndTotal.totalPrice]);
-
-  // Сброс ручного режима и isFirstOpen только при реальном изменении ключевых полей
-  useEffect(() => {
-    if (!order) return;
-    // Проверяем, изменились ли ключевые поля по сравнению с order из базы
-    const isCarChanged = editedOrder.car !== order.car;
-    const isStartChanged =
-      dayjs(editedOrder.rentalStartDate).format("YYYY-MM-DD") !==
-      dayjs(order.rentalStartDate).format("YYYY-MM-DD");
-    const isEndChanged =
-      dayjs(editedOrder.rentalEndDate).format("YYYY-MM-DD") !==
-      dayjs(order.rentalEndDate).format("YYYY-MM-DD");
-    const isInsuranceChanged = editedOrder.insurance !== order.insurance;
-    const isChildSeatsChanged = editedOrder.ChildSeats !== order.ChildSeats;
-    if (
-      isCarChanged ||
-      isStartChanged ||
-      isEndChanged ||
-      isInsuranceChanged ||
-      isChildSeatsChanged
-    ) {
-      setIsManualTotalPrice(false);
-      isFirstOpen.current = false;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    editedOrder.car,
-    editedOrder.rentalStartDate,
-    editedOrder.rentalEndDate,
-    editedOrder.insurance,
-    editedOrder.ChildSeats,
-    order,
-  ]);
 
   const onCloseModalEdit = () => {
     onClose();
@@ -384,224 +186,46 @@ const EditOrderModal = ({
     }
   };
 
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [updateMessage, setUpdateMessage] = useState(null);
+  // Local state for confirmation toggle (separate from save operation)
+  const [confirmToggleUpdating, setConfirmToggleUpdating] = useState(false);
 
   const handleConfirmationToggle = async () => {
-    if (viewOnly) return; // Блокируем смену статуса в режиме просмотра
-    setIsUpdating(true);
+    if (permissions.viewOnly || !permissions.canConfirm) return;
+    setConfirmToggleUpdating(true);
     setUpdateMessage(null);
     try {
       const result = await toggleConfirmedStatus(editedOrder._id);
 
       if (!result.success) {
-        // ⛔ BLOCK: нельзя подтвердить (конфликт с confirmed заказом)
-        showMessage(result.message, true);
+        setUpdateMessage(result.message);
         return;
       }
 
-      // ✅ Успех (возможно с warning)
-      setEditedOrder((prevOrder) => ({
-        ...prevOrder,
-        confirmed: result.updatedOrder?.confirmed,
-      }));
+      // Update local state
+      updateField("confirmed", result.updatedOrder?.confirmed);
 
-      // Показываем сообщение (warning или success)
+      // Show message
       const isWarning = result.level === "warning";
-      showMessage(result.message, isWarning);
+      setUpdateMessage(result.message);
       onSave(result.updatedOrder);
 
-      // Закрываем модальное окно после успешного обновления
-      // Для warning даём больше времени прочитать сообщение
+      // Close modal
       setTimeout(() => {
         onClose();
       }, isWarning ? 3000 : 1500);
     } catch (error) {
       console.error("Error toggling confirmation status:", error);
-      showMessage(error.message || "Статус не обновлен. Ошибка сервера.", true);
+      setUpdateMessage(error.message || "Статус не обновлен. Ошибка сервера.");
     } finally {
-      setIsUpdating(false);
+      setConfirmToggleUpdating(false);
     }
   };
 
-  const handleDateUpdate = async () => {
-    if (viewOnly) return; // Блокируем обновление дат в режиме просмотра
-    setIsUpdating(true);
-    try {
-      const selectedCar = cars.find((c) => c._id === editedOrder.car);
-      // Валидация изменения даты начала: если попытка установить новую прошлую дату
-      const originalStart = dayjs(order.rentalStartDate);
-      if (
-        dayjs(editedOrder.rentalStartDate).isBefore(dayjs(), "day") &&
-        !originalStart.isSame(editedOrder.rentalStartDate, "day")
-      ) {
-        setUpdateMessage(
-          "Нельзя устанавливать новую дату начала раньше сегодняшнего дня"
-        );
-        setIsUpdating(false);
-        return;
-      }
-      // Валидация для текущего заказа: дата окончания не может быть раньше сегодняшнего дня
-      if (
-        isCurrentOrder &&
-        dayjs(editedOrder.rentalEndDate).isBefore(dayjs(), "day")
-      ) {
-        setUpdateMessage(
-          "Для текущего заказа дата окончания не может быть раньше сегодняшнего дня"
-        );
-        setIsUpdating(false);
-        return;
-      }
-      // Валидация времени окончания: если текущий заказ и дата окончания сегодня - время окончания не может быть в прошлом
-      if (
-        isCurrentOrder &&
-        dayjs(editedOrder.rentalEndDate).isSame(dayjs(), "day")
-      ) {
-        // 🎯 Используем createAthensDateTime для правильной интерпретации времени
-        const endDateStr = formatDateYYYYMMDD(dayjs(editedOrder.rentalEndDate));
-        const attemptedEndTime = createAthensDateTime(
-          endDateStr,
-          formatTimeHHMM(dayjs(endTime))
-        );
-        if (attemptedEndTime.isBefore(dayjs(), "minute")) {
-          setUpdateMessage(
-            "Для текущего заказа время окончания не может быть в прошлом"
-          );
-          setIsUpdating(false);
-          return;
-        }
-      }
-      // 🎯 Создаём Athens времена и конвертируем в UTC для БД
-      const startDateStr = formatDateYYYYMMDD(dayjs(editedOrder.rentalStartDate));
-      const endDateStr = formatDateYYYYMMDD(dayjs(editedOrder.rentalEndDate));
+  // handleOrderUpdate is now handleSave from useEditOrderState hook
+  // Keeping old name for backward compatibility in UI
+  const handleOrderUpdate = handleSave;
 
-      // ⚠️ КРИТИЧНО: Извлекаем HH:mm и создаём ЗАНОВО в Athens,
-      // НЕ конвертируем из таймзоны браузера!
-      const timeInAthens = createAthensDateTime(
-        startDateStr,
-        formatTimeHHMM(dayjs(startTime))
-      );
-      const timeOutAthens = createAthensDateTime(
-        endDateStr,
-        formatTimeHHMM(dayjs(endTime))
-      );
-
-      const datesToSend = {
-        rentalStartDate: dayjs(editedOrder.rentalStartDate).toDate(),
-        rentalEndDate: dayjs(editedOrder.rentalEndDate).toDate(),
-        timeIn: toServerUTC(timeInAthens),
-        timeOut: toServerUTC(timeOutAthens),
-        car: editedOrder.car,
-        carNumber: selectedCar ? selectedCar.carNumber : undefined,
-        placeIn: editedOrder.placeIn,
-        placeOut: editedOrder.placeOut,
-        ChildSeats: editedOrder.ChildSeats,
-        insurance: editedOrder.insurance,
-        franchiseOrder: editedOrder.franchiseOrder,
-        totalPrice: editedOrder.totalPrice, // <-- сохраняем totalPrice
-      };
-
-      // DEBUG: проверяем что отправляется на сервер
-      console.log("🪑 EditOrderModal: ChildSeats отправляется:", datesToSend.ChildSeats);
-      console.log("🛡️ EditOrderModal: Insurance отправляется:", datesToSend.insurance);
-
-      const response = await changeRentalDates(
-        editedOrder._id,
-        datesToSend.rentalStartDate,
-        datesToSend.rentalEndDate,
-        datesToSend.timeIn,
-        datesToSend.timeOut,
-        editedOrder.placeIn,
-        editedOrder.placeOut,
-        datesToSend.car,
-        datesToSend.carNumber,
-        datesToSend.ChildSeats,
-        datesToSend.insurance,
-        datesToSend.franchiseOrder,
-        editedOrder.numberOrder,
-        editedOrder.insuranceOrder,
-        Number(editedOrder.totalPrice),
-        Number(editedOrder.numberOfDays)
-      );
-      // Обработка ответа сервера
-      if (response.status == 202 || response.status == 201) {
-        onSave(response.updatedOrder);
-      }
-      // ⚠️ УДАЛЁН: 408 обработка — теперь конфликты проверяются ПЕРЕД отправкой через useEditOrderConflicts
-    } catch (error) {
-      console.error("Error updating dates:", error);
-      setUpdateMessage(error?.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleCustomerUpdate = async () => {
-    if (viewOnly) return; // Блокируем обновление данных клиента в режиме просмотра
-    setIsUpdating(true);
-    try {
-      // Логгируем email перед отправкой
-      console.log("EditOrderModal: email для сохранения:", editedOrder.email);
-
-      // Явно передаем пустую строку, если email пустой или null
-      const updates = {
-        customerName: editedOrder.customerName,
-        phone: editedOrder.phone,
-        email: editedOrder.email ? editedOrder.email : "",
-        totalPrice: editedOrder.totalPrice, // <-- сохраняем totalPrice
-        flightNumber: editedOrder.flightNumber || "",
-      };
-
-      console.log("EditOrderModal: updates для updateCustomerInfo:", updates);
-
-      const response = await updateCustomerInfo(editedOrder._id, updates);
-
-      // Логгируем ответ сервера
-      console.log("EditOrderModal: response от updateCustomerInfo:", response);
-
-      // Сообщение показывается в onClick кнопки после всех обновлений
-      onSave(response.updatedOrder);
-    } catch (error) {
-      console.error("Error updating customer info:", error);
-      setUpdateMessage("Failed to update customer details.");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleChangeSelectedBox = (e) => {
-    if (viewOnly) return; // Блокируем изменения в режиме просмотра
-    const { name, value } = e.target;
-    setEditedOrder({ ...editedOrder, [name]: value });
-  };
-
-  const handleChange = (field, value) => {
-    if (viewOnly) return; // Блокируем изменения в режиме просмотра
-    const defaultStartHour = companyData.defaultStart.slice(0, 2);
-    const defaultStartMinute = companyData.defaultStart.slice(-2);
-
-    const defaultEndHour = companyData.defaultEnd.slice(0, 2);
-    const defaultEndMinute = companyData.defaultEnd.slice(-2);
-    let newValue = value;
-
-    if (field === "rentalStartDate" || field === "rentalEndDate") {
-      const isValidDate = dayjs(value, "YYYY-MM-DD", true).isValid();
-      if (isValidDate) {
-        newValue = dayjs(value);
-
-        if (field === "rentalStartDate") {
-          newValue = newValue.hour(defaultStartHour).minute(defaultStartMinute);
-        } else if (field === "rentalEndDate") {
-          newValue = newValue.hour(defaultEndHour).minute(defaultEndMinute);
-        }
-      } else {
-        console.error("Invalid date format");
-        return;
-      }
-    }
-
-    setEditedOrder({ ...editedOrder, [field]: newValue });
-  };
+  // handleChangeSelectedBox and handleChange are replaced by updateField from hook
 
   const renderField = (label, field, type = "text") => {
     if (!editedOrder) return null;
@@ -639,20 +263,26 @@ const EditOrderModal = ({
           size="small"
           value={value}
           onChange={(e) => {
-            if (viewOnly) return; // запрет изменения
+            if (permissions.viewOnly) return; // запрет изменения
             const newValue = e.target.value;
             handleChange(field, newValue);
           }}
           type={inputType}
-          disabled={viewOnly}
-          InputProps={{ readOnly: viewOnly }}
+          disabled={permissions.viewOnly}
+          InputProps={{ readOnly: permissions.viewOnly }}
         />
       </Box>
     );
   };
 
-  const { t } = useTranslation();
   const theme = useTheme();
+  
+  // Dev-only: Permission audit log
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" && order && currentUser) {
+      console.table(permissions.fieldPermissions);
+    }
+  }, [order, currentUser, permissions]);
 
   // Стили для отключенных элементов
   const disabledStyles = {
@@ -705,8 +335,9 @@ const EditOrderModal = ({
 
   // Проверка, заблокирована ли кнопка подтверждения
   const isConfirmationDisabled =
-    viewOnly ||
-    (isCurrentOrder && editedOrder?.confirmed) ||
+    permissions.viewOnly ||
+    !permissions.canConfirm ||
+    (permissions.isCurrentOrder && editedOrder?.confirmed) ||
     (!editedOrder?.confirmed && !confirmationCheck.canConfirm);
 
   return (
@@ -748,7 +379,7 @@ const EditOrderModal = ({
                 mb: { xs: 0.5, sm: 0 },
               }}
             >
-              {viewOnly ? "Просмотреть заказ" : t("order.editOrder")} №
+              {permissions.viewOnly ? "Просмотреть заказ" : t("order.editOrder")} №
               {order?.orderNumber ? order.orderNumber.slice(2, -2) : ""}
               {(() => {
                 // Найти автомобиль по id заказа
@@ -787,13 +418,9 @@ const EditOrderModal = ({
                     : ""
                 }
                 onChange={(e) => {
-                  if (viewOnly) return;
+                  if (permissions.viewOnly || !permissions.fieldPermissions.totalPrice) return;
                   const val = e.target.value.replace(/[^0-9]/g, "");
-                  setEditedOrder((prev) => ({
-                    ...prev,
-                    totalPrice: val ? Number(val) : 0,
-                  }));
-                  setIsManualTotalPrice(true); // Включаем ручной режим при ручном вводе
+                  updateField("totalPrice", val ? Number(val) : 0);
                 }}
                 variant="outlined"
                 size="small"
@@ -832,7 +459,7 @@ const EditOrderModal = ({
                     color: "primary.dark",
                   },
                 }}
-                disabled={viewOnly}
+                disabled={permissions.viewOnly || !permissions.fieldPermissions.totalPrice}
               />
             </Box>
 
@@ -862,7 +489,7 @@ const EditOrderModal = ({
             <Divider
               sx={{
                 my: 1.5,
-                borderColor: editedOrder?.my_order ? ORDER_COLORS.CONFIRMED_BUSINESS.main : ORDER_COLORS.CONFIRMED_INTERNAL.main,
+                borderColor: editedOrder?.my_order ? ORDER_COLORS.CONFIRMED_CLIENT.main : ORDER_COLORS.CONFIRMED_ADMIN.main,
                 borderWidth: 2,
               }}
             />
@@ -877,10 +504,7 @@ const EditOrderModal = ({
                 name="car"
                 size="small"
                 onChange={(e) =>
-                  setEditedOrder((prev) => ({
-                    ...prev,
-                    car: e.target.value,
-                  }))
+                  updateField("car", e.target.value)
                 }
                 sx={{ minHeight: 36 }}
               >
@@ -900,7 +524,7 @@ const EditOrderModal = ({
               <ActionButton
                 fullWidth
                 onClick={handleConfirmationToggle}
-                disabled={isUpdating || isConfirmationDisabled}
+                disabled={confirmToggleUpdating || isConfirmationDisabled}
                 color={editedOrder?.confirmed ? "success" : "primary"}
                 label={
                   editedOrder?.confirmed
@@ -908,7 +532,7 @@ const EditOrderModal = ({
                     : t("order.orderNotConfirmed")
                 }
                 title={
-                  isCurrentOrder && editedOrder?.confirmed
+                  permissions.isCurrentOrder && editedOrder?.confirmed
                     ? "Нельзя снять подтверждение у текущего заказа"
                     : confirmationCheck.message || ""
                 }
@@ -940,70 +564,39 @@ const EditOrderModal = ({
                 <TextField
                   label={t("order.pickupDate")}
                   type="date"
-                  value={dayjs(editedOrder.rentalStartDate).format(
-                    "YYYY-MM-DD"
-                  )}
+                  value={editedOrder?.rentalStartDate ? formatDateYYYYMMDD(editedOrder.rentalStartDate) : ""}
                   onChange={(e) => {
-                    if (viewOnly || isCurrentOrder) return; // блокируем изменение для текущих заказов
-                    const newStart = dayjs(e.target.value);
-                    // Запрещаем выбор даты раньше сегодняшнего дня
-                    if (newStart.isBefore(dayjs(), "day")) {
-                      return; // игнорируем недопустимый выбор
-                    }
-                    setEditedOrder((prev) => {
-                      const currentReturn = dayjs(prev.rentalEndDate);
-                      if (
-                        currentReturn.isValid() &&
-                        newStart.isValid() &&
-                        !currentReturn.isAfter(newStart, "day")
-                      ) {
-                        return prev;
-                      }
-                      return { ...prev, rentalStartDate: newStart };
-                    });
+                    if (permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.rentalStartDate) return;
+                    updateStartDate(e.target.value);
                   }}
                   sx={{ flex: 1, minHeight: 48 }}
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
-                  disabled={viewOnly || isCurrentOrder}
+                  disabled={permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.rentalStartDate}
                   inputProps={{ min: todayStr }}
                 />
                 <TextField
                   label={t("order.returnDate")}
                   type="date"
                   value={
-                    editedOrder.rentalEndDate
-                      ? dayjs(editedOrder.rentalEndDate).format("YYYY-MM-DD")
+                    editedOrder?.rentalEndDate
+                      ? formatDateYYYYMMDD(editedOrder.rentalEndDate)
                       : ""
                   }
                   onChange={(e) => {
-                    if (viewOnly) return;
-                    const newReturn = dayjs(e.target.value);
-                    const minReturn = isCurrentOrder
-                      ? dayjs()
-                      : dayjs(editedOrder.rentalStartDate).add(1, "day");
-                    const isValid = isCurrentOrder
-                      ? newReturn.isValid() &&
-                        !newReturn.isBefore(dayjs(), "day")
-                      : newReturn.isValid() &&
-                        newReturn.isAfter(minReturn.subtract(1, "day"), "day");
-                    if (isValid) {
-                      setEditedOrder((prev) => ({
-                        ...prev,
-                        rentalEndDate: newReturn,
-                      }));
-                    }
+                    if (permissions.viewOnly || !permissions.fieldPermissions.rentalEndDate) return;
+                    updateEndDate(e.target.value);
                   }}
-                  disabled={viewOnly}
+                  disabled={permissions.viewOnly || !permissions.fieldPermissions.rentalEndDate}
                   sx={{ flex: 1, minHeight: 48 }}
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
                   inputProps={{
-                    min: isCurrentOrder
-                      ? dayjs().format("YYYY-MM-DD")
-                      : dayjs(editedOrder.rentalStartDate)
-                          .add(1, "day")
-                          .format("YYYY-MM-DD"),
+                    min: permissions.isCurrentOrder
+                      ? athensNow().format("YYYY-MM-DD")
+                      : editedOrder?.rentalStartDate
+                          ? formatDateYYYYMMDD(editedOrder.rentalStartDate)
+                          : undefined,
                   }}
                 />
               </Box>
@@ -1012,11 +605,11 @@ const EditOrderModal = ({
               <TimePicker
                 startTime={startTime}
                 endTime={endTime}
-                setStartTime={setStartTime}
-                setEndTime={setEndTime}
-                disabled={viewOnly}
-                pickupDisabled={viewOnly || isCurrentOrder}
-                returnDisabled={viewOnly}
+                setStartTime={updateStartTime}
+                setEndTime={updateEndTime}
+                disabled={permissions.viewOnly || (!permissions.fieldPermissions.timeIn && !permissions.fieldPermissions.timeOut)}
+                pickupDisabled={permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.timeIn}
+                returnDisabled={permissions.viewOnly || !permissions.fieldPermissions.timeOut}
                 pickupSummary={pickupSummary}
                 returnSummary={returnSummary}
               />
@@ -1077,18 +670,12 @@ const EditOrderModal = ({
                   options={locations}
                   value={editedOrder.placeIn || ""}
                   onChange={(_, newValue) =>
-                    setEditedOrder((prev) => ({
-                      ...prev,
-                      placeIn: newValue || "",
-                    }))
+                    updateField("placeIn", newValue || "")
                   }
                   onInputChange={(_, newInputValue) =>
-                    setEditedOrder((prev) => ({
-                      ...prev,
-                      placeIn: newInputValue,
-                    }))
+                    updateField("placeIn", newInputValue)
                   }
-                  disabled={viewOnly || isCurrentOrder}
+                  disabled={permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.placeIn}
                   PaperProps={{
                     sx: {
                       border: "2px solid",
@@ -1122,15 +709,12 @@ const EditOrderModal = ({
                       label={t("order.flightNumber") || "Номер рейса"}
                       value={editedOrder.flightNumber || ""}
                       onChange={(e) =>
-                        setEditedOrder((prev) => ({
-                          ...prev,
-                          flightNumber: e.target.value,
-                        }))
+                        updateField("flightNumber", e.target.value)
                       }
                       size="medium"
                       sx={{ width: "25%", alignSelf: "stretch" }}
                       InputLabelProps={{ shrink: true }}
-                      disabled={viewOnly || isCurrentOrder}
+                      disabled={permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.flightNumber}
                     />
                   )}
                 <Autocomplete
@@ -1138,18 +722,12 @@ const EditOrderModal = ({
                   options={locations}
                   value={editedOrder.placeOut || ""}
                   onChange={(_, newValue) =>
-                    setEditedOrder((prev) => ({
-                      ...prev,
-                      placeOut: newValue || "",
-                    }))
+                    updateField("placeOut", newValue || "")
                   }
                   onInputChange={(_, newInputValue) =>
-                    setEditedOrder((prev) => ({
-                      ...prev,
-                      placeOut: newInputValue,
-                    }))
+                    updateField("placeOut", newInputValue)
                   }
-                  disabled={viewOnly}
+                  disabled={permissions.viewOnly || !permissions.fieldPermissions.placeOut}
                   PaperProps={{
                     sx: {
                       border: "2px solid",
@@ -1199,38 +777,22 @@ const EditOrderModal = ({
                     label={t("order.insurance")}
                     value={editedOrder.insurance || ""}
                     onChange={(e) =>
-                      !viewOnly &&
-                      setEditedOrder((prev) => ({
-                        ...prev,
-                        insurance: e.target.value,
-                      }))
+                      !permissions.viewOnly && permissions.fieldPermissions.insurance &&
+                      updateField("insurance", e.target.value)
                     }
-                    disabled={viewOnly}
+                    disabled={permissions.viewOnly || !permissions.fieldPermissions.insurance}
                   >
-                    {(
-                      t("order.insuranceOptions", { returnObjects: true }) || []
-                    ).map((option) => {
-                      let kaskoPrice = 0;
-                      const selectedCar = cars?.find(
-                        (c) => c._id === editedOrder.car
-                      );
-                      if (
-                        option.value === "CDW" &&
-                        selectedCar &&
-                        selectedCar.PriceKacko
-                      ) {
-                        kaskoPrice = selectedCar.PriceKacko;
-                      }
-                      return (
+                    {(() => {
+                      // 🔧 FIX: Use selectedCar from hook (single source of truth)
+                      const kaskoPrice = selectedCar?.PriceKacko ?? 0;
+                      return (t("order.insuranceOptions", { returnObjects: true }) || []).map((option) => (
                         <MenuItem key={option.value} value={option.value}>
                           {option.value === "CDW"
-                            ? `${option.label} ${kaskoPrice}€/${t(
-                                "order.perDay"
-                              )}`
+                            ? `${option.label} ${kaskoPrice}€/${t("order.perDay")}`
                             : option.label}
                         </MenuItem>
-                      );
-                    })}
+                      ));
+                    })()}
                   </Select>
                 </FormControl>
                 {editedOrder.insurance === "CDW" && (
@@ -1241,52 +803,32 @@ const EditOrderModal = ({
                       type="number"
                       updatedCar={editedOrder}
                       handleChange={(e) =>
-                        !viewOnly &&
-                        setEditedOrder((prev) => ({
-                          ...prev,
-                          franchiseOrder: Number(e.target.value),
-                        }))
+                        !permissions.viewOnly && permissions.fieldPermissions.franchiseOrder &&
+                        updateField("franchiseOrder", Number(e.target.value))
                       }
                       isLoading={loading}
-                      disabled={viewOnly}
+                      disabled={permissions.viewOnly || !permissions.fieldPermissions.franchiseOrder}
                     />
                   </Box>
                 )}
                 <FormControl fullWidth sx={{ width: { xs: "100%", sm: "49%" } }}>
                   <InputLabel>
                     {t("order.childSeats")}{" "}
-                    {(() => {
-                      const selectedCar = cars?.find(
-                        (c) => c._id === editedOrder.car
-                      );
-                      return selectedCar && selectedCar.PriceChildSeats
-                        ? selectedCar.PriceChildSeats
-                        : 0;
-                    })()}
+                    {selectedCar?.PriceChildSeats ?? 0}
                     €/{t("order.perDay")}
                   </InputLabel>
                   <Select
-                    label={`${t("order.childSeats")} ${(() => {
-                      const selectedCar = cars?.find(
-                        (c) => c._id === editedOrder.car
-                      );
-                      return selectedCar && selectedCar.PriceChildSeats
-                        ? selectedCar.PriceChildSeats
-                        : 0;
-                    })()}€/${t("order.perDay")}`}
+                    label={`${t("order.childSeats")} ${selectedCar?.PriceChildSeats ?? 0}€/${t("order.perDay")}`}
                     value={
                       typeof editedOrder.ChildSeats === "number"
                         ? editedOrder.ChildSeats
                         : 0
                     }
                     onChange={(e) =>
-                      !viewOnly &&
-                      setEditedOrder((prev) => ({
-                        ...prev,
-                        ChildSeats: Number(e.target.value),
-                      }))
+                      !permissions.viewOnly && permissions.fieldPermissions.ChildSeats &&
+                      updateField("ChildSeats", Number(e.target.value))
                     }
-                    disabled={viewOnly}
+                    disabled={permissions.viewOnly || !permissions.fieldPermissions.ChildSeats}
                   >
                     <MenuItem value={0}>{t("order.childSeatsNone")}</MenuItem>
                     {[1, 2, 3, 4].map((num) => (
@@ -1321,13 +863,10 @@ const EditOrderModal = ({
                   }
                   value={editedOrder.customerName || ""}
                   onChange={(e) =>
-                    !viewOnly &&
-                    setEditedOrder((prev) => ({
-                      ...prev,
-                      customerName: e.target.value,
-                    }))
+                    !permissions.viewOnly &&
+                    updateField("customerName", e.target.value)
                   }
-                  disabled={viewOnly}
+                  disabled={permissions.viewOnly || !permissions.fieldPermissions.customerName}
                 />
               </FormControl>
               {/* Телефон и email — вертикально на мобильных */}
@@ -1354,13 +893,10 @@ const EditOrderModal = ({
                     }
                     value={editedOrder.phone || ""}
                     onChange={(e) =>
-                      !viewOnly &&
-                      setEditedOrder((prev) => ({
-                        ...prev,
-                        phone: e.target.value,
-                      }))
+                      !permissions.viewOnly &&
+                      updateField("phone", e.target.value)
                     }
-                    disabled={viewOnly}
+                    disabled={permissions.viewOnly || !permissions.fieldPermissions.phone}
                   />
                 </FormControl>
                 <FormControl
@@ -1389,13 +925,10 @@ const EditOrderModal = ({
                     }
                     value={editedOrder.email || ""}
                     onChange={(e) =>
-                      !viewOnly &&
-                      setEditedOrder((prev) => ({
-                        ...prev,
-                        email: e.target.value,
-                      }))
+                      !permissions.viewOnly &&
+                      updateField("email", e.target.value)
                     }
-                    disabled={viewOnly}
+                    disabled={permissions.viewOnly || !permissions.fieldPermissions.email}
                   />
                 </FormControl>
               </Box>
@@ -1419,7 +952,7 @@ const EditOrderModal = ({
               />
               <ConfirmButton
                 loading={isUpdating}
-                disabled={viewOnly}
+                disabled={permissions.viewOnly}
                 sx={{ 
                   mx: { xs: 0, sm: 2 }, 
                   width: { xs: "100%", sm: "40%" },
@@ -1427,7 +960,7 @@ const EditOrderModal = ({
 
                 }}
                 onClick={async () => {
-                  if (viewOnly) return;
+                  if (permissions.viewOnly) return;
 
                   // Отмечаем попытку сохранения
                   setAttemptedSave(true);
@@ -1438,11 +971,12 @@ const EditOrderModal = ({
                     return;
                   }
 
-                  // ✅ Warnings разрешены — сохраняем без подтверждения
+                  // Restored from pre-refactor logic: Управление isUpdating централизовано в onClick
                   setIsUpdating(true);
                   try {
-                    await handleDateUpdate();
-                    await handleCustomerUpdate();
+                    // ✅ Warnings разрешены — сохраняем без подтверждения
+                    // Single unified update call
+                    await handleOrderUpdate();
                     showMessage(t("order.orderUpdated"));
                     setAttemptedSave(false); // Сбрасываем после успешного сохранения
                   } catch (error) {
@@ -1458,19 +992,17 @@ const EditOrderModal = ({
               <DeleteButton
                 onClick={handleDelete}
                 loading={isUpdating}
-                disabled={viewOnly || isCurrentOrder || isCompletedOrder}
+                disabled={permissions.viewOnly || !permissions.canDelete}
                 label={t("order.deleteOrder")}
                 sx={{
                   width: { xs: "100%", sm: "30%" },
                   order: { xs: 2, sm: 3 },
-                  opacity: (isCurrentOrder || isCompletedOrder) ? 0.5 : 1,
-                  cursor: (isCurrentOrder || isCompletedOrder) ? "not-allowed" : "pointer",
+                  opacity: !permissions.canDelete ? 0.5 : 1,
+                  cursor: !permissions.canDelete ? "not-allowed" : "pointer",
                 }}
                 title={
-                  isCompletedOrder
-                    ? "Завершённый заказ нельзя удалить"
-                    : isCurrentOrder
-                    ? "Текущий заказ нельзя удалить"
+                  !permissions.canDelete
+                    ? "You don't have permission to delete this order"
                     : t("order.deleteOrder")
                 }
               />

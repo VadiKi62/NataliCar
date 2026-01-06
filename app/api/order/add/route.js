@@ -2,10 +2,13 @@ import { connectToDB } from "@utils/database";
 import mongoose from "mongoose";
 import { Car } from "@models/car";
 import { Order } from "@models/order";
+import { User } from "@models/user";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import isBetween from "dayjs/plugin/isBetween";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import {
   analyzeDates,
   isSameDay,
@@ -43,6 +46,21 @@ export async function POST(request) {
       orderNumber,
       totalPrice: totalPriceFromClient,
     } = await request.json();
+
+    // Check if request comes from admin session
+    // If admin creates order, we store their role for permission control
+    let createdByRole = 0; // default: regular admin role
+    let createdByAdminId = null;
+    
+    const session = await getServerSession(authOptions);
+    if (session?.user?.isAdmin) {
+      // Admin is creating this order - fetch their role from User model
+      const adminUser = await User.findOne({ username: session.user.name });
+      if (adminUser) {
+        createdByRole = adminUser.role || 0;
+        createdByAdminId = adminUser._id;
+      }
+    }
 
     // Логгирование входящих данных
     console.log("API: Получен запрос на создание заказа:");
@@ -190,6 +208,9 @@ export async function POST(request) {
       franchiseOrder,
       orderNumber,
       flightNumber,
+      // Permission tracking: store who created this order
+      createdByRole,
+      createdByAdminId,
     });
 
     // Добавьте дополнительное логгирование для email перед созданием заказа:

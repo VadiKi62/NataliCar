@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+// 🔧 FIX: Import Car model to ensure it's registered before pre-save middleware
+import { Car } from "./car";
 
 const timeZone = "Europe/Athens";
 
@@ -94,6 +96,27 @@ const OrderSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  /**
+   * Role of admin who created this order:
+   * 0 = regular admin (default)
+   * 1 = superadmin
+   * 
+   * Used for permission control:
+   * - If my_order=true OR createdByRole=1, only superadmin can edit/delete
+   */
+  createdByRole: {
+    type: Number,
+    enum: [0, 1],
+    default: 0,
+  },
+  /**
+   * ID of admin who created this order (optional tracking)
+   */
+  createdByAdminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
   ChildSeats: {
     type: Number,
     default: 0,
@@ -128,7 +151,7 @@ OrderSchema.pre("save", async function (next) {
   this.numberOfDays = numberOfDays;
 
   // Fetch car details and calculate price based on the number of days
-  const Car = mongoose.model("Car"); // Make sure the Car model is registered
+  // 🔧 FIX: Use imported Car model instead of mongoose.model() to avoid registration errors
   const car = await Car.findById(this.car);
 
   if (car) {
