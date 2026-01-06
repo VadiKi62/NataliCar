@@ -21,14 +21,6 @@ const CarsSection = dynamic(
   }
 );
 
-const OrdersCalendarSection = dynamic(
-  () => import("@app/admin/features/orders/OrdersCalendarSection"),
-  { 
-    loading: () => <AdminLoader message="Загрузка календарей..." />,
-    ssr: false 
-  }
-);
-
 const CalendarSection = dynamic(
   () => import("@app/admin/features/calendar/CalendarSection"),
   { 
@@ -54,10 +46,6 @@ const FEATURES = {
   cars: {
     component: CarsSection,
     feature: "cars",
-  },
-  "orders-calendar": {
-    component: OrdersCalendarSection,
-    feature: "orders-calendar",
   },
   "orders-big-calendar": {
     component: CalendarSection,
@@ -88,7 +76,7 @@ const FEATURES = {
  * @param {object} props.company - данные компании
  * @param {array} props.cars - массив машин
  * @param {array} props.orders - массив заказов
- * @param {string} props.viewType - тип view: 'cars' | 'orders-calendar' | 'orders-big-calendar' | 'orders-table'
+ * @param {string} props.viewType - тип view: 'cars' | 'orders-big-calendar' | 'orders-table'
  */
 export default function AdminView({ company, cars, orders, viewType }) {
   return (

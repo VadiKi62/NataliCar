@@ -6,16 +6,13 @@
  */
 
 // Sections
-export { default as OrdersCalendarSection } from "./OrdersCalendarSection";
 export { default as OrdersTableSection } from "./OrdersTableSection";
-export { default as CalendarAdmin } from "./CalendarAdmin";
 
 // Modals
 export { default as EditOrderModal } from "./modals/EditOrderModal";
 export { default as AddOrderModal } from "./modals/AddOrderModal";
 
 // Components
-export { default as OrderItem } from "./OrderItem";
 export { default as DataGridOrders } from "./DataGridOrders";
 
 // Hooks

@@ -31,13 +31,12 @@ export default function AdminTopBar({ feature, onAddClick }) {
   const { scrolled } = useMainContext();
 
   const isCars = feature === "cars";
-  const isOrdersCalendar = feature === "orders-calendar";
   const isBigCalendar = feature === "calendar";
   const isOrdersTable = feature === "orders-table";
 
   // BigCalendar имеет встроенную легенду
   // OrdersTable has its own title and filters built-in
-  const showTopBar = isCars || isOrdersCalendar;
+  const showTopBar = isCars;
 
   if (!showTopBar) return null;
 
@@ -70,24 +69,6 @@ export default function AdminTopBar({ feature, onAddClick }) {
           >
             {t("carPark.addCar")}
           </DefaultButton>
-        )}
-        
-        {isOrdersCalendar && (
-          <Stack
-            className="legend-calendar-admin"
-            direction={{ xs: "column", sm: "row" }}
-            spacing={{ xs: 1, sm: 2 }}
-            alignItems="center"
-            justifyContent="center"
-            sx={{
-              display: "flex",
-              "@media (maxWidth: 900px) and (orientation: landscape)": {
-                display: "none",
-              },
-            }}
-          >
-            <LegendCalendarAdmin />
-          </Stack>
         )}
       </Box>
     </StyledTopBar>
