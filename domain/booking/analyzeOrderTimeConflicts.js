@@ -78,25 +78,55 @@ const IS_DEV = process.env.NODE_ENV === "development";
 /**
  * Проверяет, пересекаются ли два временных интервала с учётом буфера
  * 
- * ⚠️ Важно: используем СТРОГОЕ сравнение (isAfter, НЕ isSameOrAfter)
- * Если разница РОВНО равна буферу — это НЕ конфликт, всё ОК
- * Конфликт только если разница МЕНЬШЕ буфера
+ * ⚠️ Важно: буфер применяется МЕЖДУ заказами, а не расширяет интервалы
+ * 
+ * Правила:
+ * - Если заказ 1 возвращается в end1, а заказ 2 забирается в start2,
+ *   то между ними должно быть минимум bufferHours: start2 - end1 >= bufferHours
+ * - Если заказ 2 возвращается в end2, а заказ 1 забирается в start1,
+ *   то между ними должно быть минимум bufferHours: start1 - end2 >= bufferHours
+ * 
+ * Конфликт возникает если:
+ * - Интервалы пересекаются напрямую (без учета буфера), ИЛИ
+ * - Между возвратом одного и забором другого меньше bufferHours
  */
 function doTimesOverlap(start1, end1, start2, end2, bufferHours) {
-  // Добавляем буфер к границам второго интервала
-  const bufferedStart2 = start2.subtract(bufferHours, "hour");
-  const bufferedEnd2 = end2.add(bufferHours, "hour");
-
-  // ✅ СТРОГОЕ сравнение: разница ровно буфер = НЕ overlap
-  // Конфликт только если end1 > bufferedStart2 (строго больше)
-  const overlap = start1.isBefore(bufferedEnd2) && end1.isAfter(bufferedStart2);
+  // Проверяем прямое пересечение интервалов (без буфера)
+  const directOverlap = start1.isBefore(end2) && end1.isAfter(start2);
+  
+  if (directOverlap) {
+    // Если интервалы пересекаются напрямую - это конфликт
+    if (IS_DEV) {
+      console.log(
+        `🔍 doTimesOverlap: DIRECT overlap detected: ` +
+        `editing=${start1.format("HH:mm")}-${end1.format("HH:mm")} ` +
+        `other=${start2.format("HH:mm")}-${end2.format("HH:mm")} ` +
+        `buffer=${bufferHours}h → overlap=true (direct)`
+      );
+    }
+    return true;
+  }
+  
+  // Проверяем буфер между заказами
+  // Случай 1: заказ 1 возвращается раньше, чем заказ 2 забирается
+  // end1 должен быть минимум на bufferHours раньше start2
+  const gap1 = start2.diff(end1, "hour", true);
+  const violatesBuffer1 = gap1 < bufferHours;
+  
+  // Случай 2: заказ 2 возвращается раньше, чем заказ 1 забирается
+  // end2 должен быть минимум на bufferHours раньше start1
+  const gap2 = start1.diff(end2, "hour", true);
+  const violatesBuffer2 = gap2 < bufferHours;
+  
+  const overlap = violatesBuffer1 || violatesBuffer2;
 
   if (IS_DEV) {
     console.log(
       `🔍 doTimesOverlap: editing=${start1.format("HH:mm")}-${end1.format("HH:mm")} ` +
       `other=${start2.format("HH:mm")}-${end2.format("HH:mm")} ` +
-      `buffered=${bufferedStart2.format("HH:mm")}-${bufferedEnd2.format("HH:mm")} ` +
-      `buffer=${bufferHours}h → overlap=${overlap}`
+      `buffer=${bufferHours}h ` +
+      `gap1=${gap1.toFixed(1)}h (end1→start2), gap2=${gap2.toFixed(1)}h (end2→start1) ` +
+      `→ overlap=${overlap} (violatesBuffer1=${violatesBuffer1}, violatesBuffer2=${violatesBuffer2})`
     );
   }
 

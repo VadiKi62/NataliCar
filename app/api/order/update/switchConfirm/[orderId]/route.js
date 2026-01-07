@@ -1,6 +1,7 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car"; // 🔧 FIX: Import Car to ensure it's registered before Order pre-save middleware
 import Company from "@models/company";
+import BookingRules from "@/config/bookingRules";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
 import { canConfirmOrder } from "@/domain/orders/orderPermissions";
@@ -14,6 +15,14 @@ export const PATCH = async (request, { params }) => {
     // Check admin authentication
     const { session, errorResponse } = await requireAdmin(request);
     if (errorResponse) return errorResponse;
+    
+    // Validate session structure
+    if (!session || !session.user) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid session" }),
+        { status: 401 }
+      );
+    }
 
     const { orderId } = params;
     console.log("switchConfirm orderId:", orderId);
@@ -28,16 +37,17 @@ export const PATCH = async (request, { params }) => {
       );
     }
     
+    // Get company for bufferHours (needed for conflict analysis and responses)
+    const companyId = session.user.companyId || "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
+    const company = await Company.findById(companyId);
+    const bufferHours = Number(company?.bufferTime ?? BookingRules.bufferHours);
+    
     // Check if admin has permission to confirm/unconfirm this order
     const permission = canConfirmOrder(order, session.user);
+ 
     
     if (!permission.allowed) {
       // ⛔ PERMISSION DENIED (403)
-      // Get company for bufferHours normalization
-      const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
-      const company = await Company.findById(companyId);
-      const bufferHours = Number(company?.bufferTime ?? 2);
-      
       const normalized = {
         success: false,
         data: null,
@@ -58,6 +68,7 @@ export const PATCH = async (request, { params }) => {
 
     // Если пытаемся подтвердить (переключить с false на true)
     const isConfirming = !order.confirmed;
+    console.log("isConfirming:", isConfirming);
 
     if (isConfirming) {
       // Получаем все заказы для этой машины
@@ -65,81 +76,76 @@ export const PATCH = async (request, { params }) => {
         car: order.car,
       });
 
-    // Получаем компанию для bufferTime
-    const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
-    const company = await Company.findById(companyId);
-    
-    // Normalize bufferHours
-    const bufferHours = Number(company?.bufferTime ?? 2);
+      // 🎯 Используем ЕДИНСТВЕННУЮ функцию анализа (Athens timezone)
+      const conflictAnalysis = analyzeConfirmationConflicts({
+        orderToConfirm: order,
+        allOrders: allOrdersForCar,
+        bufferHours: bufferHours,
+      });
 
-    // 🎯 Используем ЕДИНСТВЕННУЮ функцию анализа (Athens timezone)
-    const conflictAnalysis = analyzeConfirmationConflicts({
-      orderToConfirm: order,
-      allOrders: allOrdersForCar,
-      bufferHours: bufferHours,
-    });
-
-    console.log("Confirmation conflict analysis:", conflictAnalysis);
-
-    if (!conflictAnalysis.canConfirm) {
-      // ⛔ BLOCK: нельзя подтвердить (409)
-      const normalized = {
-        success: false,
-        data: null,
+      console.log("[switchConfirm] Conflict analysis result:", {
+        orderId: order._id,
+        canConfirm: conflictAnalysis.canConfirm,
+        level: conflictAnalysis.level,
         message: conflictAnalysis.message,
-        level: "block",
-        conflicts: conflictAnalysis.blockedByConfirmed ?? [],
+        blockedByConfirmed: conflictAnalysis.blockedByConfirmed?.length || 0,
+        affectedPendingOrders: conflictAnalysis.affectedPendingOrders?.length || 0,
+      });
+
+      if (!conflictAnalysis.canConfirm) {
+        // ⛔ BLOCK: нельзя подтвердить (409)
+        const normalized = {
+          success: false,
+          data: null,
+          message: conflictAnalysis.message,
+          level: "block",
+          conflicts: conflictAnalysis.blockedByConfirmed ?? [],
+          affectedOrders: conflictAnalysis.affectedPendingOrders ?? [],
+          bufferHours: conflictAnalysis.bufferHours ?? bufferHours,
+        };
+        
+        console.log(`[switchConfirm] 409 BLOCK orderId=${orderId} success=false level=block`);
+        
+        return new Response(
+          JSON.stringify(normalized),
+          {
+            status: 409,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // ✅ Можно подтвердить (возможно с warning)
+      order.confirmed = true;
+      const updatedOrder = await order.save();
+
+      // Определяем статус ответа
+      const responseStatus = conflictAnalysis.level === "warning" ? 202 : 200;
+      const responseMessage = conflictAnalysis.message || "Заказ успешно подтверждён";
+      
+      const normalized = {
+        success: true,
+        data: updatedOrder,
+        message: responseMessage,
+        level: conflictAnalysis.level ?? null,
+        conflicts: [], // No conflicts on success
         affectedOrders: conflictAnalysis.affectedPendingOrders ?? [],
         bufferHours: conflictAnalysis.bufferHours ?? bufferHours,
       };
       
-      console.log(`[switchConfirm] 409 BLOCK orderId=${orderId} success=false level=block`);
-      
+      console.log(`[switchConfirm] ${responseStatus} SUCCESS orderId=${orderId} success=true level=${normalized.level || "null"}`);
+
       return new Response(
         JSON.stringify(normalized),
         {
-          status: 409,
+          status: responseStatus,
           headers: { "Content-Type": "application/json" },
         }
       );
-    }
-
-    // ✅ Можно подтвердить (возможно с warning)
-    order.confirmed = true;
-    const updatedOrder = await order.save();
-
-    // Определяем статус ответа
-    const responseStatus = conflictAnalysis.level === "warning" ? 202 : 200;
-    const responseMessage = conflictAnalysis.message || "Заказ успешно подтверждён";
-    
-    const normalized = {
-      success: true,
-      data: updatedOrder,
-      message: responseMessage,
-      level: conflictAnalysis.level ?? null,
-      conflicts: [], // No conflicts on success
-      affectedOrders: conflictAnalysis.affectedPendingOrders ?? [],
-      bufferHours: conflictAnalysis.bufferHours ?? bufferHours,
-    };
-    
-    console.log(`[switchConfirm] ${responseStatus} SUCCESS orderId=${orderId} success=true level=${normalized.level || "null"}`);
-
-    return new Response(
-      JSON.stringify(normalized),
-      {
-        status: responseStatus,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
     } else {
       // Снимаем подтверждение (всегда разрешено)
       order.confirmed = false;
       const updatedOrder = await order.save();
-      
-      // Get company for bufferHours normalization
-      const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
-      const company = await Company.findById(companyId);
-      const bufferHours = Number(company?.bufferTime ?? 2);
 
       const normalized = {
         success: true,

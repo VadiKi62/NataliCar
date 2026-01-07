@@ -48,8 +48,8 @@ export const ORDER_COLORS = {
     main: palette.triadic.yellow,      // "rgb(247, 220, 112)" - желтый
     light: palette.triadic.yellowLight, // "rgb(249, 237, 121)"
     dark: palette.triadic.yellow,       // желтый
-    text: palette.triadic.yellow,       // желтый
-    bg: "rgba(247, 220, 112, 0.12)",   // желтый с прозрачностью
+    text: palette.neutral.black,       // желтый
+    bg: palette.triadic.yellow,   // желтый с прозрачностью
     label: "Ожидает (клиент)",
     labelEn: "Pending (client)",
   },
@@ -72,8 +72,8 @@ export const ORDER_COLORS = {
     main: palette.triadic.olive,        // "#898900" - оливковый
     light: palette.triadic.oliveLight,  // "#a0a033"
     dark: palette.triadic.oliveDark,    // "#5c5c00"
-    text: palette.triadic.olive,        // "#898900"
-    bg: alpha(palette.triadic.olive, 0.12),
+    text: palette.neutral.gray100,        // "#898900"
+    bg: alpha(palette.triadic.olive, 0.8),
     label: "Ожидает (админ)",
     labelEn: "Pending (admin)",
   },

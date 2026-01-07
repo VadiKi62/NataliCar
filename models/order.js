@@ -121,6 +121,13 @@ const OrderSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // 🔧 TEMPORARY: Support old field name during migration
+  // This will be removed after migration is complete
+  childSeats: {
+    type: Number,
+    default: 0,
+    select: false, // Don't include in queries by default
+  },
   insurance: {
     type: String,
     default: "TPL", // "TPL", "CDW"
@@ -140,8 +147,15 @@ const OrderSchema = new mongoose.Schema({
   },
 });
 
-// Pre-save middleware to calculate the number of days and total price
+// 🔧 MIGRATION SUPPORT: Sync childSeats (old) to ChildSeats (new) if needed
 OrderSchema.pre("save", async function (next) {
+  // If childSeats exists but ChildSeats doesn't, copy value
+  if (this.childSeats !== undefined && this.ChildSeats === undefined) {
+    this.ChildSeats = this.childSeats;
+  }
+  // Always use ChildSeats for calculations
+  const childSeatsValue = this.ChildSeats ?? this.childSeats ?? 0;
+  
   const rentalStart = new Date(this.rentalStartDate);
   const rentalEnd = new Date(this.rentalEndDate);
 
@@ -163,11 +177,18 @@ OrderSchema.pre("save", async function (next) {
       this.rentalStartDate,
       this.rentalEndDate,
       this.insurance,
-      this.ChildSeats
+      childSeatsValue
     );
   }
 
   next();
+});
+
+// 🔧 MIGRATION SUPPORT: After loading, sync childSeats to ChildSeats if needed
+OrderSchema.post("init", function () {
+  if (this.childSeats !== undefined && (this.ChildSeats === undefined || this.ChildSeats === 0)) {
+    this.ChildSeats = this.childSeats;
+  }
 });
 
 const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);

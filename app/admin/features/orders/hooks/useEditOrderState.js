@@ -20,6 +20,7 @@
  * - Server (`/calcTotalPrice`) is the ONLY calculator
  * - Manual price override sets `isManualTotalPrice = true`
  * - Any change in: car, rentalStartDate, rentalEndDate, insurance, childSeats
+ * 
  *   resets `isManualTotalPrice = false`
  * 
  * Race-condition protection:
@@ -162,21 +163,45 @@ export function useEditOrderState({
   }, [editedOrder?.insurance]);
 
   const normalizedChildSeats = useMemo(() => {
-    return Number(editedOrder?.ChildSeats ?? editedOrder?.childSeats ?? 0);
-  }, [editedOrder?.ChildSeats, editedOrder?.childSeats]);
+    return Number(editedOrder?.ChildSeats ?? 0);
+  }, [editedOrder?.ChildSeats]);
 
   useEffect(() => {
-    // Skip calculation on first open
-    if (isFirstOpen.current) return;
+    // 🔧 FIX: Calculate price on first open if totalPrice is missing or zero
+    // This allows admin to see the price even if order.totalPrice is 0 or null
+    const shouldCalculateOnFirstOpen = isFirstOpen.current && (
+      !editedOrder?.totalPrice || 
+      editedOrder.totalPrice === 0 || 
+      editedOrder.totalPrice === null
+    );
+    
+    // Skip calculation on first open (unless price is missing/zero)
+    // BUT: Always allow recalculation if insurance/ChildSeats changed (they reset isFirstOpen in updateField)
+    if (isFirstOpen.current && !shouldCalculateOnFirstOpen) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[useEditOrderState] Price calc skipped: isFirstOpen=true and price exists");
+      }
+      return;
+    }
     
     // Skip if manual price mode
-    if (isManualTotalPrice) return;
+    if (isManualTotalPrice) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[useEditOrderState] Price calc skipped: isManualTotalPrice=true");
+      }
+      return;
+    }
     
     // Skip if viewOnly mode
     if (permissions.viewOnly) return;
     
     // Skip if required fields are missing
     if (!selectedCar?.carNumber || !editedOrder?.rentalStartDate || !editedOrder?.rentalEndDate) {
+      return;
+    }
+    
+    // 🔧 FIX: Ensure we have valid insurance and ChildSeats values
+    if (!normalizedInsurance || normalizedChildSeats === undefined) {
       return;
     }
 
@@ -218,7 +243,8 @@ export function useEditOrderState({
             rentalStartDate: startDateStr,
             rentalEndDate: endDateStr,
             kacko: normalizedInsurance, // API expects "kacko", not "insurance"
-            childSeats: normalizedChildSeats, // API expects "childSeats" (lowercase), normalized value
+            childSeats: normalizedChildSeats, // API expects "childSeats
+            // " (lowercase), normalized value
           }),
         });
 
@@ -258,6 +284,12 @@ export function useEditOrderState({
               };
             });
             
+            // 🔧 FIX: Reset isFirstOpen after successful calculation
+            // This allows subsequent changes (insurance/ChildSeats) to trigger recalculation
+            if (isFirstOpen.current) {
+              isFirstOpen.current = false;
+            }
+            
             // DEV log
             if (process.env.NODE_ENV === "development") {
               console.log(`[useEditOrderState] Price calc response (requestId: ${requestId}):`, {
@@ -290,7 +322,8 @@ export function useEditOrderState({
     editedOrder?.rentalStartDate,
     editedOrder?.rentalEndDate,
     normalizedInsurance, // Memoized normalized insurance
-    normalizedChildSeats, // Memoized normalized childSeats
+    normalizedChildSeats, // Memoized normalized ChildSeats
+
     isManualTotalPrice,
     permissions.viewOnly, // Respect viewOnly mode
   ]);
@@ -351,6 +384,18 @@ export function useEditOrderState({
     // Special handling for totalPrice: set manual mode
     if (field === "totalPrice") {
       setIsManualTotalPrice(true);
+    }
+    
+    // 🔧 FIX: Reset manual mode and first open flag for price-affecting fields
+    // This ensures price recalculation triggers immediately when insurance/ChildSeats change
+    if (field === "insurance" || field === "ChildSeats" || field === "car") {
+      setIsManualTotalPrice(false);
+      isFirstOpen.current = false;
+      
+      // DEV log
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[useEditOrderState] updateField(${field}): Reset isManualTotalPrice=false, isFirstOpen=false`);
+      }
     }
   }, [permissions.viewOnly]);
 
@@ -422,9 +467,10 @@ export function useEditOrderState({
   /**
    * Update start time (Athens timezone)
    * 🔧 FIX ДЫРКА C: TimePicker даёт dayjs в локальной TZ, переинтерпретируем как Athens
+   * 🔧 FIX: Removed isCurrentOrder check - permissions are checked via fieldPermissions in UI
    */
   const updateStartTime = useCallback((localDayjs) => {
-    if (permissions.viewOnly || permissions.isCurrentOrder) return;
+    if (permissions.viewOnly) return;
     
     if (!localDayjs || !dayjs.isDayjs(localDayjs)) return;
     
@@ -439,7 +485,7 @@ export function useEditOrderState({
       setIsManualTotalPrice(false);
       isFirstOpen.current = false;
     }
-  }, [permissions.viewOnly, permissions.isCurrentOrder, editedOrder?.rentalStartDate]);
+  }, [permissions.viewOnly, editedOrder?.rentalStartDate]);
 
   /**
    * Update end time (Athens timezone)
@@ -519,16 +565,18 @@ export function useEditOrderState({
       if (fieldPermissions.car) payload.car = editedOrder.car;
       if (fieldPermissions.placeIn) payload.placeIn = editedOrder.placeIn;
       if (fieldPermissions.placeOut) payload.placeOut = editedOrder.placeOut;
-      if (fieldPermissions.ChildSeats !== undefined) {
+      // 🔧 FIX: Check for true (allowed) instead of !== undefined
+      // fieldPermissions returns boolean (true/false), not undefined
+      if (fieldPermissions.ChildSeats === true) {
         payload.ChildSeats = editedOrder.ChildSeats;
       }
-      if (fieldPermissions.insurance !== undefined) {
+      if (fieldPermissions.insurance === true) {
         payload.insurance = editedOrder.insurance;
       }
-      if (fieldPermissions.franchiseOrder !== undefined) {
+      if (fieldPermissions.franchiseOrder === true) {
         payload.franchiseOrder = editedOrder.franchiseOrder;
       }
-      if (fieldPermissions.totalPrice !== undefined) {
+      if (fieldPermissions.totalPrice === true) {
         payload.totalPrice = Number(editedOrder.totalPrice);
       }
       if (editedOrder.numberOfDays !== undefined) {

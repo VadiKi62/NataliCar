@@ -2,7 +2,7 @@ import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
-import { canEditPricing } from "@/domain/orders/orderPermissions";
+import { canEditOrderField } from "@/domain/orders/orderPermissions";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -115,18 +115,36 @@ export const PUT = async (req) => {
       });
     }
     
-    // Check if admin has permission to edit pricing/dates of this order
-    const permission = canEditPricing(order, session.user);
-    
-    if (!permission.allowed) {
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          message: permission.reason,
-          code: "PERMISSION_DENIED",
-        }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
+    // Check permissions for each field being updated (field-level granularity)
+    const fieldsToCheck = [
+      { field: "rentalStartDate", inPayload: rentalStartDate !== undefined },
+      { field: "rentalEndDate", inPayload: rentalEndDate !== undefined },
+      { field: "timeIn", inPayload: timeIn !== undefined },
+      { field: "timeOut", inPayload: timeOut !== undefined },
+      { field: "car", inPayload: car !== undefined },
+      { field: "placeIn", inPayload: placeIn !== undefined },
+      { field: "placeOut", inPayload: placeOut !== undefined },
+      { field: "insurance", inPayload: insurance !== undefined },
+      { field: "ChildSeats", inPayload: ChildSeats !== undefined },
+      { field: "franchiseOrder", inPayload: franchiseOrder !== undefined },
+      { field: "totalPrice", inPayload: totalPriceFromClient !== undefined },
+    ];
+
+    for (const { field, inPayload } of fieldsToCheck) {
+      if (inPayload) {
+        const permission = canEditOrderField(order, session.user, field);
+        if (!permission.allowed) {
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              message: permission.reason,
+              code: "PERMISSION_DENIED",
+              field: field,
+            }),
+            { status: 403, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
     // Если выбран новый автомобиль, обновляем его в заказе
@@ -249,18 +267,27 @@ export const PUT = async (req) => {
           const rentalDays202 = Math.ceil(
             (end - start) / (1000 * 60 * 60 * 24)
           );
-          let totalPrice202 = 0;
-          let days202 = rentalDays202;
-          if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
-            const result = await carDoc.calculateTotalRentalPricePerDay(
-              start,
-              end,
-              insurance,
-              ChildSeats
-            );
-            totalPrice202 = result.total;
-            days202 = result.days;
+          let totalPrice202 = order.totalPrice; // 🔧 FIX: Preserve existing price by default
+          let days202 = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+          
+          // Check if dates or price-affecting fields changed (not just time)
+          const datesChanged202 = rentalStartDate !== undefined || rentalEndDate !== undefined;
+          const priceAffectingFieldsChanged202 = insurance !== undefined || ChildSeats !== undefined || car !== undefined;
+          
+          if (datesChanged202 || priceAffectingFieldsChanged202) {
+            // Only recalculate if dates or price-affecting fields changed
+            if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
+              const result = await carDoc.calculateTotalRentalPricePerDay(
+                start,
+                end,
+                insurance ?? order.insurance,
+                ChildSeats ?? order.ChildSeats
+              );
+              totalPrice202 = result.total;
+              days202 = result.days;
+            }
           }
+          // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
           order.rentalStartDate = start.toDate();
           order.rentalEndDate = end.toDate();
@@ -301,23 +328,33 @@ export const PUT = async (req) => {
 
     // Recalculate the rental details
     const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    let totalPrice = 0;
-    let days = rentalDays;
+    let totalPrice = order.totalPrice; // 🔧 FIX: Preserve existing price by default
+    let days = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+    
+    // Check if dates or price-affecting fields changed (not just time)
+    const datesChanged = rentalStartDate !== undefined || rentalEndDate !== undefined;
+    const priceAffectingFieldsChanged = insurance !== undefined || ChildSeats !== undefined || car !== undefined;
+    
     if (
       typeof totalPriceFromClient === "number" &&
       !isNaN(totalPriceFromClient)
     ) {
+      // Manual price override
       totalPrice = totalPriceFromClient;
-    } else if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
-      const result = await carDoc.calculateTotalRentalPricePerDay(
-        start,
-        end,
-        insurance,
-        ChildSeats
-      );
-      totalPrice = result.total;
-      days = result.days;
+    } else if (datesChanged || priceAffectingFieldsChanged) {
+      // Only recalculate if dates or price-affecting fields changed
+      if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
+        const result = await carDoc.calculateTotalRentalPricePerDay(
+          start,
+          end,
+          insurance ?? order.insurance,
+          ChildSeats ?? order.ChildSeats
+        );
+        totalPrice = result.total;
+        days = result.days;
+      }
     }
+    // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
     // Update the order
     order.rentalStartDate = start.toDate();

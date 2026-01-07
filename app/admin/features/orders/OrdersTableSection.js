@@ -38,6 +38,7 @@ import {
   Lock as LockIcon,
   Check as CheckIcon,
   Close as CloseIcon,
+  Autorenew as AutorenewIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -96,7 +97,6 @@ export default function OrdersTableSection() {
   // DATA FETCHING STATE (from /api/admin/orders)
   // ─────────────────────────────────────────────────────────────
   const [orders, setOrders] = useState([]);
-  const [adminRole, setAdminRole] = useState(ROLE.ADMIN); // ROLE.ADMIN = 1, ROLE.SUPERADMIN = 2
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -105,26 +105,37 @@ export default function OrdersTableSection() {
   // ─────────────────────────────────────────────────────────────
   const [isSaving, setIsSaving] = useState({}); // Track saving per field: { orderId_field: true }
   const [isTogglingConfirm, setIsTogglingConfirm] = useState({});
+  const [isRecalculatingPrice, setIsRecalculatingPrice] = useState({}); // Track price recalculation: { orderId: true }
   
   // ─────────────────────────────────────────────────────────────
-  // CONFLICT ERROR STATE (for table display)
+  // CONFLICT STATE (persistent, per-order)
   // ─────────────────────────────────────────────────────────────
-  const [conflictError, setConflictError] = useState(null); // { orderId, message, conflicts: [] }
+  // ⚠️ RBAC SOURCE OF TRUTH: session.user.role is the ONLY source for UI permissions
+  // adminRole from API is NOT used for permissions (only for debugging if needed)
+  const [conflictsByOrderId, setConflictsByOrderId] = useState({}); // { orderId: { message, conflicts: [] } }
+  
   // Get current user for permission checks
-  // ⚠️ КРИТИЧНО: Используем session.user.role напрямую, БЕЗ нормализации
-const currentUser = useMemo(() => {
-  if (!session?.user?.isAdmin) {
-    return null;
-  }
-  const user = {
-    isAdmin: true,
-    role: session.user.role, // Используем напрямую из session
-    id: session.user.id,
-    name: session.user.name,
-    email: session.user.email,
-  };
-  return user;
-}, [session]);
+  // ⚠️ RBAC SOURCE OF TRUTH: session.user.role is the single source of truth for UI permissions
+  // adminRole from API is NOT used for permissions
+  const currentUser = useMemo(() => {
+    if (!session?.user?.isAdmin) {
+      return null;
+    }
+    const user = {
+      isAdmin: true,
+      role: session.user.role, // SINGLE SOURCE OF TRUTH: Use session.user.role directly
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+    };
+    
+    // Dev-only: Log role source once (not spammy)
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[RBAC] sessionRole:", session.user.role, "currentUser.role:", user.role);
+    }
+    
+    return user;
+  }, [session]);
 
   
   // Fetch orders from admin API endpoint
@@ -146,9 +157,8 @@ const currentUser = useMemo(() => {
       
       if (data.success) {
         setOrders(data.data || []);
-        const roleFromAPI = data.adminRole ?? 0;
-        console.log("[fetchOrders] Setting adminRole from API:", roleFromAPI, "session role:", session?.user?.role);
-        setAdminRole(roleFromAPI);
+        // Note: data.adminRole from API is NOT used for permissions
+        // RBAC source of truth is session.user.role (see currentUser memo above)
       } else {
         throw new Error(data.message || "Failed to fetch orders");
       }
@@ -178,12 +188,28 @@ const currentUser = useMemo(() => {
     return permission.allowed;
   }, [currentUser]);
   
+  /**
+   * Get field-level permission for an order
+   * Returns { allowed: boolean, reason: string|null }
+   * 
+   * @param {Object} order
+   * @param {string} fieldName
+   * @param {Object} user - currentUser from session
+   * @returns {{ allowed: boolean, reason: string|null }}
+   */
+  const getFieldPermission = useCallback((order, fieldName, user) => {
+    if (!user) {
+      return { allowed: false, reason: "Not authenticated" };
+    }
+    return canEditOrderField(order, user, fieldName);
+  }, []);
+  
   const canEditField = useCallback((order, fieldName) => {
     if (!currentUser) {
       console.warn("[canEditField] currentUser is null", { orderId: order._id, fieldName });
       return false;
     }
-    const permission = canEditOrderField(order, currentUser, fieldName);
+    const permission = getFieldPermission(order, fieldName, currentUser);
     if (!permission.allowed && process.env.NODE_ENV !== "production") {
       console.log("[canEditField] Permission denied", {
         orderId: order._id,
@@ -194,7 +220,7 @@ const currentUser = useMemo(() => {
       });
     }
     return permission.allowed;
-  }, [currentUser]);
+  }, [currentUser, getFieldPermission]);
   
 
   // ─────────────────────────────────────────────────────────────
@@ -354,7 +380,6 @@ const currentUser = useMemo(() => {
     setSelectedCar(null);
     setDateFrom("");
     setDateTo("");
-    setStartDateFilter("");
     setStatusFilter("all");
     setOriginFilter("all");
     setSearchQuery("");
@@ -438,19 +463,26 @@ const currentUser = useMemo(() => {
       
       if (result && typeof result.success === "boolean") {
         if (!result.success) {
+          // Conflict: Store persistently (no auto-clear)
           const message = result.message || "Cannot update order";
-          setConflictError({
-            orderId: orderId,
-            message: message,
-            conflicts: result.conflicts || [],
-          });
+          setConflictsByOrderId((prev) => ({
+            ...prev,
+            [orderId]: {
+              message: message,
+              conflicts: result.conflicts || [],
+            },
+          }));
           setConflictHighlightsFromResult({ sourceOrderId: orderId, result });
-          setTimeout(() => setConflictError(null), 10000);
-          enqueueSnackbar(message, { variant: "error" });
+          // NO snackbar for conflicts - only inline display
           return;
         }
         
-        setConflictError(null);
+        // Success: Clear conflicts for this order
+        setConflictsByOrderId((prev) => {
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
         clearConflictHighlights();
         
         // Always merge fieldsToSend with result.data (even if result.data is empty)
@@ -478,6 +510,7 @@ const currentUser = useMemo(() => {
           )
         );
         
+        // Success snackbar only (conflicts shown inline, not in snackbar)
         enqueueSnackbar(result.message || "Order updated successfully", { variant: "success" });
       }
     } catch (error) {
@@ -487,6 +520,92 @@ const currentUser = useMemo(() => {
       setIsSaving((prev) => ({ ...prev, [savingKey]: false }));
     }
   }, [orders, enqueueSnackbar, setConflictHighlightsFromResult, clearConflictHighlights]);
+  
+  /**
+   * Recalculate price based on order's current data (dates, car, insurance, child seats)
+   * Available to all users (no permission check)
+   */
+  const handleRecalculatePrice = useCallback(async (order) => {
+    const orderId = order._id;
+    const recalculatingKey = orderId;
+    
+    setIsRecalculatingPrice((prev) => ({ ...prev, [recalculatingKey]: true }));
+    
+    try {
+      // Get carNumber from order
+      let carNumber = null;
+      if (order.car?.carNumber) {
+        carNumber = order.car.carNumber;
+      } else if (order.carNumber) {
+        carNumber = order.carNumber;
+      } else if (order.car?._id || order.car) {
+        // Find car in cars array
+        const carId = order.car?._id || order.car;
+        const car = cars.find((c) => c._id?.toString() === carId?.toString());
+        if (car?.carNumber) {
+          carNumber = car.carNumber;
+        }
+      }
+      
+      if (!carNumber) {
+        enqueueSnackbar("❌ Не удалось определить номер автомобиля", { variant: "error" });
+        return;
+      }
+      
+      // Get dates (format as YYYY-MM-DD for API)
+      const rentalStartDate = order.rentalStartDate 
+        ? dayjs(order.rentalStartDate).format("YYYY-MM-DD")
+        : null;
+      const rentalEndDate = order.rentalEndDate
+        ? dayjs(order.rentalEndDate).format("YYYY-MM-DD")
+        : null;
+      
+      if (!rentalStartDate || !rentalEndDate) {
+        enqueueSnackbar("❌ Не указаны даты аренды", { variant: "error" });
+        return;
+      }
+      
+      // Get insurance (kacko) and child seats
+      const kacko = order.insurance || "TPL";
+      const childSeats = order.ChildSeats || 0;
+      
+      // Call calcTotalPrice API
+      const response = await fetch("/api/order/calcTotalPrice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carNumber,
+          rentalStartDate,
+          rentalEndDate,
+          kacko,
+          childSeats,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Ошибка пересчета цены");
+      }
+      
+      const data = await response.json();
+      
+      // Update price and numberOfDays via handleFieldUpdate
+      if (data.totalPrice !== undefined) {
+        await handleFieldUpdate(orderId, "totalPrice", data.totalPrice);
+      }
+      if (data.days !== undefined) {
+        // Note: numberOfDays is not editable, but we can update it if needed
+        // For now, just update totalPrice
+      }
+      
+      enqueueSnackbar(`✅ Цена пересчитана: €${data.totalPrice?.toFixed(2) || "0"}`, { variant: "success" });
+    } catch (error) {
+      console.error("Error recalculating price:", error);
+      enqueueSnackbar(error.message || "Ошибка пересчета цены", { variant: "error" });
+    } finally {
+      setIsRecalculatingPrice((prev) => ({ ...prev, [recalculatingKey]: false }));
+    }
+  }, [cars, enqueueSnackbar, handleFieldUpdate]);
   
   const handleToggleConfirm = useCallback(async (orderId) => {
     setIsTogglingConfirm((prev) => ({ ...prev, [orderId]: true }));
@@ -500,23 +619,28 @@ const currentUser = useMemo(() => {
         const message = result.message || "Cannot update order confirmation";
         console.log("[handleToggleConfirm] Error result:", { result, message });
         
-        // Set error state for table display
-        setConflictError({
-          orderId: orderId,
-          message: message,
-          conflicts: result.conflicts || [],
-        });
+        // Conflict: Store persistently (no auto-clear)
+        setConflictsByOrderId((prev) => ({
+          ...prev,
+          [orderId]: {
+            message: message,
+            conflicts: result.conflicts || [],
+          },
+        }));
         
         // Set conflict highlights for calendar (if needed later)
         setConflictHighlightsFromResult({ sourceOrderId: orderId, result });
         
-        // Clear error after 10 seconds
-        setTimeout(() => setConflictError(null), 10000);
+        // NO snackbar for conflicts - only inline display
         return;
       }
       
-      // Success - clear error state
-      setConflictError(null);
+      // Success - clear conflicts for this order
+      setConflictsByOrderId((prev) => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
       
       // Success - clear conflict highlights and update confirmed field from result.data
       // Manual test: 200/202 should flip the Switch
@@ -533,16 +657,19 @@ const currentUser = useMemo(() => {
         
         // Show appropriate message based on level
         if (result.level === "warning") {
-          // For warnings, show in table (set conflict error) but also show snackbar
-          setConflictError({
-            orderId: orderId,
-            message: result.message || "Order confirmed with warnings",
-            conflicts: result.affectedOrders || [],
-          });
-          setTimeout(() => setConflictError(null), 10000);
+          // For warnings, show in table (persistent conflict panel)
+          setConflictsByOrderId((prev) => ({
+            ...prev,
+            [orderId]: {
+              message: result.message || "Order confirmed with warnings",
+              conflicts: result.affectedOrders || [],
+            },
+          }));
           // Set highlights for affected pending orders
           setConflictHighlightsFromResult({ sourceOrderId: orderId, result });
+          // NO snackbar for warnings - only inline display
         } else {
+          // Success snackbar only
           enqueueSnackbar(
             result.message || "Order status updated successfully",
             { variant: "success" }
@@ -848,13 +975,14 @@ const currentUser = useMemo(() => {
                   const canEditDates = canEditStartDate; // Used for both start and end dates
                   const canEditTimes = canEditTimeIn; // Used for both times
                   
-                  // Dev-only: Permission audit log for first order
-                  if (process.env.NODE_ENV !== "production" && paginatedOrders.indexOf(order) === 0) {
+                  // Dev-only: Permission audit log for first 1-2 orders (not spammy)
+                  if (process.env.NODE_ENV !== "production" && paginatedOrders.indexOf(order) < 2) {
                     const permissionAudit = {
                       orderId: order._id,
                       orderNumber: order.orderNumber,
                       my_order: order.my_order,
                       confirmed: order.confirmed,
+                      userRole: currentUser?.role,
                       customerName: canEditCustomerName,
                       phone: canEditPhone,
                       email: canEditEmail,
@@ -864,27 +992,27 @@ const currentUser = useMemo(() => {
                       timeOut: canEditTimeOut,
                       totalPrice: canEditTotalPrice,
                     };
-                    console.table(permissionAudit);
+                    console.log(`[Permission Audit] Order ${paginatedOrders.indexOf(order) + 1}:`, permissionAudit);
                   }
                   
-                  // Check if this order has a conflict
-                  // 1. Is this the source order (the one being updated)?
-                  const isConflictSource = conflictError?.orderId === order._id;
-                  // 2. Is this order in the conflicts list (blocking orders)?
-                  const isConflictingOrder = conflictError?.conflicts?.some((conflict) => {
-                    const conflictId = conflict.orderId || conflict._id || conflict;
-                    return String(conflictId) === String(order._id);
+                  // Check if this order has a conflict (from persistent conflictsByOrderId)
+                  const orderConflict = conflictsByOrderId[order._id];
+                  const isConflictSource = !!orderConflict;
+                  
+                  // Check if this order is in another order's conflicts list
+                  const isConflictingOrder = Object.values(conflictsByOrderId).some((conflict) => {
+                    return conflict.conflicts?.some((c) => {
+                      const conflictId = c.orderId || c._id || c;
+                      return String(conflictId) === String(order._id);
+                    });
                   });
-                  // 3. Is this order highlighted from context?
+                  
+                  // Check if this order is highlighted from context
                   const hasContextHighlight = conflictHighlightById[order._id];
                   
                   const hasConflict = isConflictSource || isConflictingOrder || hasContextHighlight;
                   const conflictInfo = conflictHighlightById[order._id];
-                  const conflictMessage = isConflictSource 
-                    ? conflictError.message 
-                    : isConflictingOrder 
-                    ? `This order conflicts with the update attempt`
-                    : conflictInfo?.message;
+                  const conflictMessage = orderConflict?.message || conflictInfo?.message;
 
                   return (
                     <React.Fragment key={order._id}>
@@ -916,7 +1044,7 @@ const currentUser = useMemo(() => {
                               sx={{
                                 backgroundColor: orderColor.bg,
                                 color: orderColor.text,
-                                fontWeight: 600,
+                                fontWeight: 500,
                                 fontSize: "0.7rem",
                                 height: 22,
                               }}
@@ -981,7 +1109,10 @@ const currentUser = useMemo(() => {
                             type="date"
                             value={order.rentalStartDate ? dayjs(order.rentalStartDate).tz(ATHENS_TZ).format("YYYY-MM-DD") : ""}
                             disabled={!canEditStartDate || isSaving[`${order._id}_rentalStartDate`]}
-                            onDenied={() => enqueueSnackbar("⛔ Этот заказ нельзя редактировать", { variant: "warning" })}
+                            onDenied={() => {
+                              const permission = getFieldPermission(order, "rentalStartDate", currentUser);
+                              enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать дату начала", { variant: "warning" });
+                            }}
                             onCommit={(val) => handleFieldUpdate(order._id, "rentalStartDate", val)}
                             formatDisplay={(val) => {
                               if (!val) return "-";
@@ -993,7 +1124,10 @@ const currentUser = useMemo(() => {
                             type="time"
                             value={order.timeIn ? formatTime(order.timeIn) : ""}
                             disabled={!canEditTimeIn || isSaving[`${order._id}_timeIn`]}
-                            onDenied={() => enqueueSnackbar("⛔ Этот заказ нельзя редактировать", { variant: "warning" })}
+                            onDenied={() => {
+                              const permission = getFieldPermission(order, "timeIn", currentUser);
+                              enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать время начала", { variant: "warning" });
+                            }}
                             onCommit={(val) => handleFieldUpdate(order._id, "timeIn", val)}
                             formatDisplay={(val) => (val ? val : "-")}
                           />
@@ -1007,7 +1141,10 @@ const currentUser = useMemo(() => {
                             type="date"
                             value={order.rentalEndDate ? dayjs(order.rentalEndDate).tz(ATHENS_TZ).format("YYYY-MM-DD") : ""}
                             disabled={!canEditEndDate || isSaving[`${order._id}_rentalEndDate`]}
-                            onDenied={() => enqueueSnackbar("⛔ Этот заказ нельзя редактировать", { variant: "warning" })}
+                            onDenied={() => {
+                              const permission = getFieldPermission(order, "rentalEndDate", currentUser);
+                              enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать дату окончания", { variant: "warning" });
+                            }}
                             onCommit={(val) => handleFieldUpdate(order._id, "rentalEndDate", val)}
                             formatDisplay={(val) => {
                               if (!val) return "-";
@@ -1019,7 +1156,10 @@ const currentUser = useMemo(() => {
                             type="time"
                             value={order.timeOut ? formatTime(order.timeOut) : ""}
                             disabled={!canEditTimeOut || isSaving[`${order._id}_timeOut`]}
-                            onDenied={() => enqueueSnackbar("⛔ Этот заказ нельзя редактировать", { variant: "warning" })}
+                            onDenied={() => {
+                              const permission = getFieldPermission(order, "timeOut", currentUser);
+                              enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать время окончания", { variant: "warning" });
+                            }}
                             onCommit={(val) => handleFieldUpdate(order._id, "timeOut", val)}
                             formatDisplay={(val) => (val ? val : "-")}
                           />
@@ -1032,64 +1172,98 @@ const currentUser = useMemo(() => {
                           <InlineEditCell
                             value={order.customerName || ""}
                             disabled={!canEditCustomerName || isSaving[`${order._id}_customerName`]}
-                            onDenied={() => enqueueSnackbar("⛔ Нельзя редактировать это поле", { variant: "warning" })}
+                            onDenied={() => {
+                              const permission = getFieldPermission(order, "customerName", currentUser);
+                              enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать имя клиента", { variant: "warning" });
+                            }}
                             onCommit={(val) => handleFieldUpdate(order._id, "customerName", val)}
                           />
                           <InlineEditCell
                             value={order.phone || ""}
                             disabled={!canEditPhone || isSaving[`${order._id}_phone`]}
-                            onDenied={() => enqueueSnackbar("⛔ Нельзя редактировать это поле", { variant: "warning" })}
+                            onDenied={() => {
+                              const permission = getFieldPermission(order, "phone", currentUser);
+                              enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать телефон", { variant: "warning" });
+                            }}
                             onCommit={(val) => handleFieldUpdate(order._id, "phone", val)}
                           />
                           <InlineEditCell
                             type="email"
                             value={order.email || ""}
                             disabled={!canEditEmail || isSaving[`${order._id}_email`]}
-                            onDenied={() => enqueueSnackbar("⛔ Нельзя редактировать это поле", { variant: "warning" })}
+                            onDenied={() => {
+                              const permission = getFieldPermission(order, "email", currentUser);
+                              enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать email", { variant: "warning" });
+                            }}
                             onCommit={(val) => handleFieldUpdate(order._id, "email", val)}
                           />
                         </Stack>
                       </TableCell>
 
-                      {/* Price - Inline Editing */}
+                      {/* Price - Inline Editing with Recalculate Button */}
                       <TableCell align="right">
                         <Stack spacing={0.5} alignItems="flex-end">
-                          <InlineEditCell
-                            type="number"
-                            value={order.totalPrice?.toString() || "0"}
-                            disabled={!canEditTotalPrice || isSaving[`${order._id}_totalPrice`]}
-                            onDenied={() => enqueueSnackbar("⛔ Нельзя редактировать сумму", { variant: "warning" })}
-                            onCommit={(val) => {
-                              // Parse numeric value carefully
-                              const numericValue = val ? parseFloat(val) : null;
-                              
-                              // Validate: reject NaN and empty
-                              if (numericValue === null || isNaN(numericValue) || val.trim() === "") {
-                                enqueueSnackbar("⛔ Введите корректное число", { variant: "error" });
-                                return;
-                              }
-                              
-                              // Accept positive numbers (allow decimals like "120.50")
-                              if (numericValue < 0) {
-                                enqueueSnackbar("⛔ Сумма не может быть отрицательной", { variant: "error" });
-                                return;
-                              }
-                              
-                              handleFieldUpdate(order._id, "totalPrice", numericValue);
-                            }}
-                            formatDisplay={(val) => {
-                              if (!val || val === "0") return "€0";
-                              const num = parseFloat(val);
-                              if (isNaN(num)) return "€0";
-                              return `€${num.toFixed(2)}`;
-                            }}
-                            inputProps={{
-                              step: "0.01",
-                              min: "0",
-                            }}
-                            sx={{ textAlign: "right" }}
-                            inputSx={{ textAlign: "right", fontWeight: 600 }}
-                          />
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <InlineEditCell
+                              type="number"
+                              value={order.totalPrice?.toString() || "0"}
+                              disabled={!canEditTotalPrice || isSaving[`${order._id}_totalPrice`]}
+                              onDenied={() => {
+                                const permission = getFieldPermission(order, "totalPrice", currentUser);
+                                enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать сумму", { variant: "warning" });
+                              }}
+                              onCommit={(val) => {
+                                // Parse numeric value carefully
+                                const numericValue = val ? parseFloat(val) : null;
+                                
+                                // Validate: reject NaN and empty
+                                if (numericValue === null || isNaN(numericValue) || val.trim() === "") {
+                                  enqueueSnackbar("⛔ Введите корректное число", { variant: "error" });
+                                  return;
+                                }
+                                
+                                // Accept positive numbers (allow decimals like "120.50")
+                                if (numericValue < 0) {
+                                  enqueueSnackbar("⛔ Сумма не может быть отрицательной", { variant: "error" });
+                                  return;
+                                }
+                                
+                                handleFieldUpdate(order._id, "totalPrice", numericValue);
+                              }}
+                              formatDisplay={(val) => {
+                                if (!val || val === "0") return "€0";
+                                const num = parseFloat(val);
+                                if (isNaN(num)) return "€0";
+                                return `€${num.toFixed(2)}`;
+                              }}
+                              inputProps={{
+                                step: "0.01",
+                                min: "0",
+                              }}
+                              sx={{ textAlign: "right" }}
+                              inputSx={{ textAlign: "right", fontWeight: 600 }}
+                            />
+                            <Tooltip title="Пересчитать цену на основе текущих данных заказа">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleRecalculatePrice(order)}
+                                disabled={isRecalculatingPrice[order._id]}
+                                sx={{ 
+                                  p: 0.5,
+                                  color: palette.primary.main,
+                                  "&:hover": {
+                                    backgroundColor: alpha(palette.primary.main, 0.1),
+                                  },
+                                }}
+                              >
+                                {isRecalculatingPrice[order._id] ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <AutorenewIcon fontSize="small" />
+                                )}
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
                           <Typography variant="caption" color="text.secondary">
                             {order.numberOfDays || 0} {t("table.days")}
                           </Typography>
@@ -1120,25 +1294,74 @@ const currentUser = useMemo(() => {
                       </TableCell>
                     </TableRow>
                     
-                    {/* Conflict Error Message Row - only for source order */}
-                    {isConflictSource && conflictMessage && (
+                    {/* Persistent Conflict Panel - only for source order */}
+                    {isConflictSource && orderConflict && (
                       <TableRow>
                         <TableCell colSpan={9} sx={{ py: 1.5, px: 2, backgroundColor: alpha(palette.status.error, 0.08) }}>
-                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                            <BlockIcon sx={{ color: palette.status.error, fontSize: 18 }} />
-                            <Typography variant="body2" sx={{ color: palette.status.error, fontWeight: 500 }}>
-                              {conflictMessage}
-                            </Typography>
-                            {conflictError?.conflicts && conflictError.conflicts.length > 0 && (
-                              <>
-                                <Typography variant="caption" sx={{ color: palette.status.error, ml: 1 }}>
-                                  ({conflictError.conflicts.length} {conflictError.conflicts.length === 1 ? "conflict" : "conflicts"})
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: palette.status.error, ml: 2, fontStyle: "italic" }}>
-                                  Conflicting orders highlighted below
-                                </Typography>
-                              </>
-                            )}
+                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                              <BlockIcon sx={{ color: palette.status.error, fontSize: 18 }} />
+                              <Typography variant="body2" sx={{ color: palette.status.error, fontWeight: 500 }}>
+                                {orderConflict.message}
+                              </Typography>
+                              {orderConflict.conflicts && orderConflict.conflicts.length > 0 && (
+                                <>
+                                  <Typography variant="caption" sx={{ color: palette.status.error, ml: 1 }}>
+                                    ({orderConflict.conflicts.length} {orderConflict.conflicts.length === 1 ? "conflict" : "conflicts"})
+                                  </Typography>
+                                  {orderConflict.conflicts.length > 0 && (
+                                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: 1 }}>
+                                      <Typography variant="caption" sx={{ color: palette.status.error }}>
+                                        Conflicting orders:
+                                      </Typography>
+                                      {orderConflict.conflicts.slice(0, 5).map((conflict, idx) => {
+                                        const conflictId = conflict.orderId || conflict._id || conflict;
+                                        const conflictOrder = orders.find((o) => String(o._id) === String(conflictId));
+                                        const conflictOrderNumber = conflictOrder?.orderNumber || conflictId;
+                                        return (
+                                          <Chip
+                                            key={idx}
+                                            label={conflictOrderNumber}
+                                            size="small"
+                                            sx={{
+                                              height: 20,
+                                              fontSize: "0.65rem",
+                                              backgroundColor: alpha(palette.status.error, 0.2),
+                                              color: palette.status.error,
+                                            }}
+                                          />
+                                        );
+                                      })}
+                                      {orderConflict.conflicts.length > 5 && (
+                                        <Typography variant="caption" sx={{ color: palette.status.error }}>
+                                          +{orderConflict.conflicts.length - 5} more
+                                        </Typography>
+                                      )}
+                                    </Stack>
+                                  )}
+                                </>
+                              )}
+                            </Stack>
+                            {/* Clear button */}
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setConflictsByOrderId((prev) => {
+                                  const next = { ...prev };
+                                  delete next[order._id];
+                                  return next;
+                                });
+                                clearConflictHighlights();
+                              }}
+                              sx={{
+                                color: palette.status.error,
+                                "&:hover": {
+                                  backgroundColor: alpha(palette.status.error, 0.1),
+                                },
+                              }}
+                            >
+                              <ClearIcon fontSize="small" />
+                            </IconButton>
                           </Stack>
                         </TableCell>
                       </TableRow>

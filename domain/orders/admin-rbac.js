@@ -89,6 +89,15 @@ export const ADMIN_POLICY = {
   
   /** If true: Admin can delete pending orders that are in the past. */
   ADMIN_CAN_DELETE_PAST_PENDING_ORDERS: false,
+
+    /** AXIOM: Admin cannot delete orders created by clients. Always false. */
+  ADMIN_CAN_EDIT_OTHERS_ORDERS: false,
+  
+  /** If true: Admin can delete confirmed orders that are in the past. */
+  ADMIN_CAN_EDIT_PAST_CONFIRMED_ORDERS: false,
+  
+  /** If true: Admin can delete pending orders that are in the past. */
+  ADMIN_CAN_EDIT_PAST_PENDING_ORDERS: false,
   
   // ============================================
   // CLIENT ORDER EDITING RULES
@@ -107,7 +116,7 @@ export const ADMIN_POLICY = {
   ADMIN_CAN_EDIT_CLIENT_ORDER_DATES: false,
   
   /** If true: Admin can edit extras fields of client orders. */
-  ADMIN_CAN_EDIT_CLIENT_ORDER_EXTRAS: false,
+  ADMIN_CAN_EDIT_CLIENT_ORDER_EXTRAS: true,
   
   // ============================================
   // CONFIRMATION RULES
@@ -289,6 +298,10 @@ export function canDeleteOrder(order, user) {
 /**
  * Check if admin can edit order (general check)
  * 
+ * SUPERADMIN: ✅ Can edit any order (including past orders)
+ * ADMIN: ✅ Can edit admin orders (my_order=false) if not past OR if past editing allowed
+ *        ✅ Can edit client orders based on field-specific config switches AND past editing rules
+ * 
  * @param {Object} order
  * @param {Object} user
  * @returns {{ allowed: boolean, reason: string|null }}
@@ -297,6 +310,19 @@ export function canEditOrder(order, user) {
   if (!user?.isAdmin) return deny("Not an admin");
 
   if (isSuperAdmin(user)) return allow();
+
+  // Check if order is in the past
+  const isPast = isPastOrder(order);
+  
+  if (isPast) {
+    // Past order editing rules (apply to both admin and client orders)
+    if (order.confirmed && !ADMIN_POLICY.ADMIN_CAN_EDIT_PAST_CONFIRMED_ORDERS) {
+      return deny("Admin cannot edit past confirmed orders");
+    }
+    if (!order.confirmed && !ADMIN_POLICY.ADMIN_CAN_EDIT_PAST_PENDING_ORDERS) {
+      return deny("Admin cannot edit past pending orders");
+    }
+  }
 
   if (isAdminCreatedOrder(order)) return allow();
 
@@ -338,15 +364,15 @@ export function canEditPricing(order, user) {
 const DATE_FIELDS = ["rentalStartDate", "rentalEndDate"];
 const TIME_FIELDS = ["timeIn", "timeOut"];
 const CONTACT_FIELDS = ["customerName", "phone", "email"];
-const PRICE_FIELDS = ["totalPrice", "price", "sum", "numberOfDays"];
-const EXTRAS_FIELDS = ["placeIn", "placeOut", "insurance", "ChildSeats", "franchiseOrder", "flightNumber", "car"];
-
+const PRICE_FIELDS = ["totalPrice", "price", "sum"];
+const EXTRAS_FIELDS = ["placeIn", "placeOut", "insurance", "ChildSeats", "franchiseOrder", "flightNumber", "car", "childSeats"];
+const NEVER_INLINE_EDIT_FIELDS = [ "carNumber", "carModel", "numberOfDays"];
 /**
  * Check if admin can edit a specific field of an order
  * 
- * SUPERADMIN: ✅ Can edit any field of any order
- * ADMIN: ✅ Can edit admin orders (my_order=false) always
- *        ✅ Can edit client orders based on field-specific config switches
+ * SUPERADMIN: ✅ Can edit any field of any order (including past orders)
+ * ADMIN: ✅ Can edit admin orders (my_order=false) if not past OR if past editing allowed
+ *        ✅ Can edit client orders based on field-specific config switches AND past editing rules
  * 
  * @param {Object} order
  * @param {Object} user
@@ -358,6 +384,20 @@ export function canEditOrderField(order, user, field) {
 
   if (isSuperAdmin(user)) return allow();
 
+  // Check if order is in the past
+  const isPast = isPastOrder(order);
+  
+  if (isPast) {
+    // Past order editing rules (apply to both admin and client orders)
+    if (order.confirmed && !ADMIN_POLICY.ADMIN_CAN_EDIT_PAST_CONFIRMED_ORDERS) {
+      return deny("Admin cannot edit past confirmed orders");
+    }
+    if (!order.confirmed && !ADMIN_POLICY.ADMIN_CAN_EDIT_PAST_PENDING_ORDERS) {
+      return deny("Admin cannot edit past pending orders");
+    }
+  }
+
+  // Admin-created orders: can edit if not past OR if past editing allowed (checked above)
   if (isAdminCreatedOrder(order)) return allow();
 
   if (!isClientOrder(order)) return deny("Invalid order type");

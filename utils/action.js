@@ -637,38 +637,24 @@ export const updateOrder = async (orderId, payload) => {
  * @returns {Promise<Object>} Normalized response with updated order
  */
 export const updateOrderInline = async (orderId, fields) => {
-  // Determine which endpoint to use based on fields
-  const dateTimeFields = ["rentalStartDate", "rentalEndDate", "timeIn", "timeOut"];
-  const pricingFields = ["totalPrice", "price", "numberOfDays"];
-  const hasDateTimeFields = Object.keys(fields).some(key => dateTimeFields.includes(key));
-  const hasPricingFields = Object.keys(fields).some(key => pricingFields.includes(key));
-  
-  // Use changeDates endpoint for date/time/pricing fields, customer endpoint for customer fields only
-  const endpoint = (hasDateTimeFields || hasPricingFields) 
-    ? "/api/order/update/changeDates" 
-    : "/api/order/update/customer";
-  
+  // 🔧 UNIFIED: Use single endpoint for all updates
   // Debug logging (dev only)
   if (process.env.NODE_ENV !== "production") {
     console.log("[updateOrderInline] Request:", {
       orderId,
-      endpoint,
+      endpoint: `/api/order/update/${orderId}`,
       fields,
-      hasDateTimeFields,
     });
   }
   
-  const response = await fetch(endpoint, {
-    method: "PUT",
+  const response = await fetch(`/api/order/update/${orderId}`, {
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
     cache: "no-store",
     credentials: "include",
-    body: JSON.stringify({
-      _id: orderId,
-      ...fields,
-    }),
+    body: JSON.stringify(fields),
   });
 
   const data = await response.json();

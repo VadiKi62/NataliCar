@@ -189,18 +189,38 @@ export const PATCH = async (request, { params }) => {
 
     const hasConfirmationChange = payload.confirmed !== undefined;
 
-    // Check permissions for each category of changes
+    // Check permissions for each field being updated (field-level granularity)
     if (hasDateTimeChanges) {
-      const permission = canEditPricing(order, session.user);
-      if (!permission.allowed) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: permission.reason,
-            code: "PERMISSION_DENIED",
-          }),
-          { status: 403, headers: { "Content-Type": "application/json" } }
-        );
+      // Check each field individually using canEditOrderField
+      const fieldsToCheck = [
+        { field: "rentalStartDate", inPayload: payload.rentalStartDate !== undefined },
+        { field: "rentalEndDate", inPayload: payload.rentalEndDate !== undefined },
+        { field: "timeIn", inPayload: payload.timeIn !== undefined },
+        { field: "timeOut", inPayload: payload.timeOut !== undefined },
+        { field: "car", inPayload: payload.car !== undefined },
+        { field: "placeIn", inPayload: payload.placeIn !== undefined },
+        { field: "placeOut", inPayload: payload.placeOut !== undefined },
+        { field: "insurance", inPayload: payload.insurance !== undefined },
+        { field: "ChildSeats", inPayload: payload.ChildSeats !== undefined },
+        { field: "franchiseOrder", inPayload: payload.franchiseOrder !== undefined },
+        { field: "totalPrice", inPayload: payload.totalPrice !== undefined },
+      ];
+
+      for (const { field, inPayload } of fieldsToCheck) {
+        if (inPayload) {
+          const permission = canEditOrderField(order, session.user, field);
+          if (!permission.allowed) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                message: permission.reason,
+                code: "PERMISSION_DENIED",
+                field: field,
+              }),
+              { status: 403, headers: { "Content-Type": "application/json" } }
+            );
+          }
+        }
       }
     }
 
@@ -471,18 +491,27 @@ export const PATCH = async (request, { params }) => {
             const rentalDays202 = Math.ceil(
               (end - start) / (1000 * 60 * 60 * 24)
             );
-            let totalPrice202 = 0;
-            let days202 = rentalDays202;
-            if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
-              const result = await carDoc.calculateTotalRentalPricePerDay(
-                start,
-                end,
-                payload.insurance ?? order.insurance,
-                payload.ChildSeats ?? order.ChildSeats
-              );
-              totalPrice202 = result.total;
-              days202 = result.days;
+            let totalPrice202 = order.totalPrice; // 🔧 FIX: Preserve existing price by default
+            let days202 = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+            
+            // Check if dates or price-affecting fields changed (not just time)
+            const datesChanged202 = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
+            const priceAffectingFieldsChanged202 = payload.insurance !== undefined || payload.ChildSeats !== undefined || payload.car !== undefined;
+            
+            if (datesChanged202 || priceAffectingFieldsChanged202) {
+              // Only recalculate if dates or price-affecting fields changed
+              if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
+                const result = await carDoc.calculateTotalRentalPricePerDay(
+                  start,
+                  end,
+                  payload.insurance ?? order.insurance,
+                  payload.ChildSeats ?? order.ChildSeats
+                );
+                totalPrice202 = result.total;
+                days202 = result.days;
+              }
             }
+            // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
             // Restored from pre-refactor conflict logic: Update order fields
             order.rentalStartDate = start.toDate();
@@ -540,25 +569,34 @@ export const PATCH = async (request, { params }) => {
 
       // Restored from pre-refactor conflict logic: No conflicts - proceed with update
       const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-      let totalPrice = 0;
-      let days = rentalDays;
+      let totalPrice = order.totalPrice; // 🔧 FIX: Preserve existing price by default
+      let days = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+
+      // Check if dates or price-affecting fields changed (not just time)
+      const datesChanged = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
+      const priceAffectingFieldsChanged = payload.insurance !== undefined || payload.ChildSeats !== undefined || payload.car !== undefined;
 
       // Restored from pre-refactor conflict logic: Pricing calculation (manual or automatic)
       if (
         typeof payload.totalPrice === "number" &&
         !isNaN(payload.totalPrice)
       ) {
+        // Manual price override
         totalPrice = payload.totalPrice;
-      } else if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
-        const result = await carDoc.calculateTotalRentalPricePerDay(
-          start,
-          end,
-          payload.insurance ?? order.insurance,
-          payload.ChildSeats ?? order.ChildSeats
-        );
-        totalPrice = result.total;
-        days = result.days;
+      } else if (datesChanged || priceAffectingFieldsChanged) {
+        // Only recalculate if dates or price-affecting fields changed
+        if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
+          const result = await carDoc.calculateTotalRentalPricePerDay(
+            start,
+            end,
+            payload.insurance ?? order.insurance,
+            payload.ChildSeats ?? order.ChildSeats
+          );
+          totalPrice = result.total;
+          days = result.days;
+        }
       }
+      // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
       // Restored from pre-refactor conflict logic: Update order fields
       order.rentalStartDate = start.toDate();

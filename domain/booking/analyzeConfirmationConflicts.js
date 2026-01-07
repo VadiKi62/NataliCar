@@ -76,9 +76,10 @@ function calculateGapHours(end1, start2) {
  * @returns {ConfirmationAnalysisResult}
  */
 export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, bufferHours }) {
+  console.log("analyzeConfirmationConflicts bufferHours:", bufferHours);
   // Используем bufferHours из параметра, если передан, иначе из BOOKING_RULES
   const effectiveBufferHours = bufferHours ?? BOOKING_RULES?.bufferHours ?? 2;
-
+  console.log("analyzeConfirmationConflicts effectiveBufferHours:", effectiveBufferHours);
   const result = {
     canConfirm: true,
     level: null,
@@ -166,8 +167,8 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
     const c = result.blockedByConfirmed[0];
     result.message =
       `Время пересекается с подтверждённым заказом «${c.customerName}». ` +
-      `Возврат: ${c.otherTimeOut} → Забор: ${c.otherTimeIn}. ` +
-      `Минимальный буфер: ${effectiveBufferHours} ч. ` +
+      `  Забор: ${c.otherTimeIn} → Возврат: ${c.otherTimeOut}. ` +
+      `Буфер: ${effectiveBufferHours} ч. ` +
       `Измените время или дату.`;
   } else if (result.affectedPendingOrders.length > 0) {
     // ⚠️ WARNING: информативно
