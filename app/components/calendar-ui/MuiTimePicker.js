@@ -19,9 +19,22 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { useTranslation } from "react-i18next";
 import { formatTimeHHMM, createAthensDateTime } from "@/domain/time/athensTime";
+import { keyframes } from "@mui/material/styles";
 
 // Необходимо для dayjs("18:00", "HH:mm")
 dayjs.extend(customParseFormat);
+
+// Анимация мигающей красной рамки для конфликтов
+const pulseRedBorder = keyframes`
+  0%, 100% {
+    border-color: #d32f2f;
+    box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4);
+  }
+  50% {
+    border-color: #f44336;
+    box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.2);
+  }
+`;
 
 /**
  * @param {Object} props
@@ -51,6 +64,10 @@ export default function TimePicker({
   // Показываем ТОЛЬКО warnings (жёлтые) — block-сообщения показываются при save
   const showPickupWarning = pickupSummary?.level === "warning";
   const showReturnWarning = returnSummary?.level === "warning";
+  
+  // Определяем есть ли конфликт (block или warning) для визуального выделения
+  const hasPickupConflict = pickupSummary !== null; // Есть конфликт (block или warning)
+  const hasReturnConflict = returnSummary !== null; // Есть конфликт (block или warning)
 
   /**
    * 🎯 Обработчик изменения времени
@@ -118,7 +135,26 @@ export default function TimePicker({
           disabled={disabled || pickupDisabled} // Только viewOnly/isCurrentOrder
           size="small"
           fullWidth
-          sx={{ flex: 1 }}
+          sx={{
+            flex: 1,
+            ...(hasPickupConflict && {
+              "& .MuiOutlinedInput-root": {
+                animation: `${pulseRedBorder} 2s ease-in-out infinite`,
+                borderWidth: "2px",
+                "& fieldset": {
+                  borderColor: "error.main",
+                  borderWidth: "2px",
+                },
+                "&:hover fieldset": {
+                  borderColor: "error.main",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "error.main",
+                  borderWidth: "2px",
+                },
+              },
+            }),
+          }}
         />
 
         {/* Return Time — НИКОГДА не блокируется из-за конфликтов */}
@@ -130,7 +166,26 @@ export default function TimePicker({
           disabled={disabled || returnDisabled} // Только viewOnly
           size="small"
           fullWidth
-          sx={{ flex: 1 }}
+          sx={{
+            flex: 1,
+            ...(hasReturnConflict && {
+              "& .MuiOutlinedInput-root": {
+                animation: `${pulseRedBorder} 2s ease-in-out infinite`,
+                borderWidth: "2px",
+                "& fieldset": {
+                  borderColor: "error.main",
+                  borderWidth: "2px",
+                },
+                "&:hover fieldset": {
+                  borderColor: "error.main",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "error.main",
+                  borderWidth: "2px",
+                },
+              },
+            }),
+          }}
         />
       </Box>
 

@@ -13,6 +13,10 @@
 
 import { fromServerUTC, formatTimeHHMM } from "../time/athensTime";
 import { BOOKING_RULES } from "./bookingRules";
+import {
+  formatConfirmedConflictMessage,
+  formatPendingConflictMessage,
+} from "./formatConflictMessages";
 
 /**
  * @typedef {Object} ConfirmationConflict
@@ -139,16 +143,32 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
 
     // Вычисляем разницу между возвратом и забором
     const gapHours = calculateGapHours(confirmingEnd, otherStart);
+    // Вычисляем разницу в минутах для более точного отображения
+    const gapMinutes = Math.round(otherStart.diff(confirmingEnd, "minute", true));
+
+    // Форматируем даты для конфликтующего заказа
+    const otherStartDate = fromServerUTC(order.rentalStartDate);
+    const otherEndDate = fromServerUTC(order.rentalEndDate);
+    const months = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
+    const formatDateReadable = (date) => {
+      if (!date) return "—";
+      return `${date.date()} ${months[date.month()]}`;
+    };
 
     const conflictInfo = {
       orderId,
       customerName: order.customerName || "Неизвестный",
+      email: order.email || null,
       isConfirmed: order.confirmed === true,
       overlapHours: Math.round(overlapHours * 10) / 10,
       effectiveConflictHours: Math.round((overlapHours + effectiveBufferHours) * 10) / 10,
       gapHours: Math.round(gapHours * 10) / 10,
+      gapMinutes: gapMinutes, // Добавляем минуты для форматирования сообщений
       otherTimeIn: formatTimeHHMM(otherStart),
       otherTimeOut: formatTimeHHMM(otherEnd),
+      confirmingReturnTime: formatTimeHHMM(confirmingEnd), // Время возврата подтверждаемого заказа
+      otherStartDateFormatted: formatDateReadable(otherStartDate),
+      otherEndDateFormatted: formatDateReadable(otherEndDate),
     };
 
     if (order.confirmed) {
@@ -165,11 +185,18 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
     result.level = "block";
 
     const c = result.blockedByConfirmed[0];
-    result.message =
-      `Время пересекается с подтверждённым заказом «${c.customerName}». ` +
-      `  Забор: ${c.otherTimeIn} → Возврат: ${c.otherTimeOut}. ` +
-      `Буфер: ${effectiveBufferHours} ч. ` +
-      `Измените время или дату.`;
+    // Используем gapMinutes, если доступен, иначе вычисляем из gapHours
+    const actualGapMinutes = c.gapMinutes !== undefined
+      ? Math.max(0, c.gapMinutes) // Гарантируем неотрицательное значение
+      : Math.round(c.gapHours * 60);
+
+    result.message = formatConfirmedConflictMessage({
+      conflictingOrderName: c.customerName,
+      currentReturnTime: c.confirmingReturnTime,
+      nextPickupTime: c.otherTimeIn,
+      actualGapMinutes: actualGapMinutes,
+      requiredBufferHours: effectiveBufferHours,
+    });
   } else if (result.affectedPendingOrders.length > 0) {
     // ⚠️ WARNING: информативно
     result.canConfirm = true;
@@ -179,10 +206,24 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
     const c = result.affectedPendingOrders[0];
 
     if (totalAffected === 1) {
-      result.message =
-        `Заказ подтверждён. ` +
-        `Конфликт с ожидающим заказом «${c.customerName}» (${c.otherTimeIn} - ${c.otherTimeOut}). ` +
-        `Этот заказ не сможет быть подтверждён без изменения времени.`;
+      // Форматируем даты конфликтующего заказа (уже вычислены в conflictInfo)
+      const conflictingOrderDates = `${c.otherStartDateFormatted} ${c.otherTimeIn} — ${c.otherEndDateFormatted} ${c.otherTimeOut}`;
+
+      // Используем gapMinutes, если доступен, иначе вычисляем из gapHours
+      const actualGapMinutes = c.gapMinutes !== undefined
+        ? Math.max(0, c.gapMinutes) // Гарантируем неотрицательное значение
+        : Math.round(c.gapHours * 60);
+
+      result.message = formatPendingConflictMessage({
+        conflictingOrderName: c.customerName,
+        conflictingOrderEmail: c.email,
+        conflictingOrderDates: conflictingOrderDates,
+        currentReturnTime: c.confirmingReturnTime,
+        nextPickupTime: c.otherTimeIn,
+        actualGapMinutes: actualGapMinutes,
+        requiredBufferHours: effectiveBufferHours,
+        bufferSettingsLink: "⚙️ Настройки буфера",
+      });
     } else {
       result.message =
         `Заказ подтверждён. ` +
@@ -241,13 +282,36 @@ export function canPendingOrderBeConfirmed({ pendingOrder, allOrders, bufferHour
 
     if (hasOverlap) {
       // 🔴 BLOCK: спокойное объяснение
+      // Вычисляем разницу между возвратом pending заказа и забором confirmed заказа
+      const gapMinutes = Math.round(otherStart.diff(pendingEnd, "minute", true));
+      const actualGapMinutes = Math.max(0, gapMinutes);
+      
+      // Определяем направление конфликта для подсветки времени
+      // Проверяем оба возможных направления конфликта
+      const gapReturnVsPickup = otherStart.diff(pendingEnd, "minute", true); // Возврат pending vs забор confirmed
+      const gapPickupVsReturn = pendingStart.diff(otherEnd, "minute", true); // Забор pending vs возврат confirmed
+      
+      // Конфликт по возврату: если возврат pending слишком близко к забору confirmed
+      const isReturnConflict = gapReturnVsPickup >= 0 && gapReturnVsPickup < effectiveBufferHours * 60;
+      // Конфликт по забору: если забор pending слишком близко к возврату confirmed
+      const isPickupConflict = gapPickupVsReturn >= 0 && gapPickupVsReturn < effectiveBufferHours * 60;
+      
+      // Определяем какое время конфликтует (приоритет возврату, если оба конфликтуют)
+      const conflictTime = isReturnConflict ? "return" : (isPickupConflict ? "pickup" : "return");
+
       return {
         canConfirm: false,
         blockingOrder: order,
-        message:
-          `Пересечение с подтверждённым заказом «${order.customerName || "Неизвестный"}» ` +
-          `(${formatTimeHHMM(otherStart)} - ${formatTimeHHMM(otherEnd)}). ` +
-          `Измените время или дату.`,
+        conflictTime, // "return" или "pickup" - какое время конфликтует
+        conflictReturnTime: formatTimeHHMM(pendingEnd), // Время возврата pending заказа
+        conflictPickupTime: formatTimeHHMM(otherStart), // Время забора confirmed заказа
+        message: formatConfirmedConflictMessage({
+          conflictingOrderName: order.customerName || "Неизвестный",
+          currentReturnTime: formatTimeHHMM(pendingEnd),
+          nextPickupTime: formatTimeHHMM(otherStart),
+          actualGapMinutes: actualGapMinutes,
+          requiredBufferHours: effectiveBufferHours,
+        }),
       };
     }
   }

@@ -95,7 +95,7 @@ export function useEditOrderConflicts({
       : null;
 
     // Получаем bufferTime из компании (или используем значение по умолчанию)
-    const bufferHours = company?.bufferTime ?? 1;
+    const bufferHours = company?.bufferTime ?? 0;
 
     // Анализируем конфликты для даты pickup
     const pickupResult = analyzeOrderTimeConflicts({

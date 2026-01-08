@@ -290,6 +290,12 @@ export const MainContextProvider = ({
     try {
       const { fetchCompany } = await import("@utils/action");
       const freshCompany = await fetchCompany(companyId);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[MainContext] Updating company", {
+          oldBufferTime: company?.bufferTime,
+          newBufferTime: freshCompany?.bufferTime,
+        });
+      }
       setCompany(freshCompany);
       companyDataRef.current = freshCompany;
       return { success: true, data: freshCompany };
@@ -300,7 +306,8 @@ export const MainContextProvider = ({
         errorMessage: error.message || "Failed to update company",
       };
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // company не нужен в зависимостях, так как мы используем его только для логирования
   const ordersByCarId = useCallback(
     (carId) => {
       return allOrders?.filter((order) => order.car === carId);
@@ -310,6 +317,12 @@ export const MainContextProvider = ({
 
   // 🎯 Computed map: какие pending заказы НЕ МОГУТ быть подтверждены
   const { pendingConfirmBlockById } = useMemo(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[MainContext] Recomputing pendingConfirmBlockById", {
+        bufferTime: company?.bufferTime,
+        ordersCount: allOrders?.length,
+      });
+    }
     return buildPendingConfirmBlockMap(allOrders, company);
   }, [allOrders, company]);
 

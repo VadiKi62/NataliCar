@@ -14,6 +14,7 @@
 
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { BOOKING_RULES } from "./bookingRules";
 import {
   ATHENS_TZ,
@@ -24,6 +25,10 @@ import {
   formatTimeHHMM,
   formatDateYYYYMMDD,
 } from "../time/athensTime";
+import {
+  formatConfirmedConflictMessage,
+  formatPendingConflictMessage,
+} from "./formatConflictMessages";
 
 /**
  * Форматирует дату в читаемый формат "D MMM" (например: "1 Фев")
@@ -58,6 +63,7 @@ function formatOrderInfo(order, timeIn, timeOut, startDate, endDate) {
 }
 
 dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 /**
  * @typedef {Object} ConflictSummary
@@ -111,12 +117,16 @@ function doTimesOverlap(start1, end1, start2, end2, bufferHours) {
   // Случай 1: заказ 1 возвращается раньше, чем заказ 2 забирается
   // end1 должен быть минимум на bufferHours раньше start2
   const gap1 = start2.diff(end1, "hour", true);
-  const violatesBuffer1 = gap1 < bufferHours;
+  // Проверяем буфер ТОЛЬКО если gap >= 0 (т.е. end1 <= start2)
+  // Отрицательный gap означает пересечение интервалов — не этот случай
+  const violatesBuffer1 = gap1 >= 0 && gap1 < bufferHours;
   
   // Случай 2: заказ 2 возвращается раньше, чем заказ 1 забирается
   // end2 должен быть минимум на bufferHours раньше start1
   const gap2 = start1.diff(end2, "hour", true);
-  const violatesBuffer2 = gap2 < bufferHours;
+  // Проверяем буфер ТОЛЬКО если gap >= 0 (т.е. end2 <= start1)
+  // Отрицательный gap означает пересечение интервалов — не этот случай
+  const violatesBuffer2 = gap2 >= 0 && gap2 < bufferHours;
   
   const overlap = violatesBuffer1 || violatesBuffer2;
 
@@ -251,9 +261,7 @@ export function analyzeOrderTimeConflicts({
       );
     }
 
-    // Если у нас есть время редактируемого заказа — проверяем РЕАЛЬНОЕ пересечение
-    if (editingStart && editingEnd) {
-      // Определяем время другого заказа на этот день
+    // Определяем время другого заказа на этот день (нужно для проверки пересечения и расчёта gap)
       let otherStart, otherEnd;
 
       if (targetDay.isSame(orderStartDay, "day") && targetDay.isSame(orderEndDay, "day")) {
@@ -274,6 +282,8 @@ export function analyzeOrderTimeConflicts({
         otherEnd = athensEndOfDay(date);
       }
 
+    // Если у нас есть время редактируемого заказа — проверяем РЕАЛЬНОЕ пересечение
+    if (editingStart && editingEnd) {
       // Проверяем пересечение с учётом буфера
       const hasTimeOverlap = doTimesOverlap(
         editingStart,
@@ -293,22 +303,162 @@ export function analyzeOrderTimeConflicts({
     
     // Форматируем информацию о конфликтующем заказе
     const info = formatOrderInfo(order, otherTimeIn, otherTimeOut, orderStartDay, orderEndDay);
+    
+    // 🎯 Получаем фактическое время возврата (business return time), не техническую границу дня
+    // Используем editingReturnTime если доступно, иначе форматируем из editingOrder.timeOut
+    const businessReturnTime = editingReturnTime 
+      ? editingReturnTime 
+      : (editingOrder.timeOut ? formatTimeHHMM(fromServerUTC(editingOrder.timeOut)) : "—");
+    
+    // 🎯 Получаем фактическое время забора (business pickup time)
+    // Используем editingPickupTime если доступно, иначе форматируем из editingOrder.timeIn
+    const businessPickupTime = editingPickupTime 
+      ? editingPickupTime 
+      : (editingOrder.timeIn ? formatTimeHHMM(fromServerUTC(editingOrder.timeIn)) : null);
 
     // 🟢 confirmed (editing) → pending (other) = INFO
     if (editingConfirmed && !otherConfirmed) {
       hasWarning = true;
-      warningMessage = `Пересечение с неподтверждённым заказом: «${info.fullName}» ` +
-        `(${info.pickupDate} ${info.pickupTime} — ${info.returnDate} ${info.returnTime}). ` +
-        `Буфер между заказами: ${effectiveBufferHours} ч.`;
+      
+      // Определяем направление конфликта используя РЕАЛЬНЫЕ времена заказов (не на конкретную дату)
+      // Получаем реальные времена заказов
+      const editingRealStart = editingPickupTime 
+        ? createAthensDateTime(formatDateYYYYMMDD(fromServerUTC(editingOrder.rentalStartDate)), editingPickupTime)
+        : fromServerUTC(editingOrder.timeIn);
+      const editingRealEnd = editingReturnTime
+        ? createAthensDateTime(formatDateYYYYMMDD(fromServerUTC(editingOrder.rentalEndDate)), editingReturnTime)
+        : fromServerUTC(editingOrder.timeOut);
+      const otherRealStart = otherTimeIn;
+      const otherRealEnd = otherTimeOut;
+      
+      // Вычисляем оба возможных gap (в минутах)
+      // gap1: возврат редактируемого → забор другого (положительный если возврат раньше забора)
+      const gapReturnVsPickup = otherRealStart.diff(editingRealEnd, "minute", true);
+      // gap2: возврат другого → забор редактируемого (положительный если возврат другого раньше забора редактируемого)
+      const gapPickupVsReturn = editingRealStart.diff(otherRealEnd, "minute", true);
+      
+      // Определяем направление конфликта: какой gap положительный и нарушает буфер
+      // Если gap положительный и < буфера → нарушение буфера
+      const violatesBufferReturnVsPickup = gapReturnVsPickup >= 0 && gapReturnVsPickup < effectiveBufferHours * 60;
+      const violatesBufferPickupVsReturn = gapPickupVsReturn >= 0 && gapPickupVsReturn < effectiveBufferHours * 60;
+      
+      let gapMinutes, actualGapMinutes;
+      let isPickupVsReturn = false;
+      
+      // Приоритет: если оба нарушают буфер, выбираем меньший gap
+      if (violatesBufferPickupVsReturn && violatesBufferReturnVsPickup) {
+        // Оба нарушают — выбираем меньший gap
+        if (gapPickupVsReturn < gapReturnVsPickup) {
+          isPickupVsReturn = true;
+          gapMinutes = gapPickupVsReturn;
+        } else {
+          gapMinutes = gapReturnVsPickup;
+        }
+      } else if (violatesBufferPickupVsReturn) {
+        // Только забор редактируемого конфликтует с возвратом другого
+        isPickupVsReturn = true;
+        gapMinutes = gapPickupVsReturn;
+      } else if (violatesBufferReturnVsPickup) {
+        // Только возврат редактируемого конфликтует с забором другого
+        gapMinutes = gapReturnVsPickup;
+      } else {
+        // Если оба gap отрицательные (пересечение) или оба >= буфера, но есть пересечение
+        // Используем минимальный gap по абсолютной величине для отображения
+        if (gapPickupVsReturn >= 0 && gapReturnVsPickup >= 0) {
+          // Оба положительные, но >= буфера — берём меньший для отображения
+          gapMinutes = Math.min(gapPickupVsReturn, gapReturnVsPickup);
+          isPickupVsReturn = gapPickupVsReturn < gapReturnVsPickup;
+        } else if (gapPickupVsReturn >= 0) {
+          gapMinutes = gapPickupVsReturn;
+          isPickupVsReturn = true;
+        } else if (gapReturnVsPickup >= 0) {
+          gapMinutes = gapReturnVsPickup;
+        } else {
+          // Оба отрицательные (прямое пересечение) — используем gap для забора vs возврата
+          // так как это более вероятный сценарий для confirmed → pending
+          isPickupVsReturn = true;
+          gapMinutes = Math.abs(gapPickupVsReturn);
+        }
+      }
+      actualGapMinutes = Math.max(0, Math.round(gapMinutes));
+
+      const conflictingOrderDates = `${info.pickupDate} ${info.pickupTime} — ${info.returnDate} ${info.returnTime}`;
+      
+      // Передаём параметры в зависимости от направления конфликта
+      if (isPickupVsReturn) {
+        // Забор редактируемого конфликтует с возвратом другого
+        warningMessage = formatPendingConflictMessage({
+          conflictingOrderName: info.name,
+          conflictingOrderEmail: order.email || null,
+          conflictingOrderDates: conflictingOrderDates,
+          currentPickupTime: businessPickupTime,
+          nextReturnTime: info.returnTime,
+          actualGapMinutes: actualGapMinutes,
+          requiredBufferHours: effectiveBufferHours,
+          bufferSettingsLink: "⚙️ Настройки буфера",
+        });
+      } else {
+        // Возврат редактируемого конфликтует с забором другого (по умолчанию)
+        warningMessage = formatPendingConflictMessage({
+          conflictingOrderName: info.name,
+          conflictingOrderEmail: order.email || null,
+          conflictingOrderDates: conflictingOrderDates,
+          currentReturnTime: businessReturnTime,
+          nextPickupTime: info.pickupTime,
+          actualGapMinutes: actualGapMinutes,
+          requiredBufferHours: effectiveBufferHours,
+          bufferSettingsLink: "⚙️ Настройки буфера",
+        });
+      }
       return;
     }
 
     // 🔴 pending (editing) → confirmed (other) = BLOCK
     if (!editingConfirmed && otherConfirmed) {
       hasBlock = true;
-      blockMessage = `Пересечение с подтверждённым заказом: «${info.fullName}» ` +
-        `(${info.pickupDate} ${info.pickupTime} — ${info.returnDate} ${info.returnTime}). ` +
-        `Буфер: ${effectiveBufferHours} ч. ⚙️`;
+      
+      // Определяем направление конфликта:
+      // 1. Если редактируемый заканчивается до/около начала другого → "возврат vs забор"
+      // 2. Если редактируемый начинается после/около конца другого → "забор vs возврат"
+      const isReturnVsPickup = editingEnd && otherStart && editingEnd.isSameOrBefore(otherStart);
+      const isPickupVsReturn = editingStart && otherEnd && otherEnd.isSameOrBefore(editingStart);
+      
+      let gapMinutes, actualGapMinutes;
+      
+      if (isReturnVsPickup) {
+        // Возврат редактируемого → забор другого
+        gapMinutes = otherStart.diff(editingEnd, "minute", true);
+      } else if (isPickupVsReturn) {
+        // Возврат другого → забор редактируемого
+        gapMinutes = editingStart.diff(otherEnd, "minute", true);
+      } else {
+        // Прямое пересечение — берём минимальный gap
+        const gap1 = otherStart ? otherStart.diff(editingEnd, "minute", true) : Infinity;
+        const gap2 = editingStart ? editingStart.diff(otherEnd, "minute", true) : Infinity;
+        gapMinutes = Math.min(Math.abs(gap1), Math.abs(gap2));
+      }
+      actualGapMinutes = Math.max(0, Math.round(gapMinutes));
+
+      // Передаём параметры в зависимости от направления конфликта
+      if (isPickupVsReturn) {
+        // Забор редактируемого конфликтует с возвратом другого
+        blockMessage = formatConfirmedConflictMessage({
+          conflictingOrderName: info.name,
+          currentPickupTime: businessPickupTime,
+          nextReturnTime: info.returnTime,
+          actualGapMinutes: actualGapMinutes,
+          requiredBufferHours: effectiveBufferHours,
+        });
+      } else {
+        // Возврат редактируемого конфликтует с забором другого (по умолчанию)
+        blockMessage = formatConfirmedConflictMessage({
+          conflictingOrderName: info.name,
+          currentReturnTime: businessReturnTime,
+          nextPickupTime: info.pickupTime,
+          actualGapMinutes: actualGapMinutes,
+          requiredBufferHours: effectiveBufferHours,
+        });
+      }
 
       // Устанавливаем границы времени
       if (targetDay.isSame(orderStartDay, "day")) {
@@ -330,18 +480,46 @@ export function analyzeOrderTimeConflicts({
     // 🟡 pending → pending = INFO
     if (!editingConfirmed && !otherConfirmed) {
       hasWarning = true;
-      warningMessage = `Пересечение с неподтверждённым заказом: «${info.fullName}» ` +
-        `(${info.pickupDate} ${info.pickupTime} — ${info.returnDate} ${info.returnTime}). ` +
-        `Буфер между заказами: ${effectiveBufferHours} ч.`;
+      // Вычисляем разницу между возвратом редактируемого заказа и забором другого заказа
+      const gapMinutes = editingEnd && otherStart
+        ? Math.round(otherStart.diff(editingEnd, "minute", true))
+        : 0;
+      const actualGapMinutes = Math.max(0, gapMinutes);
+
+      const conflictingOrderDates = `${info.pickupDate} ${info.pickupTime} — ${info.returnDate} ${info.returnTime}`;
+      // Определяем направление конфликта: gap рассчитывается как otherStart - editingEnd (return vs pickup)
+      // Поэтому передаём return/pickup времена
+      warningMessage = formatPendingConflictMessage({
+        conflictingOrderName: info.name,
+        conflictingOrderEmail: order.email || null,
+        conflictingOrderDates: conflictingOrderDates,
+        currentReturnTime: businessReturnTime,
+        nextPickupTime: info.pickupTime,
+        actualGapMinutes: actualGapMinutes,
+        requiredBufferHours: effectiveBufferHours,
+        bufferSettingsLink: "⚙️",
+      });
       return;
     }
 
     // 🔴 confirmed → confirmed = BLOCK
     if (editingConfirmed && otherConfirmed) {
       hasBlock = true;
-      blockMessage = `Пересечение с подтверждённым заказом: «${info.fullName}» ` +
-        `(${info.pickupDate} ${info.pickupTime} — ${info.returnDate} ${info.returnTime}). ` +
-        `Буфер: ${effectiveBufferHours} ч. ⚙️`;
+      // Вычисляем разницу между возвратом редактируемого заказа и забором другого заказа
+      const gapMinutes = editingEnd && otherStart
+        ? Math.round(otherStart.diff(editingEnd, "minute", true))
+        : 0;
+      const actualGapMinutes = Math.max(0, gapMinutes);
+
+      // Определяем направление конфликта: gap рассчитывается как otherStart - editingEnd (return vs pickup)
+      // Поэтому передаём return/pickup времена
+      blockMessage = formatConfirmedConflictMessage({
+        conflictingOrderName: info.name,
+        currentReturnTime: businessReturnTime,
+        nextPickupTime: info.pickupTime,
+        actualGapMinutes: actualGapMinutes,
+        requiredBufferHours: effectiveBufferHours,
+      });
     }
   });
 

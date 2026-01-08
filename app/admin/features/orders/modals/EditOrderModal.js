@@ -10,6 +10,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Button,
   Checkbox,
   FormControlLabel,
   Autocomplete,
@@ -59,6 +60,22 @@ dayjs.extend(timezone);
 
 // ⚠️ УДАЛЁН: timeZone константа и dayjs.tz.setDefault()
 // Теперь используем athensTime.js для всей работы с таймзонами
+
+/**
+ * PRICE ARCHITECTURE HELPER
+ * 
+ * Returns the effective price used by UI, invoices, and payments
+ * effectivePrice = OverridePrice !== null ? OverridePrice : totalPrice
+ */
+const getEffectivePrice = (order) => {
+  if (!order) return 0;
+  // If OverridePrice is set (not null/undefined), use it
+  if (order.OverridePrice !== null && order.OverridePrice !== undefined) {
+    return Number(order.OverridePrice);
+  }
+  // Otherwise use auto-calculated totalPrice
+  return Number(order.totalPrice) || 0;
+};
 
 const EditOrderModal = ({
   open,
@@ -225,57 +242,6 @@ const EditOrderModal = ({
   // Keeping old name for backward compatibility in UI
   const handleOrderUpdate = handleSave;
 
-  // handleChangeSelectedBox and handleChange are replaced by updateField from hook
-
-  const renderField = (label, field, type = "text") => {
-    if (!editedOrder) return null;
-
-    let inputType = type;
-    let value;
-
-    switch (type) {
-      case "date":
-        value = editedOrder[field].format("YYYY-MM-DD");
-        inputType = "date";
-        break;
-      case "time":
-        value = editedOrder[field].format("HH:mm");
-        inputType = "time";
-        break;
-      case "boolean":
-        value = editedOrder[field] ? "Yes" : "No";
-        inputType = "checkbox";
-        break;
-      default:
-        value = editedOrder[field];
-    }
-
-    return (
-      <Box sx={{ mb: 1 }}>
-        <Typography
-          variant="body2"
-          component="span"
-          sx={{ fontWeight: "bold", mr: 1 }}
-        >
-          {label}:
-        </Typography>
-        <TextField
-          size="small"
-          value={value}
-          onChange={(e) => {
-            if (permissions.viewOnly) return; // запрет изменения
-            const newValue = e.target.value;
-            handleChange(field, newValue);
-          }}
-          type={inputType}
-          disabled={permissions.viewOnly}
-          InputProps={{ readOnly: permissions.viewOnly }}
-        />
-      </Box>
-    );
-  };
-
-  const theme = useTheme();
   
   // Dev-only: Permission audit log
   useEffect(() => {
@@ -331,7 +297,46 @@ const EditOrderModal = ({
       ...result,
       isBlocked: !result.canConfirm,
     };
-  }, [editedOrder, allOrders, company]);
+  }, [editedOrder, allOrders, company, pendingConfirmBlockById]);
+
+  // Создаём summary для конфликта подтверждения (для подсветки времени)
+  const confirmationConflictSummary = useMemo(() => {
+    if (!confirmationCheck || confirmationCheck.canConfirm) {
+      return null;
+    }
+    
+    // Если есть информация о времени конфликта, создаём summary
+    if (confirmationCheck.conflictTime) {
+      return {
+        level: "block", // Всегда block для конфликтов подтверждения
+        message: confirmationCheck.message,
+        conflictTime: confirmationCheck.conflictTime, // "return" или "pickup"
+      };
+    }
+    
+    // Fallback: если нет conflictTime, но есть message, создаём summary без указания времени
+    return {
+      level: "block",
+      message: confirmationCheck.message,
+    };
+  }, [confirmationCheck]);
+
+  // Объединяем конфликт подтверждения с summary для подсветки времени
+  const finalPickupSummary = useMemo(() => {
+    if (confirmationConflictSummary?.conflictTime === "pickup") {
+      // Если конфликт подтверждения относится к pickup времени, объединяем
+      return confirmationConflictSummary;
+    }
+    return pickupSummary;
+  }, [confirmationConflictSummary, pickupSummary]);
+  
+  const finalReturnSummary = useMemo(() => {
+    if (confirmationConflictSummary?.conflictTime === "return") {
+      // Если конфликт подтверждения относится к return времени, объединяем
+      return confirmationConflictSummary;
+    }
+    return returnSummary;
+  }, [confirmationConflictSummary, returnSummary]);
 
   // Проверка, заблокирована ли кнопка подтверждения
   const isConfirmationDisabled =
@@ -410,81 +415,130 @@ const EditOrderModal = ({
                 </Box>{" "}
                 | {t("order.price")}
               </Typography>
-              <TextField
-                value={
-                  editedOrder.totalPrice !== undefined &&
-                  editedOrder.totalPrice !== null
-                    ? editedOrder.totalPrice
-                    : ""
-                }
-                onChange={(e) => {
-                  if (permissions.viewOnly || !permissions.fieldPermissions.totalPrice) return;
-                  const val = e.target.value.replace(/[^0-9]/g, "");
-                  updateField("totalPrice", val ? Number(val) : 0);
-                }}
-                variant="outlined"
-                size="small"
-                inputProps={{
-                  maxLength: 4,
-                  inputMode: "numeric",
-                  pattern: "[0-9]*",
-                }}
-                InputProps={{
-                  endAdornment: (
-                    <Box
-                      component="span"
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: 18,
-                        ml: 0,
-                        mr: "-8px",
-                        color: "primary.dark",
+              {(() => {
+                /**
+                 * PRICE FLOW (IMPORTANT)
+                 *
+                 * totalPrice
+                 *   - ALWAYS auto-calculated price
+                 *   - Updated ONLY by backend recalculation
+                 *
+                 * OverridePrice
+                 *   - Manual price set by admin
+                 *   - NEVER changed automatically
+                 *
+                 * effectivePrice =
+                 *   OverridePrice !== null ? OverridePrice : totalPrice
+                 *
+                 * UI rules:
+                 * - Inline edit → sets OverridePrice
+                 * - Recalculate button → updates totalPrice ONLY
+                 * - UI displays effectivePrice
+                 * - Admin can reset OverridePrice explicitly
+                 */
+                const effectivePrice = getEffectivePrice(editedOrder);
+                const hasManualOverride = editedOrder?.OverridePrice !== null && editedOrder?.OverridePrice !== undefined;
+                
+                return (
+                  <>
+                    <TextField
+                      value={
+                        effectivePrice !== undefined &&
+                        effectivePrice !== null
+                          ? effectivePrice
+                          : ""
+                      }
+                      onChange={(e) => {
+                        if (permissions.viewOnly || !permissions.fieldPermissions.totalPrice) return;
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        // 🔧 PRICE ARCHITECTURE: Manual input sets OverridePrice
+                        updateField("totalPrice", val ? Number(val) : 0, {
+                          source: "manual",
+                        });
                       }}
-                    >
-                      €
-                    </Box>
-                  ),
-                }}
-                sx={{
-                  ml: 1,
-                  width: "90px",
-                  "& .MuiInputBase-input": {
-                    fontWeight: 700,
-                    fontSize: 18,
-                    textAlign: "right",
-                    letterSpacing: 1,
-                    width: "5ch",
-                    padding: "8px 8px 8px 12px",
-                    boxSizing: "content-box",
-                    color: "primary.dark",
-                  },
-                }}
-                disabled={permissions.viewOnly || !permissions.fieldPermissions.totalPrice}
-              />
+                      variant="outlined"
+                      size="small"
+                      inputProps={{
+                        maxLength: 4,
+                        inputMode: "numeric",
+                        pattern: "[0-9]*",
+                      }}
+                      InputProps={{
+                        endAdornment: (
+                          <Box
+                            component="span"
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: 18,
+                              ml: 0,
+                              mr: "-8px",
+                              color: "primary.dark",
+                            }}
+                          >
+                            €
+                          </Box>
+                        ),
+                      }}
+                      sx={{
+                        ml: 1,
+                        width: "90px",
+                        "& .MuiInputBase-input": {
+                          fontWeight: 700,
+                          fontSize: 18,
+                          textAlign: "right",
+                          letterSpacing: 1,
+                          width: "5ch",
+                          padding: "8px 8px 8px 12px",
+                          boxSizing: "content-box",
+                          color: "primary.dark",
+                        },
+                      }}
+                      disabled={permissions.viewOnly || !permissions.fieldPermissions.totalPrice}
+                    />
+                    {/* Visual marker for manual override + button to return to auto */}
+                    {hasManualOverride && (
+                      <Box sx={{ ml: 1, mt: 0.5 }}>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: "warning.main",
+                            fontSize: "0.7rem",
+                            display: "block",
+                            mb: 0.5,
+                          }}
+                        >
+                          ✏️ Manual price (auto: €{editedOrder.totalPrice?.toFixed(2) || "0"})
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => {
+                            if (permissions.viewOnly || !permissions.fieldPermissions.totalPrice) return;
+                            // Return to auto price: use CURRENT totalPrice and clear OverridePrice
+                            // This ensures we use the latest calculated price, not a stale one
+                            updateField("totalPrice", editedOrder.totalPrice, {
+                              source: "auto",
+                              clearOverride: true,
+                            });
+                          }}
+                          sx={{
+                            fontSize: "0.65rem",
+                            py: 0.25,
+                            px: 1,
+                            minWidth: "auto",
+                          }}
+                        >
+                          Вернуть автоматическую цену
+                        </Button>
+                      </Box>
+                    )}
+                  </>
+                );
+              })()}
             </Box>
 
-            {/* Отладочная информация для поля my_order - ЗАКОММЕНТИРОВАНО */}
-            {/*
-            <Box
-              display="flex"
-              alignContent="center"
-              alignItems="center"
-              justifyContent="center"
-              sx={{ 
-                bgcolor: editedOrder?.my_order ? '#e8f5e8' : '#fff5f5',
-                p: 1,
-                borderRadius: 1,
-                border: '1px solid',
-                borderColor: editedOrder?.my_order ? '#4caf50' : '#f44336',
-                my: 1
-              }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                🐛 DEBUG: my_order = {editedOrder?.my_order ? 'true' : 'false'}
-                {editedOrder?.my_order ? ' (Заказ с главной страницы)' : ' (Админский заказ)'}
-              </Typography>
-            </Box>
-            */}
+        
 
             <Divider
               sx={{
@@ -494,31 +548,7 @@ const EditOrderModal = ({
               }}
             />
 
-            {/* --- ВЫПАДАЮЩИЙ СПИСОК ДЛЯ ВЫБОРА АВТОМОБИЛЯ --- */}
-            {/* <FormControl fullWidth sx={{ mb: 1, minHeight: 36 }} size="small">
-              <InputLabel id="car-select-label">{t("order.car")}</InputLabel>
-              <Select
-                labelId="car-select-label"
-                value={editedOrder.car}
-                label={t("order.car")}
-                name="car"
-                size="small"
-                onChange={(e) =>
-                  updateField("car", e.target.value)
-                }
-                sx={{ minHeight: 36 }}
-              >
-                {cars &&
-                  [...cars]
-                    .sort((a, b) => a.model.localeCompare(b.model)) // сортировка по алфавиту по модели
-                    .map((car) => (
-                      <MenuItem key={car._id} value={car._id}>
-                        {car.model} {car.regNumber}
-                      </MenuItem>
-                    ))}
-              </Select>
-            </FormControl> */}
-            {/* --- КОНЕЦ ВЫБОРА АВТОМОБИЛЯ --- */}
+          
 
             <Box sx={{ mb: 2 }}>
               <ActionButton
@@ -538,15 +568,46 @@ const EditOrderModal = ({
                 }
                 sx={isConfirmationDisabled ? disabledStyles : enabledStyles}
               />
-              {/* ⚠️ Показываем сообщение о блокировке подтверждения */}
+              {/* 🔴 Показываем сообщение о блокировке подтверждения */}
               {!editedOrder?.confirmed && confirmationCheck.message && (
-                <Typography
-                  variant="caption"
-                  color="error"
-                  sx={{ mt: 0.5, display: "block", textAlign: "center" }}
+                <Box
+                  sx={{
+                    mt: 1,
+                    mb: 1,
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: "error.lighter",
+                    border: "1px solid",
+                    borderColor: "error.main",
+                  }}
                 >
-                  {confirmationCheck.message}
+                  <Typography variant="body2" sx={{ color: "error.main", fontWeight: 500 }}>
+                    🔴 Невозможно подтвердить заказ
+                  </Typography>
+                <Typography
+                    variant="body2" 
+                    component="div"
+                    sx={{ color: "error.dark", fontSize: 12, mt: 0.5 }}
+                  >
+                    {confirmationCheck.message.split(/⚙️/).map((part, index, arr) => (
+                      index < arr.length - 1 ? (
+                        <span key={index}>
+                          {part}
+                          <span 
+                            onClick={() => setBufferModalOpen(true)}
+                            style={{ 
+                              cursor: "pointer", 
+                              textDecoration: "underline",
+                              color: "#1976d2"
+                            }}
+                          >
+                            ⚙️ Настройки буфера
+                          </span>
+                        </span>
+                      ) : part
+                    ))}
                 </Typography>
+                </Box>
               )}
             </Box>
 
@@ -610,8 +671,8 @@ const EditOrderModal = ({
                 disabled={permissions.viewOnly || (!permissions.fieldPermissions.timeIn && !permissions.fieldPermissions.timeOut)}
                 pickupDisabled={permissions.viewOnly || !permissions.fieldPermissions.timeIn}
                 returnDisabled={permissions.viewOnly || !permissions.fieldPermissions.timeOut}
-                pickupSummary={pickupSummary}
-                returnSummary={returnSummary}
+                pickupSummary={finalPickupSummary}
+                returnSummary={finalReturnSummary}
               />
 
               {/* 🔴 Block-сообщение — ТОЛЬКО после попытки сохранения */}
@@ -637,7 +698,7 @@ const EditOrderModal = ({
                     {(pickupSummary?.level === "block"
                       ? pickupSummary.message
                       : returnSummary?.message
-                    )?.split("⚙️").map((part, index, arr) => (
+                    )?.split(/⚙️/).map((part, index, arr) => (
                       index < arr.length - 1 ? (
                         <span key={index}>
                           {part}
