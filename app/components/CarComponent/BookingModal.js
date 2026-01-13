@@ -18,7 +18,6 @@ import {
   DialogContent,
   Typography,
   Box,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -27,8 +26,15 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { ConfirmButton, CancelButton } from "../ui";
-import Autocomplete from "@mui/material/Autocomplete";
+import {
+  ConfirmButton,
+  CancelButton,
+  BookingDateField,
+  BookingTimeField,
+  BookingTextField,
+  BookingLocationAutocomplete,
+  BookingFlightField,
+} from "../ui";
 import { useTranslation } from "react-i18next";
 import { addOrderNew } from "@utils/action";
 import SuccessMessage from "@/app/components/ui/feedback/SuccessMessage";
@@ -39,6 +45,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useMainContext } from "../../Context";
 import { useSnackbar } from "notistack";
+import { calculateTotalPrice } from "@utils/action";
 // 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
 import {
   ATHENS_TZ,
@@ -65,6 +72,7 @@ const BookingModal = ({
   fetchAndUpdateOrders,
   isLoading,
   selectedTimes,
+  initialPrice = null, // Просчитанная цена из календаря
 }) => {
   const { enqueueSnackbar } = useSnackbar();
   const [daysAndTotal, setDaysAndTotal] = useState({ days: 0, totalPrice: 0 });
@@ -111,23 +119,14 @@ const BookingModal = ({
     }
     setCalcLoading(true);
     try {
-      const res = await fetch("/api/order/calcTotalPrice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          carNumber: car.carNumber,
-          rentalStartDate: presetDates.startDate,
-          rentalEndDate: presetDates.endDate,
-          kacko: insurance,
-          childSeats: childSeats,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDaysAndTotal({ days: data.days, totalPrice: data.totalPrice });
-      } else {
-        setDaysAndTotal({ days: 0, totalPrice: 0 });
-      }
+      const result = await calculateTotalPrice(
+        car.carNumber,
+        presetDates.startDate,
+        presetDates.endDate,
+        insurance,
+        childSeats
+      );
+      setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
     } catch {
       setDaysAndTotal({ days: 0, totalPrice: 0 });
     } finally {
@@ -402,7 +401,7 @@ const BookingModal = ({
         setFranchiseOrder(0);
       }
     }
-  }, [open]);
+  }, [open, car]);
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -566,10 +565,19 @@ const BookingModal = ({
     onClose();
   };
 
+  // Предотвращаем закрытие модального окна при клике вне его или нажатии Escape
+  const handleDialogClose = (event, reason) => {
+    // Закрываем только если это не backdropClick и не escapeKeyDown
+    if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
+      handleModalClose();
+    }
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleDialogClose}
+      disableEscapeKeyDown
       fullWidth
       maxWidth="sm"
       sx={{
@@ -675,59 +683,52 @@ const BookingModal = ({
                   lineHeight: 1.14,
                 }}
               >
-                {calcLoading ? (
+                <>
                   <Typography
+                    component="div"
                     variant="body2"
-                    sx={{ fontSize: { xs: "0.94rem", sm: "1.1rem" } }}
+                    sx={{
+                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
+                      m: 0,
+                      lineHeight: 1.14,
+                    }}
                   >
-                    {t("order.calculating")}
+                    {t("order.daysNumber", { count: daysAndTotal.days })}
+                    <Box
+                      component="span"
+                      sx={{
+                        fontWeight: "bold",
+                        color: "primary.main",
+                        mx: 0.5,
+                      }}
+                    >
+                      {daysAndTotal.days}
+                    </Box>
                   </Typography>
-                ) : (
-                  <>
-                    <Typography
-                      component="div"
-                      variant="body2"
+                  <Typography
+                    component="div"
+                    variant="body2"
+                    sx={{
+                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
+                      m: 0,
+                      lineHeight: 1.14,
+                    }}
+                  >
+                    {t("order.price")}
+                    <Box
+                      component="span"
                       sx={{
-                        fontSize: { xs: "0.94rem", sm: "1.1rem" },
-                        m: 0,
-                        lineHeight: 1.14,
+                        fontWeight: "bold",
+                        color: "primary.main",
+                        mx: 0.5,
                       }}
                     >
-                      {t("order.daysNumber", { count: daysAndTotal.days })}
-                      <Box
-                        component="span"
-                        sx={{
-                          fontWeight: "bold",
-                          color: "primary.main",
-                          mx: 0.5,
-                        }}
-                      >
-                        {daysAndTotal.days}
-                      </Box>
-                    </Typography>
-                    <Typography
-                      component="div"
-                      variant="body2"
-                      sx={{
-                        fontSize: { xs: "0.94rem", sm: "1.1rem" },
-                        m: 0,
-                        lineHeight: 1.14,
-                      }}
-                    >
-                      {t("order.price")}
-                      <Box
-                        component="span"
-                        sx={{
-                          fontWeight: "bold",
-                          color: "primary.main",
-                          mx: 0.5,
-                        }}
-                      >
-                        {daysAndTotal.totalPrice}€
-                      </Box>
-                    </Typography>
-                  </>
-                )}
+                      {calcLoading 
+                        ? "" 
+                        : `${daysAndTotal.totalPrice}€`}
+                    </Box>
+                  </Typography>
+                </>
               </Box>
             </Box>
           )}
@@ -779,36 +780,16 @@ const BookingModal = ({
                         gap: 1,
                       }}
                     >
-                      <TextField
+                      <BookingDateField
                         label={t("order.pickupDate") || "Дата получения"}
-                        variant="outlined"
                         value={
                           presetDates?.startDate
                             ? dayjs(presetDates.startDate).format("DD.MM.YYYY")
                             : ""
                         }
-                        InputLabelProps={{ shrink: true }}
-                        InputProps={{ readOnly: true }}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": {
-                            py: 0,
-                            px: 1.5,
-                            color: "primary.main",
-                            fontWeight: 600,
-                          },
-                        }}
-                        size="small"
                       />
-                      <TextField
+                      <BookingTimeField
                         label={t("order.pickupTime")}
-                        type="time"
-                        variant="outlined"
-                        InputLabelProps={{ shrink: true }}
                         value={startTime.format("HH:mm")}
                         inputProps={
                           timeLimits.minStart
@@ -816,15 +797,6 @@ const BookingModal = ({
                             : {}
                         }
                         onChange={(e) => handleStartTimeChange(e.target.value)}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
-                        }}
-                        size="small"
                         error={Boolean(timeErrors)}
                         helperText={
                           timeErrors
@@ -849,50 +821,21 @@ const BookingModal = ({
                         gap: 1,
                       }}
                     >
-                      <TextField
+                      <BookingDateField
                         label={t("order.returnDate") || "Дата возврата"}
-                        variant="outlined"
                         value={
                           presetDates?.endDate
                             ? dayjs(presetDates.endDate).format("DD.MM.YYYY")
                             : ""
                         }
-                        InputLabelProps={{ shrink: true }}
-                        InputProps={{ readOnly: true }}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": {
-                            py: 0,
-                            px: 1.5,
-                            color: "primary.main",
-                            fontWeight: 600,
-                          },
-                        }}
-                        size="small"
                       />
-                      <TextField
+                      <BookingTimeField
                         label={t("order.returnTime")}
-                        type="time"
-                        variant="outlined"
-                        InputLabelProps={{ shrink: true }}
                         value={endTime.format("HH:mm")}
                         inputProps={
                           timeLimits.maxEnd ? { max: timeLimits.maxEnd } : {}
                         }
                         onChange={(e) => handleEndTimeChange(e.target.value)}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
-                        }}
-                        size="small"
                         error={Boolean(timeErrors)}
                         helperText={
                           timeErrors
@@ -909,168 +852,74 @@ const BookingModal = ({
                       />
                     </Box>
                   </Box>
-                  {/* Места получения/возврата — на мобильных экранах столбцом, на больших в строке */}
+                  {/* Места получения/возврата — всегда в одну строку */}
                   <Box
                     sx={{
                       display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      gap: { xs: 1, sm: 2 },
+                      flexDirection: "row",
+                      gap: 2,
                       mb: { xs: 1, sm: 2 },
                       mt: 0,
                       width: "100%",
                       alignItems: "stretch",
                     }}
                   >
-                    {/* Если выбран Airport и экран xs — показываем placeIn и flight в одной строке (60/40) */}
+                    {/* Если выбран Airport — показываем placeIn и flight в одной строке (60/40) */}
                     {placeIn && placeIn.toLowerCase() === "airport" ? (
                       <Box
                         sx={{
                           display: "flex",
-                          width: { xs: "100%", sm: "50%" },
+                          width: "50%",
                           gap: 2,
                           alignItems: "stretch",
                         }}
                       >
-                        <Autocomplete
-                          freeSolo
+                        <BookingLocationAutocomplete
+                          label={
+                            t("order.pickupLocation") || "Место получения"
+                          }
                           options={placeOptions}
                           value={placeIn}
                           onInputChange={(event, newInputValue) =>
                             setPlaceIn(newInputValue)
                           }
                           sx={{
-                            width: { xs: "60%", sm: "50%" },
+                            width: "60%",
                             minWidth: 0,
                           }}
-                          PaperProps={{
-                            sx: {
-                              border: "2px solid black !important",
-                              borderRadius: 1,
-                              boxShadow:
-                                "0 6px 18px rgba(0,0,0,0.12) !important",
-                              backgroundColor: "background.paper",
-                            },
-                          }}
-                          PopperProps={{ style: { zIndex: 1400 } }}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label={
-                                t("order.pickupLocation") || "Место получения"
-                              }
-                              variant="outlined"
-                              size="small"
-                              InputLabelProps={{ shrink: true }}
-                              fullWidth
-                              sx={{
-                                "& .MuiInputBase-root": { height: { sm: 40 } },
-                                "@media (max-width:600px) and (orientation: portrait)":
-                                  {
-                                    "& .MuiInputBase-root": { height: 50 },
-                                  },
-                              }}
-                            />
-                          )}
                         />
-                        <TextField
+                        <BookingFlightField
                           label={t("order.flightNumber") || "Номер рейса"}
                           value={flightNumber}
                           onChange={(e) => setFlightNumber(e.target.value)}
-                          size="small"
                           sx={{
-                            width: { xs: "40%", sm: "50%" },
+                            width: "40%",
                             alignSelf: "stretch",
-                            "& .MuiInputBase-root": { height: { sm: 40 } },
-                            "@media (max-width:600px) and (orientation: portrait)":
-                              {
-                                "& .MuiInputBase-root": { height: 50 },
-                              },
                           }}
-                          InputLabelProps={{ shrink: true }}
                         />
                       </Box>
                     ) : (
-                      <Autocomplete
-                        freeSolo
+                      <BookingLocationAutocomplete
+                        label={t("order.pickupLocation") || "Место получения"}
                         options={placeOptions}
                         value={placeIn}
                         onInputChange={(event, newInputValue) =>
                           setPlaceIn(newInputValue)
                         }
                         sx={{
-                          width: {
-                            xs: "100%",
-                            sm:
-                              placeIn && placeIn.toLowerCase() === "airport"
-                                ? "25%"
-                                : "50%",
-                          },
+                          width: "50%",
                           minWidth: 0,
                         }}
-                        PaperProps={{
-                          sx: {
-                            border: "2px solid black !important",
-                            borderRadius: 1,
-                            boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
-                            backgroundColor: "background.paper",
-                          },
-                        }}
-                        PopperProps={{ style: { zIndex: 1400 } }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label={
-                              t("order.pickupLocation") || "Место получения"
-                            }
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                            sx={{
-                              "& .MuiInputBase-root": { height: { sm: 40 } },
-                              "@media (max-width:600px) and (orientation: portrait)":
-                                {
-                                  "& .MuiInputBase-root": { height: 50 },
-                                },
-                            }}
-                          />
-                        )}
                       />
                     )}
-                    <Autocomplete
-                      freeSolo
+                    <BookingLocationAutocomplete
+                      label={t("order.returnLocation") || "Место возврата"}
                       options={placeOptions}
                       value={placeOut}
                       onInputChange={(event, newInputValue) =>
                         setPlaceOut(newInputValue)
                       }
-                      sx={{ width: { xs: "100%", sm: "50%" }, minWidth: 0 }}
-                      PaperProps={{
-                        sx: {
-                          border: "2px solid black !important",
-                          borderRadius: 1,
-                          boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
-                          backgroundColor: "background.paper",
-                        },
-                      }}
-                      PopperProps={{ style: { zIndex: 1400 } }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label={t("order.returnLocation") || "Место возврата"}
-                          variant="outlined"
-                          size="small"
-                          InputLabelProps={{ shrink: true }}
-                          fullWidth
-                          sx={{
-                            "& .MuiInputBase-root": { height: { sm: 40 } },
-                            "@media (max-width:600px) and (orientation: portrait)":
-                              {
-                                "& .MuiInputBase-root": { height: 50 },
-                              },
-                          }}
-                        />
-                      )}
+                      sx={{ width: "50%", minWidth: 0 }}
                     />
                   </Box>
                   {/* <TextField
@@ -1083,13 +932,14 @@ const BookingModal = ({
                     error={!!errors.name}
                     helperText={errors.name}
                   /> */}
+                  {/* Страховка и детское кресло: всегда в одну строку */}
                   <Box
                     sx={{
                       display: "flex",
                       gap: 2,
                       mt: { xs: 1, sm: 1 },
                       mb: { xs: 1, sm: 3 },
-                      flexDirection: { xs: "column", sm: "row" },
+                      flexDirection: "row",
                     }}
                   >
                     <FormControl sx={{ flex: 1, width: { xs: "100%" } }}>
@@ -1157,60 +1007,43 @@ const BookingModal = ({
                     </FormControl>
                   </Box>
                   {/* Поле Name опущено ниже по вертикали с помощью mt: 2 */}
-                  <TextField
+                  <BookingTextField
                     label={
                       <>
                         <span>{t("order.yourName")}</span>
                         <span style={{ color: "red" }}>*</span>
                       </>
                     }
-                    variant="outlined"
-                    fullWidth
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    // required
                     error={!!errors.name}
                     helperText={errors.name}
                     sx={{
                       mt: 2,
-                      "& .MuiInputBase-root": { height: { sm: 56 } },
-                      "@media (max-width:600px) and (orientation: portrait)": {
-                        "& .MuiInputBase-root": { height: 50 },
-                      },
                     }}
                   />
 
-                  {/* Phone и Email: на портретном мобиле столбцом, на sm — в строке */}
+                  {/* Phone и Email: всегда в одну строку */}
                   <Box
                     sx={{
                       display: "flex",
-                      gap: { xs: 0.5, sm: 2 },
-                      flexDirection: { xs: "column", sm: "row" },
+                      gap: 2,
+                      flexDirection: "row",
                     }}
                   >
-                    <TextField
+                    <BookingTextField
                       label={
                         <>
                           <span>{t("order.phone")}</span>
                           <span style={{ color: "red" }}>*</span>
                         </>
                       }
-                      variant="outlined"
-                      fullWidth
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      //required
                       error={!!errors.phone}
                       helperText={errors.phone}
-                      sx={{
-                        "& .MuiInputBase-root": { height: { sm: 56 } },
-                        "@media (max-width:600px) and (orientation: portrait)":
-                          {
-                            "& .MuiInputBase-root": { height: 50 },
-                          },
-                      }}
                     />
-                    <TextField
+                    <BookingTextField
                       label={
                         <>
                           {t("order.email")}
@@ -1225,23 +1058,11 @@ const BookingModal = ({
                           </span>
                         </>
                       }
-                      variant="outlined"
-                      fullWidth
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
                       error={!!errors.email}
                       helperText={errors.email}
-                      sx={{
-                        "& .MuiInputBase-root": { height: { sm: 56 } },
-                        "@media (max-width:600px) and (orientation: portrait)":
-                          {
-                            "& .MuiInputBase-root": { height: 50 },
-                            mt: 0,
-                            mb: 0,
-                          },
-                      }}
-                      // required убран, поле необязательное
                     />
                   </Box>
                 </Box>

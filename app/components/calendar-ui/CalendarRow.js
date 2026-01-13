@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { TableCell, Box, useTheme } from "@mui/material";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
@@ -76,9 +76,12 @@ export default function CarTableRow({
 }) {
   const theme = useTheme();
   const [pressTimer, setPressTimer] = useState(null);
+  const pressTimerRef = useRef(null);
   const [isPressing, setIsPressing] = useState(false);
   const [longPressOrder, setLongPressOrder] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [clickBlocked, setClickBlocked] = useState(false);
+  const wasLongPressRef = useRef(false);
 
   // Цвета из единого источника правды (getOrderColor)
 
@@ -244,6 +247,10 @@ export default function CarTableRow({
     if (moveMode) {
       return;
     }
+    
+    setClickBlocked(false);
+    setWasLongPress(false);
+    
     // Определяем типы даты (старт / конец) и совмещённость
     const startEndInfo = startEndDates.find((d) => d.date === dateStr);
     const isStartDate = startEndInfo?.type === "start";
@@ -283,8 +290,6 @@ export default function CarTableRow({
         (isStartDate && isEndDate));
 
     if (allowLongPress) {
-      setWasLongPress(false);
-
       const timer = setTimeout(() => {
         // Предпочитаем заказ, который НАЧИНАЕТСЯ в эту дату (требование: на совмещённой дате выбирать начинающийся заказ)
         const startingOrder = relevantOrders.find(
@@ -299,7 +304,9 @@ export default function CarTableRow({
         const order = startingOrder || endingOrder || fallbackOrder;
 
         if (order) {
+          wasLongPressRef.current = true;
           setWasLongPress(true);
+          setClickBlocked(true);
           console.log("Long press detected on order:", {
             id: order._id,
             customer: order.customerName,
@@ -316,17 +323,21 @@ export default function CarTableRow({
             onLongPress(order);
           }
         }
-      }, 500); // 500ms для длинного нажатия
+      }, 300); // Уменьшено до 300ms для более быстрой реакции
 
       setPressTimer(timer);
+      pressTimerRef.current = timer;
     }
   };
 
   const handleLongPressEnd = () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
+    const timer = pressTimerRef.current;
+    if (timer) {
+      clearTimeout(timer);
+      pressTimerRef.current = null;
       setPressTimer(null);
     }
+    setClickBlocked(false);
   };
 
   const renderDateCell = useCallback(
@@ -688,11 +699,31 @@ export default function CarTableRow({
       // =======================
       // Click handlers
       // =======================
-      const handleDateClick = () => {
-        if (wasLongPress) {
-          setWasLongPress(false);
-          return;
+      // Обработчик для обычного клика (onMouseUp для более быстрой реакции)
+      const handleMouseUp = (e) => {
+        const timer = pressTimerRef.current;
+        // Если таймер еще активен (быстрый клик), отменяем его и обрабатываем как обычный клик
+        if (timer) {
+          clearTimeout(timer);
+          pressTimerRef.current = null;
+          setPressTimer(null);
+          setClickBlocked(false);
+          wasLongPressRef.current = false;
+          // Обрабатываем как обычный клик
+          handleDateClickLogic(e);
+        } else if (!wasLongPressRef.current && !clickBlocked) {
+          // Обычный клик без long press
+          handleDateClickLogic(e);
         }
+        // Сбрасываем флаги
+        wasLongPressRef.current = false;
+        setWasLongPress(false);
+        setClickBlocked(false);
+      };
+      
+      const handleDateClickLogic = (e) => {
+        // Предотвращаем двойной клик
+        e?.stopPropagation();
 
         if (moveMode) {
           // Проверяем, кликнули ли мы по выбранному для перемещения заказу (синяя ячейка)
@@ -1016,9 +1047,8 @@ export default function CarTableRow({
 
         return (
           <Box
-            onClick={handleDateClick}
             onMouseDown={() => handleLongPressStart(dateStr)}
-            onMouseUp={handleLongPressEnd}
+            onMouseUp={handleMouseUp}
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
@@ -1189,9 +1219,8 @@ export default function CarTableRow({
 
         return (
           <Box
-            onClick={handleDateClick}
             onMouseDown={() => handleLongPressStart(dateStr)}
-            onMouseUp={handleLongPressEnd}
+            onMouseUp={handleMouseUp}
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
@@ -1359,9 +1388,8 @@ export default function CarTableRow({
 
         return (
           <Box
-            onClick={handleDateClick}
             onMouseDown={() => handleLongPressStart(dateStr)}
-            onMouseUp={handleLongPressEnd}
+            onMouseUp={handleMouseUp}
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
@@ -1498,9 +1526,8 @@ export default function CarTableRow({
 
         return (
           <Box
-            onClick={handleDateClick}
             onMouseDown={() => handleLongPressStart(dateStr)}
-            onMouseUp={handleLongPressEnd}
+            onMouseUp={handleMouseUp}
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={
@@ -1668,9 +1695,8 @@ export default function CarTableRow({
       // ─────────────────────────────────────────────
       return (
         <Box
-          onClick={handleDateClick}
           onMouseDown={() => handleLongPressStart(dateStr)}
-          onMouseUp={handleLongPressEnd}
+          onMouseUp={handleMouseUp}
           onMouseLeave={handleLongPressEnd}
           onContextMenu={(e) => e.preventDefault()}
           title={

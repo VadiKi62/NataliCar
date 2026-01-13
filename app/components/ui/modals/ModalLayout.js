@@ -65,6 +65,7 @@ const ModalLayout = ({
         {/* Header с заголовком и кнопкой закрытия */}
         {(title || showCloseButton) && (
           <Box
+            className={showCloseButton ? "no-print" : ""}
             sx={{
               display: "flex",
               justifyContent: "space-between",

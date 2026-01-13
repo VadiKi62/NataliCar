@@ -40,7 +40,7 @@ const OrdersByDateModal = ({
     whiteSpace: "nowrap",
   };
 
-  const renderOrdersTable = (orders, emptyMessage) => {
+  const renderOrdersTable = (orders, emptyMessage, isStartingOrders = false) => {
     if (orders.length === 0) {
       return (
         <Typography align="center" sx={{ color: "text.secondary", py: 2 }}>
@@ -58,6 +58,14 @@ const OrdersByDateModal = ({
             <TableCell sx={{ ...cellSx, fontWeight: 600 }}>Срок</TableCell>
             <TableCell sx={{ ...cellSx, fontWeight: 600 }}>Клиент</TableCell>
             <TableCell sx={{ ...cellSx, fontWeight: 600 }}>Телефон</TableCell>
+            {isStartingOrders ? (
+              <>
+                <TableCell sx={{ ...cellSx, fontWeight: 600 }}>Место получения</TableCell>
+                <TableCell sx={{ ...cellSx, fontWeight: 600 }}>Номер рейса</TableCell>
+              </>
+            ) : (
+              <TableCell sx={{ ...cellSx, fontWeight: 600 }}>Место возврата</TableCell>
+            )}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -76,6 +84,18 @@ const OrdersByDateModal = ({
               </TableCell>
               <TableCell sx={cellSx}>{order.customerName}</TableCell>
               <TableCell sx={cellSx}>{order.phone}</TableCell>
+              {isStartingOrders ? (
+                <>
+                  <TableCell sx={cellSx}>{order.placeIn || "-"}</TableCell>
+                  <TableCell sx={cellSx}>
+                    {order.placeIn && order.placeIn.toLowerCase() === "airport"
+                      ? order.flightNumber || "-"
+                      : "-"}
+                  </TableCell>
+                </>
+              ) : (
+                <TableCell sx={cellSx}>{order.placeOut || "-"}</TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
@@ -90,7 +110,7 @@ const OrdersByDateModal = ({
   size="fullWidth"
   showCloseButton
 >
-
+    <Box id="print-orders-modal">
     <Grid     
     sx={{
       maxWidth: 1000,
@@ -119,7 +139,8 @@ const OrdersByDateModal = ({
 
           {renderOrdersTable(
             startedOrders,
-            "Нет заказов, начинающихся в эту дату"
+            "Нет заказов, начинающихся в эту дату",
+            true
           )}
         </Paper>
       </Grid>
@@ -147,7 +168,8 @@ const OrdersByDateModal = ({
 
           {renderOrdersTable(
             endedOrders,
-            "Нет заказов, заканчивающихся в эту дату"
+            "Нет заказов, заканчивающихся в эту дату",
+            false
           )}
         </Paper>
       </Grid>
@@ -155,6 +177,7 @@ const OrdersByDateModal = ({
 
     {/* КНОПКИ */}
     <Box
+      className="no-print"
       sx={{
         mt: 4,
         display: "flex",
@@ -178,6 +201,7 @@ const OrdersByDateModal = ({
       />
 
   </Box>
+    </Box>
 </ModalLayout>
 
   );
