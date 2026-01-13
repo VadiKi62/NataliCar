@@ -20,6 +20,7 @@ function CarGrid() {
   const [discount, setDiscount] = useState(null);
   const [discountStart, setDiscountStart] = useState(null);
   const [discountEnd, setDiscountEnd] = useState(null);
+  
 
   // Мемоизируем fetchDiscount, чтобы не пересоздавать функцию
   const fetchDiscount = useCallback(async () => {

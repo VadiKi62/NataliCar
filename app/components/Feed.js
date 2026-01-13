@@ -16,7 +16,7 @@ import Navbar from "@app/components/Navbar";
 import Footer from "@app/components/Footer";
 
 function Feed({ children, ...props }) {
-  unstable_noStore();
+  // unstable_noStore() не нужен в клиентском компоненте
 
   const shouldShowFooter = !props.isAdmin; // Скрываем Footer, если isAdmin === true
 

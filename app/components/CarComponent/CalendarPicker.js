@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -21,6 +21,7 @@ import {
   returnTime,
   calculateAvailableTimes,
 } from "@utils/functions";
+import { calculateTotalPrice } from "@utils/action";
 import { analyzeDates } from "@utils/analyzeDates";
 import Tooltip from "@mui/material/Tooltip";
 import { useTranslation } from "react-i18next";
@@ -50,6 +51,7 @@ const CalendarPicker = ({
   onBookingComplete,
   orders,
   carId,
+  car, // Добавляем объект car для получения carNumber
   setSelectedTimes,
   selectedTimes,
   onDateChange, // ⬅️ новый проп
@@ -57,6 +59,7 @@ const CalendarPicker = ({
   discount,
   discountStart,
   discountEnd,
+  onPriceCalculated, // Callback для передачи просчитанной цены
 }) => {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
@@ -77,6 +80,51 @@ const CalendarPicker = ({
   const bookButtonRef = useRef(null);
   // DEBUG: чтобы не спамить логами для одной и той же даты
   const loggedCellsRef = useRef(new Set());
+  // Состояние для расчета суммы заказа
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [calcLoading, setCalcLoading] = useState(false);
+
+  // Расчет суммы заказа через action
+  const fetchTotalPrice = useCallback(async () => {
+    if (!car?.carNumber || !selectedRange[0] || !selectedRange[1]) {
+      setTotalPrice(0);
+      return;
+    }
+    setCalcLoading(true);
+    try {
+      const result = await calculateTotalPrice(
+        car.carNumber,
+        selectedRange[0].toDate(),
+        selectedRange[1].toDate(),
+        "TPL", // Дефолтное значение
+        0 // Дефолтное значение
+      );
+      setTotalPrice(result.totalPrice || 0);
+    } catch {
+      setTotalPrice(0);
+    } finally {
+      setCalcLoading(false);
+    }
+  }, [car?.carNumber, selectedRange]);
+
+  useEffect(() => {
+    if (showBookButton && selectedRange[0] && selectedRange[1]) {
+      fetchTotalPrice();
+    } else {
+      setTotalPrice(0);
+      if (onPriceCalculated) {
+        onPriceCalculated(null); // Сбрасываем цену при сбросе выбора
+      }
+    }
+  }, [showBookButton, selectedRange, fetchTotalPrice, onPriceCalculated]);
+
+  // Передаем просчитанную цену родителю
+  useEffect(() => {
+    if (onPriceCalculated && totalPrice > 0 && !calcLoading && selectedRange[0] && selectedRange[1]) {
+      const days = selectedRange[1].diff(selectedRange[0], 'day');
+      onPriceCalculated({ totalPrice, days });
+    }
+  }, [totalPrice, calcLoading, selectedRange, onPriceCalculated]);
 
   // --- useEffect для вертикального скроллинга всей страницы CarGrid ---
   useEffect(() => {
@@ -211,7 +259,7 @@ const CalendarPicker = ({
         overlapOnDate: ov,
       });
     }
-  }, [orders]);
+  }, [orders, carId]);
 
   // ДОБАВИТЬ ЭТОТ useEffect ЗДЕСЬ:
   useEffect(() => {
@@ -381,7 +429,7 @@ const CalendarPicker = ({
           `[CalendarPicker][DEBUG ${dateStr}] apply PENDING background`
         );
       }
-      backgroundColor = "neutral.gray400"; // Ожидающие заказы - светлый amber
+      backgroundColor = "neutral.gray200"; // Ожидающие заказы - очень светло-серый
       color = "text.primary";
     }
 
@@ -436,7 +484,7 @@ const CalendarPicker = ({
                 borderRadius: "50% 0 0 50%",
                 backgroundColor: startEndInfo.confirmed
                   ? "primary.main"
-                  : "neutral.gray400", // Ожидающие заказы - светлый amber
+                  : "neutral.gray200", // Ожидающие заказы - очень светло-серый
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -480,7 +528,7 @@ const CalendarPicker = ({
                 borderRadius: "0 50% 50% 0",
                 backgroundColor: startEndInfo.confirmed
                   ? "primary.main"
-                  : "neutral.gray400", // Ожидающие заказы - светлый amber
+                  : "neutral.gray200", // Ожидающие заказы - очень светло-серый
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -526,7 +574,7 @@ const CalendarPicker = ({
               height: "100%",
               backgroundColor: isStartAndEndDateOverlapInfo.endConfirmed
                 ? "primary.main"
-                : "neutral.gray600", // Сделаем неподтвержденные заказы еще бледнее
+                : "neutral.gray200", // Ожидающие заказы - очень светло-серый
               borderRadius: "0 50% 50% 0",
               display: "flex",
               alignItems: "center",
@@ -546,7 +594,7 @@ const CalendarPicker = ({
               height: "100%",
               backgroundColor: isStartAndEndDateOverlapInfo.startConfirmed
                 ? "primary.main"
-                : "neutral.gray600", // Сделаем неподтвержденные заказы еще бледнее
+                : "neutral.gray200", // Ожидающие заказы - очень светло-серый
               borderRadius: "0 50% 50% 0",
               borderRadius: "50% 0 0 50%",
               display: "flex",
@@ -948,17 +996,72 @@ const CalendarPicker = ({
               <GradientBookButton
                 ref={bookButtonRef}
                 onClick={handleBooking}
-                label={`${t("order.bookShort")}\n${selectedRange[0]
-                  ?.locale(i18n.language)
-                  .format("DD MMM")
-                  .replace(/\./g, "")} - ${selectedRange[1]
-                  ?.locale(i18n.language)
-                  .format("DD MMM")
-                  .replace(/\./g, "")}`}
                 sx={{
                   fontSize: "1.2rem",
                 }}
-              />
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 0.5,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  <Box component="span">
+                    {`${t("order.bookShort")}\n${selectedRange[0]
+                      ?.locale(i18n.language)
+                      .format("DD MMM")
+                      .replace(/\./g, "")} - ${selectedRange[1]
+                      ?.locale(i18n.language)
+                      .format("DD MMM")
+                      .replace(/\./g, "")}`}
+                  </Box>
+                  {calcLoading ? (
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        gap: 0.3,
+                        alignItems: "center",
+                        "& span": {
+                          width: "4px",
+                          height: "4px",
+                          borderRadius: "50%",
+                          backgroundColor: "rgba(255, 255, 255, 0.9)",
+                          display: "inline-block",
+                          animation: "dotPulse 1.4s ease-in-out infinite",
+                          "&:nth-of-type(1)": {
+                            animationDelay: "0s",
+                          },
+                          "&:nth-of-type(2)": {
+                            animationDelay: "0.2s",
+                          },
+                          "&:nth-of-type(3)": {
+                            animationDelay: "0.4s",
+                          },
+                          "@keyframes dotPulse": {
+                            "0%, 60%, 100%": {
+                              opacity: 0.3,
+                              transform: "scale(0.8)",
+                            },
+                            "30%": {
+                              opacity: 1,
+                              transform: "scale(1.2)",
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      <Box component="span" />
+                      <Box component="span" />
+                      <Box component="span" />
+                    </Box>
+                  ) : totalPrice > 0 ? (
+                    <Box component="span">{`${totalPrice}€`}</Box>
+                  ) : null}
+                </Box>
+              </GradientBookButton>
             </Box>
           )}
 

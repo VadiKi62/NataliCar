@@ -965,3 +965,42 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
     return { success: false, error: error.message || "Network error" };
   }
 }
+
+/**
+ * Calculate total price for rental order
+ * @param {string} carNumber - Car number
+ * @param {Date|string} rentalStartDate - Start date
+ * @param {Date|string} rentalEndDate - End date
+ * @param {string} kacko - Insurance type (default: "TPL")
+ * @param {number} childSeats - Number of child seats (default: 0)
+ * @returns {Promise<{totalPrice: number, days: number}>}
+ */
+export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko = "TPL", childSeats = 0) {
+  try {
+    const apiUrl = API_URL ? `${API_URL}/api/order/calcTotalPrice` : `/api/order/calcTotalPrice`;
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        carNumber,
+        rentalStartDate,
+        rentalEndDate,
+        kacko,
+        childSeats,
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to calculate total price");
+    }
+
+    const data = await response.json();
+    return { totalPrice: data.totalPrice || 0, days: data.days || 0 };
+  } catch (error) {
+    console.error("Error calculating total price:", error);
+    return { totalPrice: 0, days: 0 };
+  }
+}

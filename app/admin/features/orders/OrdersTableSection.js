@@ -67,6 +67,22 @@ dayjs.extend(timezone);
 const ATHENS_TZ = "Europe/Athens";
 
 /**
+ * PRICE ARCHITECTURE HELPER
+ * 
+ * Returns the effective price used by UI, invoices, and payments
+ * effectivePrice = OverridePrice !== null ? OverridePrice : totalPrice
+ */
+const getEffectivePrice = (order) => {
+  if (!order) return 0;
+  // If OverridePrice is set (not null/undefined), use it
+  if (order.OverridePrice !== null && order.OverridePrice !== undefined) {
+    return Number(order.OverridePrice);
+  }
+  // Otherwise use auto-calculated totalPrice
+  return Number(order.totalPrice) || 0;
+};
+
+/**
  * OrdersTableSection - Admin orders table with inline editing
  * 
  * Features:
@@ -409,8 +425,16 @@ export default function OrdersTableSection() {
   // INLINE EDITING HANDLERS
   // ─────────────────────────────────────────────────────────────
   
-  // Handle individual field update (called by InlineEditCell onCommit)
-  const handleFieldUpdate = useCallback(async (orderId, field, value) => {
+  /**
+   * Handle individual field update (called by InlineEditCell onCommit)
+   * 
+   * @param {string} orderId - Order ID
+   * @param {string} field - Field name
+   * @param {any} value - Field value
+   * @param {Object} options - Options object
+   * @param {string} options.source - Source of update: "manual" | "recalculate" | undefined
+   */
+  const handleFieldUpdate = useCallback(async (orderId, field, value, options = {}) => {
     const savingKey = `${orderId}_${field}`;
     setIsSaving((prev) => ({ ...prev, [savingKey]: true }));
     try {
@@ -438,6 +462,22 @@ export default function OrdersTableSection() {
         fieldsToSend[field] = value;
       }
       
+      // 🔧 PRICE ARCHITECTURE: Handle totalPrice field based on source
+      // - manual input → set OverridePrice (isOverridePrice: true)
+      // - recalculate → update totalPrice only (isOverridePrice: false)
+      if (field === "totalPrice") {
+        if (options.source === "manual") {
+          // Manual input: save to OverridePrice
+          fieldsToSend.isOverridePrice = true;
+        } else if (options.source === "recalculate") {
+          // Recalculate: update totalPrice only, clear OverridePrice
+          fieldsToSend.isOverridePrice = false;
+        } else {
+          // Default (backward compatibility): treat as manual input
+          fieldsToSend.isOverridePrice = true;
+        }
+      }
+      
       // Debug logging (dev only)
       if (process.env.NODE_ENV !== "production") {
         console.log("[handleFieldUpdate] Update request:", {
@@ -445,6 +485,7 @@ export default function OrdersTableSection() {
           field,
           rawValue: value,
           fieldsToSend,
+          isOverridePrice: field === "totalPrice",
         });
       }
       
@@ -589,9 +630,12 @@ export default function OrdersTableSection() {
       
       const data = await response.json();
       
-      // Update price and numberOfDays via handleFieldUpdate
+      // 🔧 PRICE ARCHITECTURE: Recalculate updates totalPrice only (not OverridePrice)
+      // This preserves manual overrides when recalculating
       if (data.totalPrice !== undefined) {
-        await handleFieldUpdate(orderId, "totalPrice", data.totalPrice);
+        await handleFieldUpdate(orderId, "totalPrice", data.totalPrice, {
+          source: "recalculate",
+        });
       }
       if (data.days !== undefined) {
         // Note: numberOfDays is not editable, but we can update it if needed
@@ -1204,45 +1248,93 @@ export default function OrdersTableSection() {
                       <TableCell align="right">
                         <Stack spacing={0.5} alignItems="flex-end">
                           <Stack direction="row" spacing={0.5} alignItems="center">
-                            <InlineEditCell
-                              type="number"
-                              value={order.totalPrice?.toString() || "0"}
-                              disabled={!canEditTotalPrice || isSaving[`${order._id}_totalPrice`]}
-                              onDenied={() => {
-                                const permission = getFieldPermission(order, "totalPrice", currentUser);
-                                enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать сумму", { variant: "warning" });
-                              }}
-                              onCommit={(val) => {
-                                // Parse numeric value carefully
-                                const numericValue = val ? parseFloat(val) : null;
-                                
-                                // Validate: reject NaN and empty
-                                if (numericValue === null || isNaN(numericValue) || val.trim() === "") {
-                                  enqueueSnackbar("⛔ Введите корректное число", { variant: "error" });
-                                  return;
-                                }
-                                
-                                // Accept positive numbers (allow decimals like "120.50")
-                                if (numericValue < 0) {
-                                  enqueueSnackbar("⛔ Сумма не может быть отрицательной", { variant: "error" });
-                                  return;
-                                }
-                                
-                                handleFieldUpdate(order._id, "totalPrice", numericValue);
-                              }}
-                              formatDisplay={(val) => {
-                                if (!val || val === "0") return "€0";
-                                const num = parseFloat(val);
-                                if (isNaN(num)) return "€0";
-                                return `€${num.toFixed(2)}`;
-                              }}
-                              inputProps={{
-                                step: "0.01",
-                                min: "0",
-                              }}
-                              sx={{ textAlign: "right" }}
-                              inputSx={{ textAlign: "right", fontWeight: 600 }}
-                            />
+                            {(() => {
+                              /**
+                               * PRICE FLOW (IMPORTANT)
+                               *
+                               * totalPrice
+                               *   - ALWAYS auto-calculated price
+                               *   - Updated ONLY by backend recalculation
+                               *
+                               * OverridePrice
+                               *   - Manual price set by admin
+                               *   - NEVER changed automatically
+                               *
+                               * effectivePrice =
+                               *   OverridePrice !== null ? OverridePrice : totalPrice
+                               *
+                               * UI rules:
+                               * - Inline edit → sets OverridePrice
+                               * - Recalculate button → updates totalPrice ONLY
+                               * - UI displays effectivePrice
+                               * - Admin can reset OverridePrice explicitly
+                               */
+                              const effectivePrice = getEffectivePrice(order);
+                              const hasManualOverride = order.OverridePrice !== null && order.OverridePrice !== undefined;
+                              
+                              return (
+                                <>
+                                  <InlineEditCell
+                                    type="number"
+                                    value={effectivePrice?.toString() || "0"}
+                                    disabled={!canEditTotalPrice || isSaving[`${order._id}_totalPrice`]}
+                                    onDenied={() => {
+                                      const permission = getFieldPermission(order, "totalPrice", currentUser);
+                                      enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать сумму", { variant: "warning" });
+                                    }}
+                                    onCommit={(val) => {
+                                      // Parse numeric value carefully
+                                      const numericValue = val ? parseFloat(val) : null;
+                                      
+                                      // Validate: reject NaN and empty
+                                      if (numericValue === null || isNaN(numericValue) || val.trim() === "") {
+                                        enqueueSnackbar("⛔ Введите корректное число", { variant: "error" });
+                                        return;
+                                      }
+                                      
+                                      // Accept positive numbers (allow decimals like "120.50")
+                                      if (numericValue < 0) {
+                                        enqueueSnackbar("⛔ Сумма не может быть отрицательной", { variant: "error" });
+                                        return;
+                                      }
+                                      
+                                      // 🔧 PRICE ARCHITECTURE: Manual input sets OverridePrice
+                                      handleFieldUpdate(order._id, "totalPrice", numericValue, {
+                                        source: "manual",
+                                      });
+                                    }}
+                                    formatDisplay={(val) => {
+                                      if (!val || val === "0") return "€0";
+                                      const num = parseFloat(val);
+                                      if (isNaN(num)) return "€0";
+                                      return `€${num.toFixed(2)}`;
+                                    }}
+                                    inputProps={{
+                                      step: "0.01",
+                                      min: "0",
+                                    }}
+                                    sx={{ textAlign: "right" }}
+                                    inputSx={{ textAlign: "right", fontWeight: 600 }}
+                                  />
+                                  {/* Visual marker for manual override */}
+                                  {hasManualOverride && (
+                                    <Tooltip title={`Автоматическая цена: €${order.totalPrice?.toFixed(2) || "0"}`}>
+                                      <Typography 
+                                        variant="caption" 
+                                        sx={{ 
+                                          color: palette.status.warning,
+                                          fontSize: "0.65rem",
+                                          whiteSpace: "nowrap",
+                                          ml: 0.5,
+                                        }}
+                                      >
+                                        ✏️ Manual
+                                      </Typography>
+                                    </Tooltip>
+                                  )}
+                                </>
+                              );
+                            })()}
                             <Tooltip title="Пересчитать цену на основе текущих данных заказа">
                               <IconButton
                                 size="small"

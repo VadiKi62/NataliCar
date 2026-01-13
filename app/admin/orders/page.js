@@ -11,5 +11,5 @@ import { DataLoader } from "@/app/admin/features/shared";
  * - Поиск по тексту
  */
 export default function PageOrders() {
-  return <DataLoader viewType="orders-table" />;
+  return <DataLoader viewType="table" />;
 }

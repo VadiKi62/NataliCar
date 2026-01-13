@@ -149,7 +149,12 @@ const ExpandButton = styled(IconButton)(({ theme, expanded }) => ({
 }));
 
 // Мемоизируем компонент для предотвращения ненужных ре-рендеров
-const CarItemComponent = React.memo(function CarItemComponent({ car, discount, discountStart, discountEnd }) {
+const CarItemComponent = React.memo(function CarItemComponent({ 
+  car, 
+  discount, 
+  discountStart, 
+  discountEnd,
+}) {
   const { t } = useTranslation();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   // Для хранения id последнего снэка
@@ -175,6 +180,7 @@ const CarItemComponent = React.memo(function CarItemComponent({ car, discount, d
     start: null,
     end: null,
   });
+  const [calculatedPrice, setCalculatedPrice] = useState(null); // Просчитанная цена из календаря
 
   // Состояние для передачи месяца из календаря:
   const [currentCalendarDate, setCurrentCalendarDate] = useState(dayjs());
@@ -383,6 +389,7 @@ const CarItemComponent = React.memo(function CarItemComponent({ car, discount, d
             <Suspense fallback={<CircularProgress size={24} />}>
               <CalendarPicker
               carId={car._id}
+              car={car}
               isLoading={isLoading}
               orders={carOrders}
               setBookedDates={setBookedDates}
@@ -394,6 +401,7 @@ const CarItemComponent = React.memo(function CarItemComponent({ car, discount, d
               discountStart={discountStart}
               discountEnd={discountEnd}
               onDateChange={handleDateChange}
+              onPriceCalculated={setCalculatedPrice}
               />
             </Suspense>
             {/* Информация о дискаунте с логикой как в PricingTiers */}
@@ -486,6 +494,11 @@ const CarItemComponent = React.memo(function CarItemComponent({ car, discount, d
             presetDates={{ startDate: bookDates?.start, endDate: bookDates?.end }}
             isLoading={isLoading}
             selectedTimes={selectedTimes}
+            initialPrice={calculatedPrice}
+            onClose={() => {
+              setModalOpen(false);
+              setCalculatedPrice(null); // Сбрасываем цену при закрытии
+            }}
           />
         </Suspense>
       )}

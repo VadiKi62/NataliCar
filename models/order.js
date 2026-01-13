@@ -76,8 +76,30 @@ const OrderSchema = new mongoose.Schema({
   numberOfDays: {
     type: Number,
   },
+  /**
+   * totalPrice
+   * Auto-calculated rental price based on car, dates, and options.
+   * This value is ALWAYS preserved as the real calculated price.
+   * Never manually overridden - use OverridePrice for manual pricing.
+   */
   totalPrice: {
     type: Number,
+    required: true,
+  },
+  /**
+   * OverridePrice
+   * Manual price entered by admin/superadmin.
+   * If set, it overrides totalPrice in UI and payments.
+   * Set to null to return to automatic pricing.
+   * 
+   * Rules:
+   * - OverridePrice NEVER changes automatically
+   * - When rental params change, totalPrice recalculates but OverridePrice stays
+   * - Admin must explicitly reset OverridePrice to return to auto pricing
+   */
+  OverridePrice: {
+    type: Number,
+    default: null,
   },
   carModel: {
     type: String,

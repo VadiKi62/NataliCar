@@ -12,96 +12,35 @@ function generateOrderNumber() {
   );
 }
 import React, { useState, useEffect, useCallback } from "react";
-import useMediaQuery from "@mui/material/useMediaQuery";
-// Хук для получения стоимости и дней (аналогично BookingModal)
-function useDaysAndTotal(car, bookDates, insurance, childSeats) {
-  const [daysAndTotal, setDaysAndTotal] = useState({ days: 0, totalPrice: 0 });
-  const [calcLoading, setCalcLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchTotalPrice = async () => {
-      if (!car?.carNumber || !bookDates?.start || !bookDates?.end) {
-        setDaysAndTotal({ days: 0, totalPrice: 0 });
-        return;
-      }
-      setCalcLoading(true);
-      try {
-        const res = await fetch("/api/order/calcTotalPrice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            carNumber: car.carNumber,
-            rentalStartDate: bookDates.start,
-            rentalEndDate: bookDates.end,
-            kacko: insurance,
-            childSeats: childSeats,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setDaysAndTotal({ days: data.days, totalPrice: data.totalPrice });
-        } else {
-          setDaysAndTotal({ days: 0, totalPrice: 0 });
-        }
-      } catch {
-        setDaysAndTotal({ days: 0, totalPrice: 0 });
-      } finally {
-        setCalcLoading(false);
-      }
-    };
-    fetchTotalPrice();
-  }, [car?.carNumber, bookDates?.start, bookDates?.end, insurance, childSeats]);
-
-  return { daysAndTotal, calcLoading };
-}
 import {
   Modal,
-  Paper,
   Typography,
   Box,
   TextField,
   CircularProgress,
-  Divider,
-  FormControlLabel,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
 } from "@mui/material";
-import { ConfirmButton, CancelButton, ActionButton } from "@/app/components/ui";
-import Autocomplete from "@mui/material/Autocomplete";
+import {
+  ConfirmButton,
+  CancelButton,
+  BookingEditableDateField,
+  BookingTimeField,
+  BookingTextField,
+  BookingLocationAutocomplete,
+  BookingFlightField,
+} from "@/app/components/ui";
 
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { TimePicker } from "@mui/x-date-pickers/TimePicker";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import MuiCalendar from "@/app/components/calendar-ui/MuiCalendar";
-import ConflictMessage from "./conflictMessage";
-import Snackbar from "@/app/components/ui/feedback/Snackbar";
 import { useMainContext } from "@app/Context";
+import { returnHoursToParseToDayjs } from "@utils/functions";
 import {
-  functionToCheckDuplicates,
-  returnHoursToParseToDayjs,
-  toParseTime,
-} from "@utils/functions";
-import CalendarPicker from "@app/components/CarComponent/CalendarPicker";
-import RenderConflictMessage from "./RenderConflictInAddOrder";
-
-import {
-  analyzeDates,
-  functionPendingOrConfirmedDatesInRange,
-} from "@utils/analyzeDates";
-import MuiTimePicker from "@/app/components/calendar-ui/MuiTimePicker";
-import { RenderSelectField } from "@/app/components/ui/inputs/Fields";
-
-import {
-  changeRentalDates,
-  toggleConfirmedStatus,
-  updateCustomerInfo,
-  getConfirmedOrders,
   addOrderNew,
+  calculateTotalPrice,
 } from "@utils/action";
 import { useTranslation } from "react-i18next";
 // 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
@@ -116,7 +55,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
-  const { fetchAndUpdateOrders, isLoading, ordersByCarId, company } =
+  const { fetchAndUpdateOrders, company } =
     useMainContext();
 
   const locations = company.locations.map((loc) => loc.name);
@@ -128,7 +67,6 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     defaultEndMinute,
   } = returnHoursToParseToDayjs(company);
 
-  const carOrders = ordersByCarId(car?._id);
   const [bookDates, setBookedDates] = useState({ start: null, end: null });
   const [orderDetails, setOrderDetails] = useState({
     placeIn: "Nea Kalikratia",
@@ -146,17 +84,44 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     orderNumber: "",
     flightNumber: "",
   });
-  // Получение количества дней и общей стоимости (React Hook должен быть после объявления bookDates и orderDetails)
-  const { daysAndTotal, calcLoading } = useDaysAndTotal(
-    car,
-    bookDates,
-    orderDetails.insurance,
-    orderDetails.ChildSeats
-  );
+  // Состояние для расчета стоимости
+  const [daysAndTotal, setDaysAndTotal] = useState({ days: 0, totalPrice: 0 });
+  const [calcLoading, setCalcLoading] = useState(false);
 
-  // Автоматически подставлять вычисленную стоимость в поле totalPrice, если оно не редактировалось вручную
+  // Получение количества дней и общей стоимости через calculateTotalPrice из utils/action
   useEffect(() => {
-    // Если пользователь не менял вручную или значение совпадает с вычисленным, обновляем
+    const fetchTotalPrice = async () => {
+      if (!car?.carNumber || !bookDates?.start || !bookDates?.end) {
+        setDaysAndTotal({ days: 0, totalPrice: 0 });
+        return;
+      }
+      setCalcLoading(true);
+      try {
+        const result = await calculateTotalPrice(
+          car.carNumber,
+          bookDates.start,
+          bookDates.end,
+          orderDetails.insurance,
+          orderDetails.ChildSeats
+        );
+        setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
+      } catch {
+        setDaysAndTotal({ days: 0, totalPrice: 0 });
+      } finally {
+        setCalcLoading(false);
+      }
+    };
+    fetchTotalPrice();
+  }, [
+    car?.carNumber,
+    bookDates?.start,
+    bookDates?.end,
+    orderDetails.insurance,
+    orderDetails.ChildSeats,
+  ]);
+
+  // Автоматически подставлять вычисленную стоимость в поле totalPrice
+  useEffect(() => {
     if (daysAndTotal.totalPrice !== orderDetails.totalPrice) {
       setOrderDetails((prev) => ({
         ...prev,
@@ -168,8 +133,6 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   function normalizeDate(date) {
     return date ? dayjs(date).format("YYYY-MM-DD") : null;
   }
-  const [pendingDatesInRange, setPendingDatesInRange] = useState([]);
-  const [confirmedDatesInRange, setConfirmedDatesInRange] = useState([]);
   const [startTime, setStartTime] = useState(
     dayjs().hour(defaultStartHour).minute(defaultStartMinute)
   );
@@ -182,8 +145,6 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     type: null,
     message: "",
   });
-
-  const { confirmed, pending } = analyzeDates(carOrders);
 
   // --- ВАЖНО: автоматическое заполнение даты и franchiseOrder при открытии модального окна ---
   useEffect(() => {
@@ -266,75 +227,6 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     }));
   }, []);
 
-  // Мемоизированные функции проверки конфликтов
-  const checkConflictsPending = useCallback(
-    (startDate, endDate) => {
-      if (!startDate || !endDate || !pending) return [];
-
-      return functionPendingOrConfirmedDatesInRange(
-        pending,
-        startDate,
-        endDate
-      );
-    },
-    [pending]
-  );
-
-  const checkConflictsConfirmed = useCallback(
-    (startDate, endDate) => {
-      if (!startDate || !endDate || !confirmed) return [];
-
-      return functionPendingOrConfirmedDatesInRange(
-        confirmed,
-        startDate,
-        endDate
-      );
-    },
-    [confirmed]
-  );
-
-  const handleSetBookedDates = useCallback(
-    (dates) => {
-      if (!dates.start || !dates.end) {
-        setBookedDates({ start: null, end: null });
-        setPendingDatesInRange([]);
-        setConfirmedDatesInRange([]);
-        return;
-      }
-
-      const startDate = dayjs(dates.start).format("YYYY-MM-DD");
-      const endDate = dayjs(dates.end).format("YYYY-MM-DD"); // Используем выбранную дату окончания
-
-      const conflicts = checkConflictsPending(dates.start, dates.end);
-      const conflictsConfirmed = checkConflictsConfirmed(
-        dates.start,
-        dates.end
-      );
-
-      setBookedDates({
-        start: startDate,
-        end: endDate,
-      });
-      setPendingDatesInRange(conflicts);
-      setConfirmedDatesInRange(conflictsConfirmed);
-
-      // Улучшенное логирование конфликтов
-      if (conflicts?.length > 0) {
-        setStatusMessage({
-          type: "warning",
-          message: `Внимание: В выбранном диапазоне есть ${conflicts.length} ожидающих подтверждения бронирований`,
-        });
-      } else if (conflictsConfirmed?.length > 0) {
-        setStatusMessage({
-          type: "error",
-          message: `Ошибка: В выбранном диапазоне есть ${conflictsConfirmed.length} уже подтвержденных бронирований`,
-        });
-      } else {
-        setStatusMessage({ type: null, message: "" });
-      }
-    },
-    [checkConflictsPending, checkConflictsConfirmed]
-  );
 
   const handleBookingComplete = async () => {
     setLoadingState(true);
@@ -522,24 +414,18 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
             mb: 1,
           }}
         >
-          <TextField
+          <BookingEditableDateField
             label={t("order.pickupDate")}
-            type="date"
             value={bookDates.start || ""}
             onChange={(e) => handlePickupDateChange(e.target.value)}
             sx={{ flex: 1 }}
-            size="small"
-            InputLabelProps={{ shrink: true }}
             inputProps={{ min: dayjs().format("YYYY-MM-DD") }}
           />
-          <TextField
+          <BookingEditableDateField
             label={t("order.returnDate")}
-            type="date"
             value={bookDates.end || ""}
             onChange={(e) => handleReturnDateChange(e.target.value)}
             sx={{ flex: 1 }}
-            size="small"
-            InputLabelProps={{ shrink: true }}
             inputProps={{
               min: bookDates.start
                 ? dayjs(bookDates.start).add(1, "day").format("YYYY-MM-DD")
@@ -549,23 +435,17 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
         </Box>
         {/* Time fields */}
         <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
-          <TextField
+          <BookingTimeField
             label={t("order.pickupTime")}
-            type="time"
             value={startTime.format("HH:mm")}
             onChange={(e) => setStartTime(dayjs(e.target.value, "HH:mm"))}
             sx={{ flex: 1 }}
-            size="small"
-            InputLabelProps={{ shrink: true }}
           />
-          <TextField
+          <BookingTimeField
             label={t("order.returnTime")}
-            type="time"
             value={endTime.format("HH:mm")}
             onChange={(e) => setEndTime(dayjs(e.target.value, "HH:mm"))}
             sx={{ flex: 1 }}
-            size="small"
-            InputLabelProps={{ shrink: true }}
           />
         </Box>
         {/* Location fields */}
@@ -577,8 +457,8 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
             mb: 1,
           }}
         >
-          <Autocomplete
-            freeSolo
+          <BookingLocationAutocomplete
+            label={t("order.pickupLocation")}
             options={locations}
             value={orderDetails.placeIn || ""}
             onChange={(_, newValue) =>
@@ -587,28 +467,10 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
             onInputChange={(_, newInputValue) =>
               handleFieldChange("placeIn", newInputValue)
             }
-            PaperProps={{
-              sx: {
-                border: "2px solid",
-                borderColor: "text.primary",
-                borderRadius: 1,
-                boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-                backgroundColor: "background.paper",
-              },
-            }}
-            PopperProps={{ style: { zIndex: 1400 } }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={t("order.pickupLocation")}
-                size="small"
-                InputLabelProps={{ shrink: true }}
-              />
-            )}
             sx={{ flex: 1 }}
           />
-          <Autocomplete
-            freeSolo
+          <BookingLocationAutocomplete
+            label={t("order.returnLocation")}
             options={locations}
             value={orderDetails.placeOut || ""}
             onChange={(_, newValue) =>
@@ -617,38 +479,18 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
             onInputChange={(_, newInputValue) =>
               handleFieldChange("placeOut", newInputValue)
             }
-            PaperProps={{
-              sx: {
-                border: "2px solid",
-                borderColor: "text.primary",
-                borderRadius: 1,
-                boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-                backgroundColor: "background.paper",
-              },
-            }}
-            PopperProps={{ style: { zIndex: 1400 } }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={t("order.returnLocation")}
-                size="small"
-                InputLabelProps={{ shrink: true }}
-              />
-            )}
             sx={{ flex: 1 }}
           />
         </Box>
         {/* Flight number - conditional */}
         {orderDetails.placeIn &&
           orderDetails.placeIn.toLowerCase() === "airport" && (
-            <TextField
+            <BookingFlightField
               label={t("order.flightNumber")}
               value={orderDetails.flightNumber || ""}
               onChange={(e) => handleFieldChange("flightNumber", e.target.value)}
-              size="small"
               fullWidth
               sx={{ mb: 1 }}
-              InputLabelProps={{ shrink: true }}
             />
           )}
       </Box>
@@ -685,7 +527,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
             </Select>
           </FormControl>
           {orderDetails.insurance === "CDW" && (
-            <TextField
+            <BookingTextField
               label={t("order.franchise")}
               type="number"
               value={orderDetails.franchiseOrder || 0}
@@ -695,9 +537,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
                   parseFloat(e.target.value) || 0
                 )
               }
-              size="small"
               sx={{ flex: 1 }}
-              InputLabelProps={{ shrink: true }}
             />
           )}
           <FormControl fullWidth size="small" sx={{ flex: 1 }}>
@@ -721,57 +561,32 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           </FormControl>
         </Box>
         {/* Customer fields */}
-        <TextField
+        <BookingTextField
           label={t("order.name")}
           value={orderDetails.customerName || ""}
           onChange={(e) => handleFieldChange("customerName", e.target.value)}
-          size="small"
-          fullWidth
           required
           sx={{ mb: 1 }}
-          InputLabelProps={{ shrink: true }}
         />
-        <TextField
+        <BookingTextField
           label={t("order.phone")}
           value={orderDetails.phone || ""}
           onChange={(e) => handleFieldChange("phone", e.target.value)}
-          size="small"
-          fullWidth
           required
           sx={{ mb: 1 }}
-          InputLabelProps={{ shrink: true }}
         />
-        <TextField
+        <BookingTextField
           label={t("order.email")}
           value={orderDetails.email || ""}
           onChange={(e) => handleFieldChange("email", e.target.value)}
           type="email"
-          size="small"
-          fullWidth
           sx={{ mb: 1 }}
-          InputLabelProps={{ shrink: true }}
         />
       </Box>
     );
   };
 
   const { t } = useTranslation();
-
-  const renderConfirmationButton = () => (
-    <ActionButton
-      fullWidth
-      color={orderDetails.confirmed ? "success" : "primary"}
-      onClick={toggleConfirmedStatus}
-      label={
-        orderDetails.confirmed
-          ? t("order.bookingConfirmed")
-          : t("order.confirmBooking")
-      }
-      sx={{ mb: 2 }}
-    />
-  );
-
-  const isMobile = useMediaQuery("(max-width:600px)"); // true для телефона
 
   return (
     <Modal

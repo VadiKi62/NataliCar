@@ -15,6 +15,16 @@ export {
 export { buildPendingConfirmBlockMap } from "./buildPendingConfirmBlockMap";
 
 // ============================================
+// PRICE HELPERS (Single Source of Truth)
+// ============================================
+
+export {
+  getEffectivePrice,
+  hasPriceOverride,
+  getPriceInfo,
+} from "./orderPriceHelpers";
+
+// ============================================
 // RBAC (Single Source of Truth)
 // ============================================
 

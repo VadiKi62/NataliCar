@@ -17,6 +17,7 @@ const BookingLocationAutocomplete = ({
   label,
   value,
   options,
+  onChange,
   onInputChange,
   sx,
   ...props
@@ -26,6 +27,7 @@ const BookingLocationAutocomplete = ({
       freeSolo
       options={options}
       value={value}
+      onChange={onChange}
       onInputChange={onInputChange}
       sx={sx}
       PaperProps={{

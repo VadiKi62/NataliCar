@@ -494,10 +494,27 @@ export const PATCH = async (request, { params }) => {
             let totalPrice202 = order.totalPrice; // 🔧 FIX: Preserve existing price by default
             let days202 = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
             
+            // ============================================
+            // PRICE ARCHITECTURE LOGIC (202 status with conflicts)
+            // ============================================
+            // Same rules as main update: totalPrice recalculates, OverridePrice preserved
+            
+            // Handle manual price override (isOverridePrice flag)
+            if (payload.isOverridePrice === true && typeof payload.totalPrice === "number") {
+              // Manual override: save to OverridePrice, keep totalPrice untouched
+              order.OverridePrice = payload.totalPrice;
+            } else if (payload.isOverridePrice === false) {
+              // Explicit reset: clear OverridePrice to return to auto pricing
+              order.OverridePrice = null;
+            }
+            // If isOverridePrice is undefined/null, OverridePrice stays as-is (preserved)
+            
             // Check if dates or price-affecting fields changed (not just time)
             const datesChanged202 = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
             const priceAffectingFieldsChanged202 = payload.insurance !== undefined || payload.ChildSeats !== undefined || payload.car !== undefined;
             
+            // Recalculate totalPrice if rental parameters changed
+            // This happens REGARDLESS of OverridePrice (totalPrice is always accurate)
             if (datesChanged202 || priceAffectingFieldsChanged202) {
               // Only recalculate if dates or price-affecting fields changed
               if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
@@ -510,6 +527,13 @@ export const PATCH = async (request, { params }) => {
                 totalPrice202 = result.total;
                 days202 = result.days;
               }
+            } else if (
+              typeof payload.totalPrice === "number" &&
+              !isNaN(payload.totalPrice) &&
+              payload.isOverridePrice !== true
+            ) {
+              // If only price changed (not params) and NOT override, update totalPrice
+              totalPrice202 = payload.totalPrice;
             }
             // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
@@ -517,7 +541,11 @@ export const PATCH = async (request, { params }) => {
             order.rentalStartDate = start.toDate();
             order.rentalEndDate = end.toDate();
             order.numberOfDays = days202;
+            
+            // Always update totalPrice (it's the calculated price)
+            // OverridePrice is handled separately above
             order.totalPrice = totalPrice202;
+            
             order.timeIn = toParseTime(order.rentalStartDate, start);
             order.timeOut = toParseTime(order.rentalEndDate, end);
             // Restored from pre-refactor conflict logic: Use || operator for placeIn/placeOut to preserve existing values
@@ -576,15 +604,28 @@ export const PATCH = async (request, { params }) => {
       const datesChanged = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
       const priceAffectingFieldsChanged = payload.insurance !== undefined || payload.ChildSeats !== undefined || payload.car !== undefined;
 
-      // Restored from pre-refactor conflict logic: Pricing calculation (manual or automatic)
-      if (
-        typeof payload.totalPrice === "number" &&
-        !isNaN(payload.totalPrice)
-      ) {
-        // Manual price override
-        totalPrice = payload.totalPrice;
-      } else if (datesChanged || priceAffectingFieldsChanged) {
-        // Only recalculate if dates or price-affecting fields changed
+      // ============================================
+      // PRICE ARCHITECTURE LOGIC
+      // ============================================
+      // Rules:
+      // - totalPrice: ALWAYS auto-calculated (never manually overridden)
+      // - OverridePrice: Manual price from admin (preserved when params change)
+      // - When params change: totalPrice recalculates, OverridePrice stays
+      
+      // Handle manual price override (isOverridePrice flag)
+      if (payload.isOverridePrice === true && typeof payload.totalPrice === "number") {
+        // Manual override: save to OverridePrice, keep totalPrice untouched
+        order.OverridePrice = payload.totalPrice;
+        // Don't recalculate totalPrice here - it will be recalculated if params changed
+      } else if (payload.isOverridePrice === false) {
+        // Explicit reset: clear OverridePrice to return to auto pricing
+        order.OverridePrice = null;
+      }
+      // If isOverridePrice is undefined/null, OverridePrice stays as-is (preserved)
+      
+      // Recalculate totalPrice if rental parameters changed
+      // This happens REGARDLESS of OverridePrice (totalPrice is always accurate)
+      if (datesChanged || priceAffectingFieldsChanged) {
         if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
           const result = await carDoc.calculateTotalRentalPricePerDay(
             start,
@@ -595,6 +636,14 @@ export const PATCH = async (request, { params }) => {
           totalPrice = result.total;
           days = result.days;
         }
+      } else if (
+        typeof payload.totalPrice === "number" &&
+        !isNaN(payload.totalPrice) &&
+        payload.isOverridePrice !== true
+      ) {
+        // If only price changed (not params) and NOT override, update totalPrice
+        // This handles direct totalPrice updates (legacy or non-override cases)
+        totalPrice = payload.totalPrice;
       }
       // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
@@ -602,6 +651,9 @@ export const PATCH = async (request, { params }) => {
       order.rentalStartDate = start.toDate();
       order.rentalEndDate = end.toDate();
       order.numberOfDays = days;
+      
+      // Always update totalPrice (it's the calculated price)
+      // OverridePrice is handled separately above
       order.totalPrice = totalPrice;
       order.timeIn = toParseTime(order.rentalStartDate, start);
       order.timeOut = toParseTime(order.rentalEndDate, end);
@@ -651,7 +703,9 @@ export const PATCH = async (request, { params }) => {
           hasConflictDates: order.hasConflictDates,
           numberOfDays: order.numberOfDays,
           totalPrice: order.totalPrice,
+          OverridePrice: order.OverridePrice,
           my_order: order.my_order,
+          isOverridePrice: payload.isOverridePrice,
         });
       }
 

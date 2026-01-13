@@ -8,12 +8,14 @@ import {companyData as companyDataConfig } from "@config/company";
 
 export default async function Home() {
   unstable_noStore();
-  const carsData = await fetchAllCars();
-  const ordersData = await reFetchAllOrders();
   const {companyId} = companyDataConfig;
-  const companyData = await fetchCompany(companyId);
-
-  // const company = await fetchCompany(companyId);
+  
+  // Загружаем данные параллельно для ускорения загрузки
+  const [carsData, ordersData, companyData] = await Promise.all([
+    fetchAllCars(),
+    reFetchAllOrders(),
+    fetchCompany(companyId),
+  ]);
 
   const company = companyData;
 
