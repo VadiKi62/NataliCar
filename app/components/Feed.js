@@ -11,9 +11,14 @@ import { Box } from "@mui/material";
 import i from "@locales/i18n";
 import { MainContextProvider } from "../Context";
 
+import dynamic from "next/dynamic";
 import ScrollButton from "@/app/components/ui/buttons/ScrollButton";
 import Navbar from "@app/components/Navbar";
-import Footer from "@app/components/Footer";
+
+// Lazy load Footer (below fold, can load after initial render)
+const Footer = dynamic(() => import("@app/components/Footer"), {
+  ssr: true, // Safe for SEO - footer content should be indexed
+});
 
 function Feed({ children, ...props }) {
   // unstable_noStore() не нужен в клиентском компоненте

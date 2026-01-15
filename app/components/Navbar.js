@@ -35,17 +35,16 @@ import SelectedFieldClass from "@/app/components/ui/inputs/SelectedFieldClass";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Slider,
 } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-// import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
-import { ru } from "date-fns/locale";
+import dynamic from "next/dynamic";
+
+// Date picker libraries are now lazy-loaded in DiscountModal component
+// Only loaded when admin opens discount modal (saves ~100KB+ on homepage)
+const DiscountModal = dynamic(
+  () => import("@app/components/admin/DiscountModal"),
+  { ssr: false } // Client-only component
+);
 
 const StyledBox = styled(Box, {
   shouldForwardProp: (prop) => prop !== "$isCarInfo" && prop !== "scrolled",
@@ -868,159 +867,17 @@ export default function NavBar({
       </Drawer>
 
       {isAdmin && (
-        <Dialog
+        <DiscountModal
           open={discountModalOpen}
           onClose={() => setDiscountModalOpen(false)}
-          maxWidth="sm"
-          PaperProps={{
-            sx: { minHeight: 400, minWidth: 350 },
-          }}
-        >
-          <DialogTitle sx={{ pb: 2 }}>
-            Выбор скидки: {selectedDiscount}%
-          </DialogTitle>
-          <DialogContent sx={{ minWidth: 350, pb: 3, pt: 3 }}>
-            <LocalizationProvider
-              dateAdapter={AdapterDateFns}
-              adapterLocale={ru}
-            >
-              <Box sx={{ mb: 3, mt: 6 }}>
-                <DatePicker
-                  label="Дата начала скидки"
-                  value={discountStartDate}
-                  disablePast
-                  // Минимальная дата - сегодня
-                  minDate={new Date()}
-                  onChange={(newValue) => {
-                    // Если пользователь очистил поле
-                    if (!newValue) {
-                      setDiscountStartDate(null);
-                      return;
-                    }
-                    // Обрезаем время (Adapter может давать с временем)
-                    const d = new Date(
-                      newValue.getFullYear(),
-                      newValue.getMonth(),
-                      newValue.getDate()
-                    );
-                    // Запрещаем установку прошлых дат (дополнительная защита)
-                    const today = new Date();
-                    const todayStart = new Date(
-                      today.getFullYear(),
-                      today.getMonth(),
-                      today.getDate()
-                    );
-                    if (d < todayStart) return; // просто игнорируем
-                    setDiscountStartDate(d);
-                    // Если дата окончания установлена и стала недопустимой (<= старт), сбрасываем её
-                    if (discountEndDate) {
-                      const endLocal = new Date(
-                        discountEndDate.getFullYear(),
-                        discountEndDate.getMonth(),
-                        discountEndDate.getDate()
-                      );
-                      if (endLocal <= d) setDiscountEndDate(null);
-                    }
-                  }}
-                  inputFormat="dd.MM.yyyy"
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      fullWidth
-                      margin="normal"
-                      sx={{ mt: 2 }}
-                    />
-                  )}
-                />
-              </Box>
-              <Box sx={{ mb: 3 }}>
-                <DatePicker
-                  label="Дата окончания скидки"
-                  value={discountEndDate}
-                  // Минимальная дата: строго позже даты начала, либо завтра если начало ещё не выбрано
-                  disablePast
-                  minDate={(function () {
-                    const today = new Date();
-                    const base = new Date(
-                      today.getFullYear(),
-                      today.getMonth(),
-                      today.getDate()
-                    );
-                    if (discountStartDate) {
-                      return new Date(
-                        discountStartDate.getFullYear(),
-                        discountStartDate.getMonth(),
-                        discountStartDate.getDate() + 1
-                      );
-                    }
-                    return new Date(
-                      base.getFullYear(),
-                      base.getMonth(),
-                      base.getDate() + 1
-                    );
-                  })()}
-                  onChange={(newValue) => {
-                    if (!newValue) {
-                      setDiscountEndDate(null);
-                      return;
-                    }
-                    const d = new Date(
-                      newValue.getFullYear(),
-                      newValue.getMonth(),
-                      newValue.getDate()
-                    );
-                    if (discountStartDate) {
-                      const startLocal = new Date(
-                        discountStartDate.getFullYear(),
-                        discountStartDate.getMonth(),
-                        discountStartDate.getDate()
-                      );
-                      // Требуем строго позже старта
-                      if (d <= startLocal) return; // игнорируем недопустимый выбор
-                    }
-                    // Дополнительная защита от прошлого
-                    const today = new Date();
-                    const todayStart = new Date(
-                      today.getFullYear(),
-                      today.getMonth(),
-                      today.getDate()
-                    );
-                    if (d <= todayStart) return; // конец не может быть сегодня или в прошлом
-                    setDiscountEndDate(d);
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      fullWidth
-                      margin="normal"
-                      sx={{ mt: 2 }}
-                    />
-                  )}
-                />
-              </Box>
-            </LocalizationProvider>
-
-            <Typography gutterBottom sx={{ mt: 6, mb: 5 }}>
-              Скидка на аренду (%):
-            </Typography>
-            <Slider
-              value={selectedDiscount}
-              onChange={(e, value) => setSelectedDiscount(value)}
-              valueLabelDisplay="on"
-              step={5}
-              marks
-              min={0}
-              max={100}
-              sx={{ width: "100%", mt: 1, maxWidth: 300 }}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDiscountModalOpen(false)}>Закрыть</Button>
-            <Button variant="contained" onClick={handleSaveDiscount}>
-              Применить
-            </Button>
-          </DialogActions>
-        </Dialog>
+          selectedDiscount={selectedDiscount}
+          setSelectedDiscount={setSelectedDiscount}
+          discountStartDate={discountStartDate}
+          setDiscountStartDate={setDiscountStartDate}
+          discountEndDate={discountEndDate}
+          setDiscountEndDate={setDiscountEndDate}
+          onSave={handleSaveDiscount}
+        />
       )}
     </>
   );

@@ -226,7 +226,6 @@ function Footer() {
           width={175}
           height={175}
           alt="to kati allo"
-          priority
         ></LogoImg>
         <Slogan>{slogan}</Slogan>
         <SocialLinks>

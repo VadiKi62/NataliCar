@@ -22,7 +22,8 @@ function CarGrid() {
   const [discountEnd, setDiscountEnd] = useState(null);
   
 
-  // Мемоизируем fetchDiscount, чтобы не пересоздавать функцию
+  // Defer discount fetch to avoid blocking initial render
+  // Discount is non-critical for first paint (optional feature)
   const fetchDiscount = useCallback(async () => {
     try {
       const res = await fetch("/api/discount");
@@ -37,7 +38,30 @@ function CarGrid() {
   }, []);
 
   useEffect(() => {
-    fetchDiscount();
+    // Defer non-critical discount fetch after initial paint
+    // Use requestIdleCallback if available, otherwise setTimeout
+    let timer;
+    if (typeof window !== 'undefined' && window.requestIdleCallback) {
+      timer = window.requestIdleCallback(() => {
+        fetchDiscount().catch(() => {
+          // Silently ignore errors - discount is optional
+        });
+      }, { timeout: 2000 });
+    } else {
+      timer = setTimeout(() => {
+        fetchDiscount().catch(() => {
+          // Silently ignore errors - discount is optional
+        });
+      }, 100);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined' && window.requestIdleCallback && typeof timer === 'number') {
+        window.cancelIdleCallback(timer);
+      } else if (typeof timer !== 'undefined') {
+        clearTimeout(timer);
+      }
+    };
   }, [fetchDiscount]);
 
   // Мемоизируем фильтрацию и сортировку машин
