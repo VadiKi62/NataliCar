@@ -40,21 +40,19 @@ function Feed({ children, ...props }) {
   }, []);
 
   // Мемоизируем пропсы для Context, чтобы предотвратить ненужные ре-рендеры
+  const carsLength = props.cars?.length;
+  const firstCarId = props.cars?.[0]?._id;
+  const ordersLength = props.orders?.length;
+  const firstOrderId = props.orders?.[0]?._id;
+  const companyId = props.company?._id;
+  
   const contextProps = useMemo(
     () => ({
       carsData: props.cars,
       ordersData: props.orders,
       companyData: props.company,
     }),
-    // Используем только примитивные значения для сравнения
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      props.cars?.length,
-      props.cars?.[0]?._id,
-      props.orders?.length,
-      props.orders?.[0]?._id,
-      props.company?._id,
-    ]
+    [carsLength, firstCarId, ordersLength, firstOrderId, companyId]
   );
 
   return (

@@ -245,19 +245,18 @@ export default function BigCalendar({ cars, showLegend = true }) {
   // Тема и цвета
   // ─────────────────────────────────────────
   const theme = useTheme();
-  const calendarColors = theme.palette.calendar || {};
 
   // Централизованные стили для header
-  const calendarHeaderStyles = useMemo(
-    () => ({
+  const calendarHeaderStyles = useMemo(() => {
+    const calendarColors = theme.palette.calendar || {};
+    return {
       baseBg: "background.default" || "#121212",
       todayBg: calendarColors.today || "calendar.today",
       sundayText: calendarColors.sunday || theme.palette.primary.main,
       weekdayText: "text.primary",
       border: calendarColors.border || theme.palette.divider,
-    }),
-    [calendarColors, theme.palette.primary.main, theme.palette.divider]
-  );
+    };
+  }, [theme.palette.primary.main, theme.palette.divider, theme.palette.calendar]);
   
   // i18n для динамического перевода месяцев и дней недели
   const { i18n } = useTranslation();

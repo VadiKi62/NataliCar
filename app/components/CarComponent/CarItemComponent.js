@@ -264,7 +264,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
       if (ro) ro.disconnect();
       else window.removeEventListener("resize", computeFont);
     };
-  }, [carImageRef.current]);
+  }, []);
 
   // Добавляем обработчик для CalendarPicker
   const handleDateChange = ({ type, message }) => {
@@ -488,7 +488,6 @@ const CarItemComponent = React.memo(function CarItemComponent({
           <BookingModal
             fetchAndUpdateOrders={fetchAndUpdateOrders}
             open={modalOpen}
-            onClose={() => setModalOpen(false)}
             car={car}
             orders={carOrders}
             presetDates={{ startDate: bookDates?.start, endDate: bookDates?.end }}
