@@ -2,17 +2,17 @@ import { Suspense } from "react";
 import { unstable_noStore } from "next/cache";
 import LoadingSpinner from "@app/loading";
 import Feed from "@app/components/Feed";
-import Terms from "@app/components/Terms/Terms";
+import LegalDoc from "@app/components/Legal/LegalDoc";
 import { getSeoConfig } from "@config/seo";
 
 const seoConfig = getSeoConfig();
 
 export const metadata = {
-  title: "Terms and Conditions - Car Rental Halkidiki",
+  title: "Privacy Policy - Car Rental Halkidiki",
   description:
-    "Read the terms and conditions for renting a car with Natali Cars in Halkidiki, Greece. Understand our rental policies, requirements, and responsibilities.",
+    "Read our privacy policy to understand how Natali Cars collects, uses, and protects your personal information when you rent a car in Halkidiki, Greece.",
   alternates: {
-    canonical: `${seoConfig.baseUrl}/terms`,
+    canonical: `${seoConfig.baseUrl}/privacy-policy`,
   },
   robots: {
     index: true,
@@ -20,13 +20,12 @@ export const metadata = {
   },
 };
 
-export default function TermsPage() {
+export default function PrivacyPolicyPage() {
   unstable_noStore();
   return (
     <Feed>
       <Suspense fallback={<LoadingSpinner />}>
-        {" "}
-        <Terms />
+        <LegalDoc docType="privacy-policy" />
       </Suspense>
     </Feed>
   );

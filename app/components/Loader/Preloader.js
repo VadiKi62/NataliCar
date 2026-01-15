@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import Image from "next/image";
 import { Backdrop, Fade, Box, keyframes } from "@mui/material";
 
@@ -13,7 +13,7 @@ const spin = keyframes`
 export default function Preloader({ loading }) {
   const [visible, setVisible] = useState(true);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!loading) {
       const timeout = setTimeout(() => setVisible(false), 700);
       return () => clearTimeout(timeout);

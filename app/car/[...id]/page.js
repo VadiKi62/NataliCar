@@ -6,18 +6,38 @@ import { Suspense } from "react";
 import { unstable_noStore } from "next/cache";
 import Loading from "@app/loading";
 import Feed from "@app/components/Feed";
+import { getSeoConfig } from "@config/seo";
 
 export const generateMetadata = async ({ params }) => {
-  console.log(params);
   const { id } = params;
 
-  const car = await fetchCar(id);
-  let title = `${car.model}`;
+  try {
+    const car = await fetchCar(id);
+    const carTitle = car?.model || "Car";
+    const title = `${carTitle} Rental in Halkidiki | Natali Cars`;
+    const description = `Rent ${carTitle} in Halkidiki, Greece with Natali Cars. Affordable rates, flexible pickup and return in Nea Kallikratia. Book online today.`;
+    const seoConfig = getSeoConfig();
 
-  return {
-    title: { title },
-    description: `${title} for rent in Nea Kallikratia.  Natali Cars. Best Car Rent Prices. Best Services.`,
-  };
+    return {
+      title,
+      description,
+      alternates: {
+        canonical: `${seoConfig.baseUrl}/car/${id}`,
+      },
+      openGraph: {
+        title,
+        description,
+        url: `${seoConfig.baseUrl}/car/${id}`,
+        type: "website",
+      },
+    };
+  } catch (error) {
+    const seoConfig = getSeoConfig();
+    return {
+      title: "Car Rental in Halkidiki | Natali Cars",
+      description: seoConfig.defaultDescription,
+    };
+  }
 };
 
 async function CarPageMain({ params }) {

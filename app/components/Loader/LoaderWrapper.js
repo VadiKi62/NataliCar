@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Preloader from "./Preloader";
 
@@ -9,7 +9,7 @@ export default function RouteTransitionLoader({ children }) {
   const [firstLoad, setFirstLoad] = useState(true);
 
   // первая загрузка — дольше
-  useEffect(() => {
+  useLayoutEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
       setFirstLoad(false);
@@ -18,7 +18,7 @@ export default function RouteTransitionLoader({ children }) {
   }, []);
 
   // при каждом переходе — короткий лоадер
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!firstLoad) {
       setLoading(true);
       const timer = setTimeout(() => setLoading(false), 1000);

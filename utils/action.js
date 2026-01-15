@@ -1004,3 +1004,135 @@ export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndD
     return { totalPrice: 0, days: 0 };
   }
 }
+
+/**
+ * Normalize API base URL - remove trailing slashes and handle double slashes
+ * @param {string} url - Base URL
+ * @returns {string} Normalized URL
+ */
+function normalizeApiUrl(url) {
+  if (!url) return "";
+  return String(url).trim().replace(/\/+$/, "").replace(/([^:]\/)\/+/g, "$1");
+}
+
+/**
+ * Fetch legal document from AWS API with ETag caching
+ * 
+ * @typedef {Object} LegalDocResponse
+ * @property {number} version - Document version
+ * @property {string} updatedAt - ISO timestamp
+ * @property {Object} content - Document content
+ * @property {string} content.title - Document title
+ * @property {"EU"|"IE"|"UA"} content.jurisdiction - Jurisdiction code
+ * @property {Array<{id: string, text: string}>} content.sections - Document sections
+ * @property {boolean} [stale] - True if data came from cache due to API failure
+ * 
+ * @param {Object} options
+ * @param {"privacy-policy"|"terms-of-service"|"cookie-policy"} options.docType - Document type
+ * @param {string} [options.lang="en"] - Language code
+ * @param {"EU"|"IE"|"UA"} [options.jur="EU"] - Jurisdiction
+ * @returns {Promise<LegalDocResponse>}
+ * @throws {Error} If API fails and no cache exists
+ */
+export async function getLegalDoc({ docType, lang = "en", jur = "EU" }) {
+  // Validate docType
+  const validDocTypes = ["privacy-policy", "terms-of-service", "cookie-policy"];
+  if (!validDocTypes.includes(docType)) {
+    throw new Error(`Invalid docType: ${docType}. Must be one of: ${validDocTypes.join(", ")}`);
+  }
+
+  // Get API base URL from env
+  const legalApiBase = process.env.NEXT_PUBLIC_LEGAL_API;
+  if (!legalApiBase) {
+    throw new Error("NEXT_PUBLIC_LEGAL_API environment variable is not set");
+  }
+
+  // Normalize URL
+  const baseUrl = normalizeApiUrl(legalApiBase);
+  const apiUrl = `${baseUrl}/legal/${docType}?lang=${lang}&jur=${jur}`;
+
+  // Cache key for localStorage
+  const cacheKey = `legal:${docType}:${lang}:${jur}`;
+
+  // Try to get cached data
+  let cachedData = null;
+  try {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        cachedData = JSON.parse(cached);
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to read cache:", e);
+  }
+
+  // Prepare request headers
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  if (cachedData?.etag) {
+    headers["If-None-Match"] = cachedData.etag;
+  }
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+
+    // Handle 304 Not Modified - return cached data
+    if (response.status === 304) {
+      if (cachedData?.data) {
+        return cachedData.data;
+      }
+      // Fallback: if 304 but no cache, treat as error
+      throw new Error("Server returned 304 but no cached data available");
+    }
+
+    // Handle 200 OK - update cache and return data
+    if (response.ok) {
+      const data = await response.json();
+      const etag = response.headers.get("ETag");
+
+      // Validate response structure
+      if (!data || !data.content || !Array.isArray(data.content.sections)) {
+        throw new Error("Invalid response structure from legal API");
+      }
+
+      // Update cache
+      if (typeof window !== "undefined" && etag) {
+        try {
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              etag,
+              data,
+              savedAt: new Date().toISOString(),
+            })
+          );
+        } catch (e) {
+          console.warn("Failed to update cache:", e);
+        }
+      }
+
+      return data;
+    }
+
+    // Handle other status codes
+    throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+  } catch (error) {
+    // If API fails but we have cached data, return it with stale flag
+    if (cachedData?.data) {
+      console.warn(`Legal API failed for ${docType}, using cached data:`, error.message);
+      return {
+        ...cachedData.data,
+        stale: true,
+      };
+    }
+
+    // No cache available - throw error
+    throw new Error(`Failed to fetch legal document: ${error.message}`);
+  }
+}

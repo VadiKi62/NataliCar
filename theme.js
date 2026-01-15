@@ -424,13 +424,24 @@ const typography = {
   },
   body1: {
     fontFamily: "'PT Sans', sans-serif",
-    fontSize: "1rem",
-    lineHeight: 1.6,
+    fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
+    lineHeight: 1.7,
   },
   body2: {
     fontFamily: "'PT Sans', sans-serif",
-    fontSize: "0.875rem",
+    fontSize: "clamp(0.875rem, 1vw, 1rem)",
     lineHeight: 1.6,
+  },
+  // Новые варианты для больших читабельных текстов
+  bodyLarge: {
+    fontFamily: "'PT Sans', sans-serif",
+    fontSize: "clamp(1.125rem, 1.5vw, 1.375rem)",
+    lineHeight: 1.7,
+  },
+  bodyExtraLarge: {
+    fontFamily: "'PT Sans', sans-serif",
+    fontSize: "clamp(1.25rem, 1.75vw, 1.5rem)",
+    lineHeight: 1.7,
   },
   button: {
     fontFamily: "'PT Sans', sans-serif",
@@ -499,6 +510,29 @@ export const lightTheme = createTheme({
   },
   components: {
     ...buttonStyles,
+    MuiTypography: {
+      styleOverrides: {
+        root: {
+          "&.MuiTypography-bodyLarge": typography.bodyLarge,
+          "&.MuiTypography-bodyExtraLarge": typography.bodyExtraLarge,
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          "& .MuiInputBase-root": {
+            fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
+          },
+          "& .MuiInputLabel-root": {
+            fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
+          },
+          "& .MuiFormHelperText-root": {
+            fontSize: "clamp(0.875rem, 1vw, 1rem)",
+          },
+        },
+      },
+    },
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -608,6 +642,29 @@ export const darkTheme = createTheme({
   },
   components: {
     ...buttonStyles,
+    MuiTypography: {
+      styleOverrides: {
+        root: {
+          "&.MuiTypography-bodyLarge": typography.bodyLarge,
+          "&.MuiTypography-bodyExtraLarge": typography.bodyExtraLarge,
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          "& .MuiInputBase-root": {
+            fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
+          },
+          "& .MuiInputLabel-root": {
+            fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
+          },
+          "& .MuiFormHelperText-root": {
+            fontSize: "clamp(0.875rem, 1vw, 1rem)",
+          },
+        },
+      },
+    },
     MuiPaper: {
       styleOverrides: {
         root: {

@@ -235,5 +235,25 @@
     "understandConsequences": "I understand the consequences and want to proceed",
     "saveWithWarning": "Save with warning",
     "cannotSaveDueToConflict": "Cannot save due to conflict"
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "Have questions? We're always happy to help!",
+    "description": "Fill out the form below and our team will get back to you within 24 hours.",
+    "emailLabel": "Support Email",
+    "responseTime": "We usually respond within 24 hours",
+    "subject": "Subject",
+    "message": "Message",
+    "send": "Send",
+    "success": "Message sent successfully! We'll contact you soon.",
+    "emailNameLabel": "Name",
+    "errors": {
+      "nameRequired": "Name is required",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email format",
+      "subjectRequired": "Subject is required",
+      "messageRequired": "Message is required",
+      "sendFailed": "Failed to send message. Please try again later."
+    }
   }
 }

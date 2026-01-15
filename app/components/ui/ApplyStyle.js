@@ -29,7 +29,7 @@ function ApplyStyle(key, value) {
     case "text22":
       return (
         <Typography
-          variant="body1"
+          variant="bodyLarge"
           paragraph
           color="secondary.main"
           style={{ whiteSpace: "pre-line" }}
@@ -57,7 +57,7 @@ function ApplyStyle(key, value) {
                   <Typography
                     key={index}
                     component="span"
-                    variant="body1"
+                    variant="bodyLarge"
                     fontStyle="italic"
                     color="secondary.main"
                     style={{ textDecoration: "underline" }}
@@ -195,14 +195,14 @@ function ApplyStyle(key, value) {
     case "textItalic15":
     case "textItalic13":
       return (
-        <Typography variant="body1" fontStyle="italic" color="secondary.main">
+        <Typography variant="bodyLarge" fontStyle="italic" color="secondary.main">
           {value}
         </Typography>
       );
     case "textItalicUnderline1":
       return (
         <Typography
-          variant="body1"
+          variant="bodyLarge"
           fontStyle="italic"
           textDecoration="underline"
           color="secondary.main"
@@ -213,7 +213,7 @@ function ApplyStyle(key, value) {
     case "textWithLinks1":
       return (
         <Typography
-          variant="body1"
+          variant="bodyLarge"
           paragraph
           color="secondary.main"
           style={{ whiteSpace: "pre-line" }}
@@ -248,7 +248,7 @@ function ApplyStyle(key, value) {
     default:
       return (
         <Typography
-          variant="body1"
+          variant="bodyLarge"
           paragraph
           color="secondary.main"
           style={{ whiteSpace: "pre-line" }}
