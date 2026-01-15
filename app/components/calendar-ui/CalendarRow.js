@@ -1760,6 +1760,13 @@ export default function CarTableRow({
       onExitMoveMode,
       selectedOrderDates,
       isCarCompatibleForMove,
+      clickBlocked,
+      enqueueSnackbar,
+      handleLongPressStart,
+      ordersByCarId,
+      theme.palette.divider,
+      theme.palette.neutral?.black,
+      theme.palette.primary.main,
     ]
   );
 

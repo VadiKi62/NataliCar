@@ -159,7 +159,7 @@ const EditOrderModal = ({
       };
       checkConflicts();
     }
-  }, [order]);
+  }, [order, setIsConflictOrder]);
 
   // handleDelete is now provided by useEditOrderState hook
 

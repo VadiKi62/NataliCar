@@ -128,7 +128,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
         totalPrice: daysAndTotal.totalPrice,
       }));
     }
-  }, [daysAndTotal.totalPrice]);
+  }, [daysAndTotal.totalPrice, orderDetails.totalPrice]);
   // Хелпер для нормализации дат (аналогично BookingModal)
   function normalizeDate(date) {
     return date ? dayjs(date).format("YYYY-MM-DD") : null;
@@ -210,7 +210,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
         orderNumber: generateOrderNumber(),
       }));
     }
-  }, [date, open, car]);
+  }, [date, open, car, orderDetails.franchiseOrder, orderDetails.insurance, orderDetails.orderNumber]);
 
   // Оптимизированный обработчик изменения полей
   const handleFieldChange = useCallback((field, value) => {
