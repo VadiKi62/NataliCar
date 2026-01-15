@@ -52,6 +52,7 @@ function Feed({ children, ...props }) {
       ordersData: props.orders,
       companyData: props.company,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [carsLength, firstCarId, ordersLength, firstOrderId, companyId]
   );
 

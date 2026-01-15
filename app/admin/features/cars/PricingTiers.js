@@ -44,6 +44,7 @@ const PricingTiersTable = ({
     }
   }, [isAddcar, prices]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedUpdate = useCallback(
     debounce(async (updatedCarData) => {
       try {
@@ -87,7 +88,7 @@ const PricingTiersTable = ({
         setPendingUpdates({});
       }
     },
-    [car, debouncedUpdate, handleChange]
+    [car, debouncedUpdate, handleChange, isAddcar]
   );
 
   const { t } = useTranslation();

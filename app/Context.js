@@ -81,12 +81,13 @@ export const MainContextProvider = ({
   const hasLoadedCompanyRef = useRef(false);
   
   // Обновляем ref только если companyData действительно изменилась (по ID)
+  const companyDataId = companyData?._id;
   useEffect(() => {
     if (companyData && companyData._id !== companyDataRef.current?._id) {
       companyDataRef.current = companyData;
       hasLoadedCompanyRef.current = true;
     }
-  }, [companyData?._id]);
+  }, [companyData, companyDataId]);
 
   const [company, setCompany] = useState(companyDataRef.current || companyData);
   const [companyLoading, setCompanyLoading] = useState(!companyData);
@@ -136,6 +137,8 @@ export const MainContextProvider = ({
   const initialOrdersRef = useRef(ordersData);
   
   // Обновляем refs только если данные действительно изменились (по длине или ID первого элемента)
+  const carsDataLength = carsData?.length;
+  const carsDataFirstId = carsData?.[0]?._id;
   useEffect(() => {
     if (carsData && carsData.length > 0) {
       const carsChanged = 
@@ -146,8 +149,10 @@ export const MainContextProvider = ({
         initialCarsRef.current = carsData;
       }
     }
-  }, [carsData?.length, carsData?.[0]?._id]);
+  }, [carsData, carsDataLength, carsDataFirstId]);
   
+  const ordersDataLength = ordersData?.length;
+  const ordersDataFirstId = ordersData?.[0]?._id;
   useEffect(() => {
     if (ordersData && ordersData.length > 0) {
       const ordersChanged = 
@@ -158,7 +163,7 @@ export const MainContextProvider = ({
         initialOrdersRef.current = ordersData;
       }
     }
-  }, [ordersData?.length, ordersData?.[0]?._id]);
+  }, [ordersData, ordersDataLength, ordersDataFirstId]);
   
   const [cars, setCars] = useState(initialCarsRef.current || []);
   const [allOrders, setAllOrders] = useState(initialOrdersRef.current || []);

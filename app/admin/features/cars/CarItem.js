@@ -222,6 +222,7 @@ function CarItem({ car, onCarDelete, setUpdateStatus }) {
         onMouseLeave={() => setHovered(false)}
       >
         {previewImage ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img src={previewImage} alt="Preview" />
         ) : (
           <CldImage

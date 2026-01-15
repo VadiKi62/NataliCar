@@ -242,7 +242,7 @@ export default function CarTableRow({
   );
 
   // ИСПРАВЛЕННЫЕ обработчики для длинного нажатия
-  const handleLongPressStart = (dateStr) => {
+  const handleLongPressStart = useCallback((dateStr) => {
     // Запрещаем длинное нажатие, если уже активен режим перемещения
     if (moveMode) {
       return;
@@ -328,7 +328,7 @@ export default function CarTableRow({
       setPressTimer(timer);
       pressTimerRef.current = timer;
     }
-  };
+  }, [moveMode, startEndDates, startEndOverlapDates, carOrders, hasOrder, isLastDateForOrder, getOrderByDate, onLongPress]);
 
   const handleLongPressEnd = () => {
     const timer = pressTimerRef.current;
@@ -1745,18 +1745,12 @@ export default function CarTableRow({
       setOpen,
       setSelectedOrders,
       onAddOrderClick,
-      onLongPress,
       car,
-      pressTimer,
-      isLastDateForOrder,
-      hasOrder,
       selectedOrderId,
       isPartOfSelectedOrder,
-      getOrderByDate,
       moveMode,
       selectedMoveOrder,
       onCarSelectForMove,
-      wasLongPress,
       onExitMoveMode,
       selectedOrderDates,
       isCarCompatibleForMove,
