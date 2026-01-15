@@ -10,7 +10,8 @@
     "orders": "Orders",
     "orderList": "Order list",
     "carClass": "Choose Car Class",
-    "transmission": "Choose Transmission"
+    "transmission": "Choose Transmission",
+    "logout": "Logout"
   },
   "basic": {
     "close": "close",
@@ -83,6 +84,7 @@
     "deleteOrder": "Delete order",
     "sureDelOrder": "Are you sure you want to delete this order?",
     "changeDates": "Everything is great! Dates have been changed",
+    "orderUpdated": "Order successfully updated",
     "discount": "Discount",
     "flightNumber": "Flight No",
     "minAllowed": "Not earlier than: ",
@@ -167,7 +169,41 @@
     "rentEnd": "Rental End",
     "days": "Days",
     "price": "Total Price",
-    "confirm": "Confirmed"
+    "confirm": "Confirmed",
+    "ordersTable": "Orders Table",
+    "orderNumber": "Order #",
+    "status": "Status",
+    "origin": "Origin",
+    "pickup": "Pickup",
+    "return": "Return",
+    "actions": "Actions",
+    "search": "Search...",
+    "filterByCar": "Filter by car",
+    "filterByStatus": "Status",
+    "filterByOrigin": "Origin",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "startDate": "Start Date",
+    "all": "All",
+    "confirmed": "Confirmed",
+    "pending": "Pending",
+    "clientOrder": "Client",
+    "adminOrder": "Admin",
+    "reset": "Reset",
+    "edit": "Edit",
+    "noOrders": "No orders found",
+    "loadingOrders": "Loading orders...",
+    "rowsPerPage": "Rows per page",
+    "exportExcel": "Export Excel",
+    "exportPdf": "Export PDF",
+    "protectedOrder": "Protected",
+    "protectedOrderTooltip": "Only superadmin can edit/delete client orders or orders created by superadmin.",
+    "delete": "Delete",
+    "deleteConfirm": "Delete order?",
+    "confirm": "Confirm",
+    "unconfirm": "Unconfirm",
+    "customerName": "Customer Name",
+    "loading": "Loading..."
   },
   "print": {
     "allOrders": "All Orders",
@@ -188,5 +224,16 @@
     "yearSelect": "Select year",
     "thisMonth": "this month",
     "nextMonthLabel": "next month"
+  },
+  "timeAdjust": {
+    "overridePending": "Confirmed order will override pending request",
+    "blockedByConfirmed": "Cannot adjust: conflicts with confirmed order",
+    "pendingOverlap": "Warning: two pending orders will overlap",
+    "confirmedConflict": "Cannot adjust: two confirmed orders conflict",
+    "confirmChanges": "Confirm changes",
+    "acknowledgementRequired": "Acknowledgement required",
+    "understandConsequences": "I understand the consequences and want to proceed",
+    "saveWithWarning": "Save with warning",
+    "cannotSaveDueToConflict": "Cannot save due to conflict"
   }
 }

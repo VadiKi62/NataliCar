@@ -1,34 +1,15 @@
-import React, { Suspense } from "react";
-import { Box } from "@mui/material";
-import { unstable_noStore } from "next/cache";
-import Feed from "@app/components/Feed";
-import { fetchAllCars, reFetchAllOrders, fetchCompany } from "@utils/action";
-import DataGridOrders from "@app/components/Admin/DataGridOrders";
-import Admin from "@app/components/Admin/Admin";
-import Loading from "@app/loading";
+import { DataLoader } from "@/app/admin/features/shared";
 
-async function PageOrders() {
-  unstable_noStore();
-  const carsData = await fetchAllCars();
-  const ordersData = await reFetchAllOrders();
-  const companyId = "679903bd10e6c8a8c0f027bc";
-  const company = await fetchCompany(companyId);
-
-  return (
-    <Suspense fallback={<Loading />}>
-      <Feed
-        cars={carsData}
-        orders={ordersData}
-        company={company}
-        isAdmin={true}
-        isMain={false}
-      >
-        <Box sx={{ my: 3 }}>
-          <Admin isOrdersCalendars={true} />
-        </Box>
-      </Feed>
-    </Suspense>
-  );
+/**
+ * /admin/orders - страница таблицы заказов (canonical route)
+ * 
+ * Таблица всех заказов с фильтрами:
+ * - По машине
+ * - По дате (pickup/return overlap)
+ * - По статусу (confirmed/pending)
+ * - По источнику (my_order true/false)
+ * - Поиск по тексту
+ */
+export default function PageOrders() {
+  return <DataLoader viewType="table" />;
 }
-
-export default PageOrders;

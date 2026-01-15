@@ -1,13 +1,31 @@
 import { Order } from "@models/order";
-import { Car } from "@models/car";
+import { Car } from "@models/car"; // 🔧 FIX: Import Car to ensure it's registered before Order pre-save middleware
+import Company from "@models/company";
+import BookingRules from "@/config/bookingRules";
 import { connectToDB } from "@utils/database";
+import { requireAdmin } from "@/lib/adminAuth";
+import { canConfirmOrder } from "@/domain/orders/orderPermissions";
+// 🎯 ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ для анализа конфликтов
+import { analyzeConfirmationConflicts } from "@/domain/booking/analyzeConfirmationConflicts";
 
 export const PATCH = async (request, { params }) => {
   try {
     await connectToDB();
+    
+    // Check admin authentication
+    const { session, errorResponse } = await requireAdmin(request);
+    if (errorResponse) return errorResponse;
+    
+    // Validate session structure
+    if (!session || !session.user) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid session" }),
+        { status: 401 }
+      );
+    }
 
     const { orderId } = params;
-    console.log("ordeID IS", orderId);
+    console.log("switchConfirm orderId:", orderId);
 
     // Find the order by its ID
     const order = await Order.findById(orderId);
@@ -18,54 +36,160 @@ export const PATCH = async (request, { params }) => {
         { status: 404 }
       );
     }
-
-    // Toggle the confirmed status
-    order.confirmed = !order.confirmed;
-
-    console.log("Updated Order before saving:", order);
-    // Save the updated order
-    const updatedOrder = await order.save();
-
-    // Find all conflicting orders
-    const conflictingOrders = await Order.find({
-      _id: { $in: order.hasConflictDates },
-    });
-
-    // Prepare the response
-    let message = `Статус успешно обновлен на ${order.confirmed}`;
-    if (conflictingOrders.length > 0) {
-      message +=
-        ". Внимание, среди конфликтных броней есть подтвержденные, поэтому их необходимо удалить или обновить даты.";
+    
+    // Get company for bufferHours (needed for conflict analysis and responses)
+    const companyId = session.user.companyId || "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
+    const company = await Company.findById(companyId);
+    const bufferHours = Number(company?.bufferTime ?? BookingRules.bufferHours);
+    
+    // Check if admin has permission to confirm/unconfirm this order
+    const permission = canConfirmOrder(order, session.user);
+ 
+    
+    if (!permission.allowed) {
+      // ⛔ PERMISSION DENIED (403)
+      const normalized = {
+        success: false,
+        data: null,
+        message: permission.reason,
+        level: "block",
+        conflicts: [],
+        affectedOrders: [],
+        bufferHours: bufferHours,
+      };
+      
+      console.log(`[switchConfirm] 403 PERMISSION_DENIED orderId=${orderId} success=false level=block`);
+      
+      return new Response(
+        JSON.stringify(normalized),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    return new Response(
-      JSON.stringify({
-        data: updatedOrder,
-        message: message,
-        conflicts: conflictingOrders.map((o) => ({
-          id: o._id,
-          start: o.rentalStartDate,
-          end: o.rentalEndDate,
-          phone: o.phone,
-          email: o.email,
-          name: o.customerName,
-        })),
-      }),
-      {
-        success: true,
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+    // Если пытаемся подтвердить (переключить с false на true)
+    const isConfirming = !order.confirmed;
+    console.log("isConfirming:", isConfirming);
+
+    if (isConfirming) {
+      // Получаем все заказы для этой машины
+      const allOrdersForCar = await Order.find({
+        car: order.car,
+      });
+
+      // 🎯 Используем ЕДИНСТВЕННУЮ функцию анализа (Athens timezone)
+      const conflictAnalysis = analyzeConfirmationConflicts({
+        orderToConfirm: order,
+        allOrders: allOrdersForCar,
+        bufferHours: bufferHours,
+      });
+
+      console.log("[switchConfirm] Conflict analysis result:", {
+        orderId: order._id,
+        canConfirm: conflictAnalysis.canConfirm,
+        level: conflictAnalysis.level,
+        message: conflictAnalysis.message,
+        blockedByConfirmed: conflictAnalysis.blockedByConfirmed?.length || 0,
+        affectedPendingOrders: conflictAnalysis.affectedPendingOrders?.length || 0,
+      });
+
+      if (!conflictAnalysis.canConfirm) {
+        // ⛔ BLOCK: нельзя подтвердить (409)
+        const normalized = {
+          success: false,
+          data: null,
+          message: conflictAnalysis.message,
+          level: "block",
+          conflicts: conflictAnalysis.blockedByConfirmed ?? [],
+          affectedOrders: conflictAnalysis.affectedPendingOrders ?? [],
+          bufferHours: conflictAnalysis.bufferHours ?? bufferHours,
+        };
+        
+        console.log(`[switchConfirm] 409 BLOCK orderId=${orderId} success=false level=block`);
+        
+        return new Response(
+          JSON.stringify(normalized),
+          {
+            status: 409,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
       }
-    );
+
+      // ✅ Можно подтвердить (возможно с warning)
+      order.confirmed = true;
+      const updatedOrder = await order.save();
+
+      // Определяем статус ответа
+      const responseStatus = conflictAnalysis.level === "warning" ? 202 : 200;
+      const responseMessage = conflictAnalysis.message || "Заказ успешно подтверждён";
+      
+      const normalized = {
+        success: true,
+        data: updatedOrder,
+        message: responseMessage,
+        level: conflictAnalysis.level ?? null,
+        conflicts: [], // No conflicts on success
+        affectedOrders: conflictAnalysis.affectedPendingOrders ?? [],
+        bufferHours: conflictAnalysis.bufferHours ?? bufferHours,
+      };
+      
+      console.log(`[switchConfirm] ${responseStatus} SUCCESS orderId=${orderId} success=true level=${normalized.level || "null"}`);
+
+      return new Response(
+        JSON.stringify(normalized),
+        {
+          status: responseStatus,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    } else {
+      // Снимаем подтверждение (всегда разрешено)
+      order.confirmed = false;
+      const updatedOrder = await order.save();
+
+      const normalized = {
+        success: true,
+        data: updatedOrder,
+        message: "Подтверждение заказа снято",
+        level: null,
+        conflicts: [],
+        affectedOrders: [],
+        bufferHours: bufferHours,
+      };
+      
+      console.log(`[switchConfirm] 200 SUCCESS orderId=${orderId} success=true level=null (unconfirmed)`);
+
+      return new Response(
+        JSON.stringify(normalized),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
   } catch (error) {
     console.error("Error updating order:", error);
+    
+    // Get company for bufferHours normalization (fallback)
+    const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
+    const company = await Company.findById(companyId);
+    const bufferHours = Number(company?.bufferTime ?? 2);
+    
+    const normalized = {
+      success: false,
+      data: null,
+      message: "Failed to toggle order confirmation",
+      level: "block",
+      conflicts: [],
+      affectedOrders: [],
+      bufferHours: bufferHours,
+    };
+    
+    console.log(`[switchConfirm] 500 ERROR orderId=${params.orderId} success=false level=block`);
+    
     return new Response(
-      JSON.stringify({
-        message: "Failed to toggle order confirmation",
-        data: error.message,
-        success: false,
-      }),
-      { status: 500 }
+      JSON.stringify(normalized),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 };

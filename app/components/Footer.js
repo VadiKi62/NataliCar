@@ -10,7 +10,7 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import CallIcon from "@mui/icons-material/Call";
 import EmailIcon from "@mui/icons-material/Email";
-import DefaultButton from "@app/components/common/DefaultButton";
+import DefaultButton from "@/app/components/ui/buttons/DefaultButton";
 import DirectionsIcon from "@mui/icons-material/Directions";
 
 import { useRouter } from "next/navigation";
@@ -21,7 +21,7 @@ const Section = styled("section")(({ theme }) => ({
   padding: theme.spacing(5),
   borderTop: `1px solid ${theme.palette.secondary.complement}`,
   textAlign: "center",
-  background: theme.palette.primary.main1,
+  background: theme.palette.secondary.main,
   backdropFilter: "blur(60px)",
   color: theme.palette.text.dark,
 }));
@@ -131,6 +131,8 @@ function Footer() {
             target="_blank"
             rel="noopener noreferrer"
             sx={{
+              backgroundColor: "primary.main",
+              color: "secondary.contrastText",
               "&:hover": {
                 color: "white",
               },

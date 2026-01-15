@@ -1,0 +1,143 @@
+/**
+ * formatConflictMessages
+ * 
+ * 🎯 UX-копирайт для сообщений о конфликтах заказов
+ * 
+ * ⚠️ ВАЖНО: Только форматирование сообщений, НЕ логика конфликтов
+ * Все вычисления (времена, разницы, буферы) должны быть переданы как параметры
+ */
+
+import { formatTimeHHMM } from "../time/athensTime";
+
+/**
+ * Форматирует сообщение о конфликте с подтверждённым заказом (BLOCK)
+ * 
+ * @param {Object} params
+ * @param {string} params.conflictingOrderName - Имя клиента конфликтующего заказа
+ * @param {string} [params.currentReturnTime] - Время возврата текущего заказа "HH:mm" (если конфликт по возврату)
+ * @param {string} [params.currentPickupTime] - Время забора текущего заказа "HH:mm" (если конфликт по забору)
+ * @param {string} [params.nextPickupTime] - Время забора следующим клиентом "HH:mm" (если конфликт по возврату)
+ * @param {string} [params.nextReturnTime] - Время возврата следующим клиентом "HH:mm" (если конфликт по забору)
+ * @param {number} params.actualGapMinutes - Фактический интервал в минутах
+ * @param {number} params.requiredBufferHours - Требуемый буфер в часах
+ * @returns {string}
+ */
+export function formatConfirmedConflictMessage({
+  conflictingOrderName,
+  currentReturnTime,
+  currentPickupTime,
+  nextPickupTime,
+  nextReturnTime,
+  actualGapMinutes,
+  requiredBufferHours,
+}) {
+  // Определяем направление конфликта на основе переданных параметров
+  // Если есть currentReturnTime и nextPickupTime → конфликт по возврату
+  // Если есть currentPickupTime и nextReturnTime → конфликт по забору
+  const isReturnConflict = currentReturnTime && nextPickupTime;
+  const isPickupConflict = currentPickupTime && nextReturnTime;
+  
+  // Определяем метки динамически
+  const sourceLabel = isPickupConflict ? "забор" : "возврат";
+  const sourceLabelCapitalized = isPickupConflict ? "Забор" : "Возврат";
+  const targetLabel = isPickupConflict ? "возврат" : "забор";
+  const actionLabel = isPickupConflict ? "время забора" : "время возврата";
+  
+  const sourceTime = isPickupConflict ? currentPickupTime : currentReturnTime;
+  const targetTime = isPickupConflict ? nextReturnTime : nextPickupTime;
+  // Обрабатываем отрицательные значения (пересечения) как 0
+  const safeGapMinutes = Math.max(0, actualGapMinutes);
+  const gapHours = Math.floor(safeGapMinutes / 60);
+  const gapMins = safeGapMinutes % 60;
+  
+  let gapText;
+  if (safeGapMinutes === 0) {
+    gapText = "меньше 1 минуты";
+  } else if (gapHours > 0 && gapMins > 0) {
+    gapText = `${gapHours} ч ${gapMins} мин`;
+  } else if (gapHours > 0) {
+    gapText = `${gapHours} ч`;
+  } else {
+    gapText = `${gapMins} мин`;
+  }
+
+  return (
+    `Пересечение с подтверждённым заказом «${conflictingOrderName}».\n` +
+    `${sourceLabelCapitalized} в ${sourceTime} конфликтует с ${targetLabel}ом в ${targetTime}.\n` +
+    `Реальная разница (буфер): ${gapText}, при требуемом буфере ${requiredBufferHours} ч.\n` +
+    `Измените ${actionLabel} или буфер — ⚙️ Настройки буфера.`
+  );
+}
+
+/**
+ * Форматирует сообщение о конфликте с неподтверждённым заказом (WARNING)
+ * 
+ * @param {Object} params
+ * @param {string} params.conflictingOrderName - Имя клиента конфликтующего заказа
+ * @param {string} [params.conflictingOrderEmail] - Email конфликтующего заказа (опционально)
+ * @param {string} params.conflictingOrderDates - Даты конфликтующего заказа (например: "28 Янв 14:00 — 30 Янв 12:00")
+ * @param {string} [params.currentReturnTime] - Время возврата текущего заказа "HH:mm" (если конфликт по возврату)
+ * @param {string} [params.currentPickupTime] - Время забора текущего заказа "HH:mm" (если конфликт по забору)
+ * @param {string} [params.nextPickupTime] - Время забора следующим клиентом "HH:mm" (если конфликт по возврату)
+ * @param {string} [params.nextReturnTime] - Время возврата следующим клиентом "HH:mm" (если конфликт по забору)
+ * @param {number} params.actualGapMinutes - Фактический интервал в минутах
+ * @param {number} params.requiredBufferHours - Требуемый буфер в часах
+ * @param {string} [params.bufferSettingsLink] - Ссылка/текст для настройки буфера (опционально)
+ * @returns {string}
+ */
+export function formatPendingConflictMessage({
+  conflictingOrderName,
+  conflictingOrderEmail,
+  conflictingOrderDates,
+  currentReturnTime,
+  currentPickupTime,
+  nextPickupTime,
+  nextReturnTime,
+  actualGapMinutes,
+  requiredBufferHours,
+  bufferSettingsLink,
+}) {
+  // Определяем направление конфликта на основе переданных параметров
+  // Если есть currentReturnTime и nextPickupTime → конфликт по возврату
+  // Если есть currentPickupTime и nextReturnTime → конфликт по забору
+  const isReturnConflict = currentReturnTime && nextPickupTime;
+  const isPickupConflict = currentPickupTime && nextReturnTime;
+  
+  // Определяем метки динамически
+  const sourceLabel = isPickupConflict ? "забор" : "возврат";
+  const sourceLabelCapitalized = isPickupConflict ? "Забор" : "Возврат";
+  const targetLabel = isPickupConflict ? "возврат" : "забор";
+  
+  const sourceTime = isPickupConflict ? currentPickupTime : currentReturnTime;
+  const targetTime = isPickupConflict ? nextReturnTime : nextPickupTime;
+  // Обрабатываем отрицательные значения (пересечения) как 0
+  const safeGapMinutes = Math.max(0, actualGapMinutes);
+  const gapHours = Math.floor(safeGapMinutes / 60);
+  const gapMins = safeGapMinutes % 60;
+  
+  let gapText;
+  if (safeGapMinutes === 0) {
+    gapText = "меньше 1 минуты";
+  } else if (gapHours > 0 && gapMins > 0) {
+    gapText = `${gapHours} ч ${gapMins} мин`;
+  } else if (gapHours > 0) {
+    gapText = `${gapHours} ч`;
+  } else {
+    gapText = `${gapMins} мин`;
+  }
+
+  const fullName = conflictingOrderEmail
+    ? `${conflictingOrderName} (${conflictingOrderEmail})`
+    : conflictingOrderName;
+
+  const bufferLinkText = bufferSettingsLink || "⚙️ Настройки буфера";
+
+  return (
+    `Пересечение с неподтверждённым заказом: «${fullName}» —\n` +
+    `${conflictingOrderDates}.\n` +
+    `${sourceLabelCapitalized} в ${sourceTime} конфликтует с ${targetLabel}ом в ${targetTime}.\n` +
+    `Реальная разница (буфер): ${gapText}, при требуемом буфере ${requiredBufferHours} ч.\n` +
+    `Изменить буфер — ${bufferLinkText}.`
+  );
+}
+

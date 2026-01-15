@@ -7,6 +7,7 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import {
   fetchAllCars,
@@ -14,6 +15,7 @@ import {
   updateCar,
   deleteCar,
 } from "@utils/action";
+import { buildPendingConfirmBlockMap } from "@/domain/orders/buildPendingConfirmBlockMap";
 
 const MainContext = createContext({
   cars: [],
@@ -26,6 +28,11 @@ const MainContext = createContext({
   resubmitCars: () => {},
   scrolled: false,
   company: {},
+  pendingConfirmBlockById: {}, // Map pending order ID -> block message
+  conflictHighlightById: {}, // Map orderId -> { level: "block"|"warning", message: string, sourceOrderId?: string }
+  setConflictHighlightsFromResult: () => {},
+  clearConflictHighlights: () => {},
+  clearConflictHighlightsAfter: () => {},
 });
 
 export function useMainContext() {
@@ -69,33 +76,116 @@ export const MainContextProvider = ({
     };
   }, [i18n]);
 
-  const [company, setCompany] = useState(companyData);
-  const [companyLoading, setCompanyLoading] = useState(true);
+  // Стабилизируем companyData с помощью useRef
+  const companyDataRef = useRef(companyData);
+  const hasLoadedCompanyRef = useRef(false);
+  
+  // Обновляем ref только если companyData действительно изменилась (по ID)
+  useEffect(() => {
+    if (companyData && companyData._id !== companyDataRef.current?._id) {
+      companyDataRef.current = companyData;
+      hasLoadedCompanyRef.current = true;
+    }
+  }, [companyData?._id]);
+
+  const [company, setCompany] = useState(companyDataRef.current || companyData);
+  const [companyLoading, setCompanyLoading] = useState(!companyData);
   const [companyError, setCompanyError] = useState(null);
 
-  // Глобальная загрузка компании из MongoDB
+  // Загрузка компании ТОЛЬКО если она не была передана с сервера
+  // Используем ref для предотвращения повторных загрузок
   useEffect(() => {
+    // Если данные уже есть или уже загружались - не делаем повторный запрос
+    if (companyData || hasLoadedCompanyRef.current) {
+      setCompanyLoading(false);
+      if (companyData) {
+        setCompany(companyData);
+      }
+      return;
+    }
+
+    // Предотвращаем повторные вызовы
+    if (hasLoadedCompanyRef.current) {
+      return;
+    }
+
     async function loadCompany() {
+      hasLoadedCompanyRef.current = true;
       setCompanyLoading(true);
       setCompanyError(null);
       try {
-        // id компании можно вынести в .env или оставить хардкод
         const companyId = "679903bd10e6c8a8c0f027bc";
         const { fetchCompany } = await import("@utils/action");
         const freshCompany = await fetchCompany(companyId);
         setCompany(freshCompany);
+        companyDataRef.current = freshCompany;
       } catch (err) {
         setCompanyError(err.message || "Ошибка загрузки компании");
+        hasLoadedCompanyRef.current = false; // Разрешаем повторную попытку при ошибке
       } finally {
         setCompanyLoading(false);
       }
     }
     loadCompany();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Пустой массив зависимостей - загружаем только один раз при монтировании
   const [scrolled, setScrolled] = useState(false);
-  const [cars, setCars] = useState(carsData || []);
-  const [allOrders, setAllOrders] = useState(ordersData || []);
+  
+  // Стабилизируем начальные данные с помощью useRef
+  const initialCarsRef = useRef(carsData);
+  const initialOrdersRef = useRef(ordersData);
+  
+  // Обновляем refs только если данные действительно изменились (по длине или ID первого элемента)
+  useEffect(() => {
+    if (carsData && carsData.length > 0) {
+      const carsChanged = 
+        !initialCarsRef.current || 
+        initialCarsRef.current.length !== carsData.length ||
+        initialCarsRef.current[0]?._id !== carsData[0]?._id;
+      if (carsChanged) {
+        initialCarsRef.current = carsData;
+      }
+    }
+  }, [carsData?.length, carsData?.[0]?._id]);
+  
+  useEffect(() => {
+    if (ordersData && ordersData.length > 0) {
+      const ordersChanged = 
+        !initialOrdersRef.current || 
+        initialOrdersRef.current.length !== ordersData.length ||
+        initialOrdersRef.current[0]?._id !== ordersData[0]?._id;
+      if (ordersChanged) {
+        initialOrdersRef.current = ordersData;
+      }
+    }
+  }, [ordersData?.length, ordersData?.[0]?._id]);
+  
+  const [cars, setCars] = useState(initialCarsRef.current || []);
+  const [allOrders, setAllOrders] = useState(initialOrdersRef.current || []);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Синхронизируем state с пропсами только если данные действительно изменились
+  useEffect(() => {
+    if (carsData && carsData.length > 0) {
+      const carsChanged = 
+        cars.length !== carsData.length ||
+        cars[0]?._id !== carsData[0]?._id;
+      if (carsChanged) {
+        setCars(carsData);
+      }
+    }
+  }, [carsData?.length, carsData?.[0]?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  useEffect(() => {
+    if (ordersData && ordersData.length > 0) {
+      const ordersChanged = 
+        allOrders.length !== ordersData.length ||
+        allOrders[0]?._id !== ordersData[0]?._id;
+      if (ordersChanged) {
+        setAllOrders(ordersData);
+      }
+    }
+  }, [ordersData?.length, ordersData?.[0]?._id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [error, setError] = useState(null);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [selectedClass, setSelectedClass] = useState("All");
@@ -116,7 +206,7 @@ export const MainContextProvider = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  const fetchAndUpdateOrders = async () => {
+  const fetchAndUpdateOrders = useCallback(async () => {
     setIsLoading(true);
     try {
       const newOrdersData = await reFetchAllOrders();
@@ -127,9 +217,9 @@ export const MainContextProvider = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const resubmitCars = async (callback) => {
+  const resubmitCars = useCallback(async (callback) => {
     setIsLoading(true);
     try {
       const newCarsData = await fetchAllCars();
@@ -145,9 +235,9 @@ export const MainContextProvider = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const updateCarInContext = async (updatedCar) => {
+  const updateCarInContext = useCallback(async (updatedCar) => {
     try {
       const newCar = await updateCar(updatedCar);
       setCars((prevCars) =>
@@ -167,9 +257,9 @@ export const MainContextProvider = ({
         message: error.message || "Car WAS NOT successfully",
       });
     }
-  };
+  }, []);
 
-  const deleteCarInContext = async (carId) => {
+  const deleteCarInContext = useCallback(async (carId) => {
     try {
       const response = await fetch(`/api/car/delete/${carId}`, {
         method: "DELETE",
@@ -193,13 +283,108 @@ export const MainContextProvider = ({
         errorMessage: error.message || "An unexpected error occurred",
       };
     }
-  };
+  }, []);
+
+  // Функция для обновления компании в контексте
+  const updateCompanyInContext = useCallback(async (companyId) => {
+    try {
+      const { fetchCompany } = await import("@utils/action");
+      const freshCompany = await fetchCompany(companyId);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[MainContext] Updating company", {
+          oldBufferTime: company?.bufferTime,
+          newBufferTime: freshCompany?.bufferTime,
+        });
+      }
+      setCompany(freshCompany);
+      companyDataRef.current = freshCompany;
+      return { success: true, data: freshCompany };
+    } catch (error) {
+      console.error("Error updating company in context:", error);
+      return {
+        success: false,
+        errorMessage: error.message || "Failed to update company",
+      };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // company не нужен в зависимостях, так как мы используем его только для логирования
   const ordersByCarId = useCallback(
     (carId) => {
       return allOrders?.filter((order) => order.car === carId);
     },
     [allOrders]
   );
+
+  // 🎯 Computed map: какие pending заказы НЕ МОГУТ быть подтверждены
+  const { pendingConfirmBlockById } = useMemo(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[MainContext] Recomputing pendingConfirmBlockById", {
+        bufferTime: company?.bufferTime,
+        ordersCount: allOrders?.length,
+      });
+    }
+    return buildPendingConfirmBlockMap(allOrders, company);
+  }, [allOrders, company]);
+
+  // 🎯 Conflict highlight state for calendar visualization
+  const [conflictHighlightById, setConflictHighlightById] = useState({});
+
+  // Helper: Build conflict highlight map from API result
+  const setConflictHighlightsFromResult = useCallback(({ sourceOrderId, result }) => {
+    if (!result || !sourceOrderId) return;
+
+    const map = {};
+
+    // Highlight the source order (the one being updated)
+    map[sourceOrderId] = {
+      level: result.level || "block",
+      message: result.message || "Update blocked",
+      sourceOrderId: sourceOrderId,
+    };
+
+    // Highlight conflicting orders (blockedByConfirmed)
+    if (result.conflicts && Array.isArray(result.conflicts)) {
+      result.conflicts.forEach((conflict) => {
+        const conflictOrderId = conflict.orderId || conflict._id;
+        if (conflictOrderId) {
+          map[conflictOrderId] = {
+            level: "block",
+            message: result.message || "Conflicts with this order",
+            sourceOrderId: sourceOrderId,
+          };
+        }
+      });
+    }
+
+    // Highlight affected pending orders (optional warning)
+    if (result.affectedOrders && Array.isArray(result.affectedOrders)) {
+      result.affectedOrders.forEach((affected) => {
+        const affectedOrderId = affected.orderId || affected._id;
+        if (affectedOrderId && !map[affectedOrderId]) {
+          map[affectedOrderId] = {
+            level: "warning",
+            message: "Pending order affected by confirmation",
+            sourceOrderId: sourceOrderId,
+          };
+        }
+      });
+    }
+
+    setConflictHighlightById(map);
+  }, []);
+
+  // Helper: Clear all conflict highlights
+  const clearConflictHighlights = useCallback(() => {
+    setConflictHighlightById({});
+  }, []);
+
+  // Helper: Clear conflict highlights after delay
+  const clearConflictHighlightsAfter = useCallback((ms = 20000) => {
+    const timer = setTimeout(() => {
+      setConflictHighlightById({});
+    }, ms);
+    return () => clearTimeout(timer);
+  }, []);
 
   const contextValue = useMemo(
     () => ({
@@ -230,11 +415,17 @@ export const MainContextProvider = ({
       company,
       companyLoading,
       companyError,
+      updateCompanyInContext, // Функция для обновления компании
+      pendingConfirmBlockById, // 🎯 Map pending order ID -> block message
+      conflictHighlightById, // 🎯 Map orderId -> conflict highlight info
+      setConflictHighlightsFromResult, // Helper to set highlights from API result
+      clearConflictHighlights, // Helper to clear all highlights
+      clearConflictHighlightsAfter, // Helper to clear highlights after delay
     }),
     [
       cars,
       arrayOfAvailableClasses,
-      arrayOfAvailableTransmissions, // Добавляем в зависимости
+      arrayOfAvailableTransmissions,
       error,
       ordersByCarId,
       updateStatus,
@@ -242,13 +433,22 @@ export const MainContextProvider = ({
       isLoading,
       scrolled,
       selectedClass,
-      selectedTransmission, // Добавляем в зависимости
+      selectedTransmission,
       lang,
-      setLang,
-      changeLanguage, // Добавляем в зависимости
+      changeLanguage,
       company,
       companyLoading,
       companyError,
+      updateCompanyInContext,
+      fetchAndUpdateOrders,
+      resubmitCars,
+      updateCarInContext,
+      deleteCarInContext,
+      pendingConfirmBlockById,
+      conflictHighlightById,
+      setConflictHighlightsFromResult,
+      clearConflictHighlights,
+      clearConflictHighlightsAfter,
     ]
   );
 

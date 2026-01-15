@@ -1,0 +1,8 @@
+/**
+ * 📦 domain/messages
+ *
+ * UX-тексты для конфликтов и уведомлений.
+ */
+
+export { conflictMessages } from "./conflictMessages";
+export { default as timeRestrictionMessages } from "./timeRestrictionMessages";

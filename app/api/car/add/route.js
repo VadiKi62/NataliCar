@@ -1,6 +1,7 @@
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { carsData as initialCarsData } from "@utils/initialData";
+import { revalidatePath } from "next/cache";
 
 export const POST = async (request) => {
   try {
@@ -22,6 +23,11 @@ export const POST = async (request) => {
 
     // Add cars to the database
     const newCars = await Car.create(incomingCarsData);
+    
+    // Инвалидируем кеш для списка машин
+    revalidatePath("/api/car/all");
+    revalidatePath("/api/car/models");
+    
     return new Response(
       JSON.stringify({ success: true, data: newCars, existing: existingCars }),
       {
@@ -70,6 +76,10 @@ export const GET = async (request) => {
 
     // Add new cars to the database
     const newCars = await Car.create(initialCarsData);
+
+    // Инвалидируем кеш для списка машин
+    revalidatePath("/api/car/all");
+    revalidatePath("/api/car/models");
 
     return new Response(JSON.stringify({ success: true, data: newCars }), {
       status: 201,

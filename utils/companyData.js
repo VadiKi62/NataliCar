@@ -7,6 +7,7 @@ export const seasons = {
 };
 
 export const companyData = {
+  id: "679903bd10e6c8a8c0f027bc",
   name: "NATALI CARS",
   tel: "+30 6970 034 707",
   tel2: "(+30) 6989 922 366",

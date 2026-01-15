@@ -71,11 +71,8 @@ export const GET = async () => {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control":
-          "no-store, no-cache, must-revalidate, proxy-revalidate",
-        Pragma: "no-cache",
-        Expires: "0",
-        "Surrogate-Control": "no-store",
+        // Кеширование для списка моделей (меняется редко)
+        "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300",
       },
     });
   } catch (error) {

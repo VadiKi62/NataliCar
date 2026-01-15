@@ -16,20 +16,28 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  Button,
   Typography,
   Box,
-  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
+import CloseIcon from "@mui/icons-material/Close";
+import {
+  ConfirmButton,
+  CancelButton,
+  BookingDateField,
+  BookingTimeField,
+  BookingTextField,
+  BookingLocationAutocomplete,
+  BookingFlightField,
+} from "../ui";
 import { useTranslation } from "react-i18next";
 import { addOrderNew } from "@utils/action";
-import SuccessMessage from "../common/SuccessMessage";
+import SuccessMessage from "@/app/components/ui/feedback/SuccessMessage";
 import sendEmail from "@utils/sendEmail";
 import { setTimeToDatejs } from "@utils/functions";
 import dayjs from "dayjs";
@@ -37,11 +45,20 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useMainContext } from "../../Context";
 import { useSnackbar } from "notistack";
+import { calculateTotalPrice } from "@utils/action";
+// 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
+import {
+  ATHENS_TZ,
+  createAthensDateTime,
+  toServerUTC,
+  fromServerUTC,
+  formatTimeHHMM,
+} from "@/domain/time/athensTime";
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
-const TIME_ZONE = "Europe/Athens";
+const TIME_ZONE = ATHENS_TZ; // Для обратной совместимости
 // DEBUG: ограничение логов по машине и дате (YYYY-MM-DD)
 // Пример: const DEBUG_CAR_ID = "670bb226223dd911f0595286"; const DEBUG_DATE = "2025-11-30";
 const DEBUG_CAR_ID = null;
@@ -55,6 +72,7 @@ const BookingModal = ({
   fetchAndUpdateOrders,
   isLoading,
   selectedTimes,
+  initialPrice = null, // Просчитанная цена из календаря
 }) => {
   const { enqueueSnackbar } = useSnackbar();
   const [daysAndTotal, setDaysAndTotal] = useState({ days: 0, totalPrice: 0 });
@@ -101,23 +119,14 @@ const BookingModal = ({
     }
     setCalcLoading(true);
     try {
-      const res = await fetch("/api/order/calcTotalPrice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          carNumber: car.carNumber,
-          rentalStartDate: presetDates.startDate,
-          rentalEndDate: presetDates.endDate,
-          kacko: insurance,
-          childSeats: childSeats,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDaysAndTotal({ days: data.days, totalPrice: data.totalPrice });
-      } else {
-        setDaysAndTotal({ days: 0, totalPrice: 0 });
-      }
+      const result = await calculateTotalPrice(
+        car.carNumber,
+        presetDates.startDate,
+        presetDates.endDate,
+        insurance,
+        childSeats
+      );
+      setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
     } catch {
       setDaysAndTotal({ days: 0, totalPrice: 0 });
     } finally {
@@ -392,7 +401,7 @@ const BookingModal = ({
         setFranchiseOrder(0);
       }
     }
-  }, [open]);
+  }, [open, car]);
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -410,7 +419,7 @@ const BookingModal = ({
     setIsSubmitting(true);
 
     try {
-      // Интерпретируем ввод как локальное время Афин и конвертируем в UTC для БД
+      // 🎯 Используем athensTime utilities для timezone-корректного создания времени
       const startDateStr = presetDates?.startDate
         ? dayjs(presetDates.startDate).format("YYYY-MM-DD")
         : null;
@@ -418,23 +427,17 @@ const BookingModal = ({
         ? dayjs(presetDates.endDate).format("YYYY-MM-DD")
         : null;
 
-      const timeInLocal = startDateStr
-        ? dayjs.tz(
-            `${startDateStr} ${dayjs(startTime).format("HH:mm")}`,
-            "YYYY-MM-DD HH:mm",
-            TIME_ZONE
-          )
+      // Извлекаем HH:mm и создаём заново в Athens БЕЗ конвертации из таймзоны браузера
+      const timeInAthens = startDateStr
+        ? createAthensDateTime(startDateStr, formatTimeHHMM(dayjs(startTime)))
         : null;
-      const timeOutLocal = endDateStr
-        ? dayjs.tz(
-            `${endDateStr} ${dayjs(endTime).format("HH:mm")}`,
-            "YYYY-MM-DD HH:mm",
-            TIME_ZONE
-          )
+      const timeOutAthens = endDateStr
+        ? createAthensDateTime(endDateStr, formatTimeHHMM(dayjs(endTime)))
         : null;
 
-      const timeInUTC = timeInLocal ? timeInLocal.utc().toDate() : null;
-      const timeOutUTC = timeOutLocal ? timeOutLocal.utc().toDate() : null;
+      // Конвертируем в UTC для сохранения в БД
+      const timeInUTC = toServerUTC(timeInAthens);
+      const timeOutUTC = toServerUTC(timeOutAthens);
 
       const orderData = {
         carNumber: car.carNumber || "",
@@ -465,14 +468,9 @@ const BookingModal = ({
         const formattedEndDate = dayjs
           .utc(orderData.rentalEndDate)
           .format("DD.MM.YYYY");
-        // Форматируем время начала и окончания (HH:MM) в часовом поясе Europe/Athens
-        // Почемуто 18.12.25 не работает()
-        const formattedStartTime = dayjs(orderData.timeIn)
-          .tz("Europe/Athens")
-          .format("HH:mm");
-        const formattedEndTime = dayjs(orderData.timeOut)
-          .tz("Europe/Athens")
-          .format("HH:mm");
+        // 🎯 Форматируем время в Athens timezone
+        const formattedStartTime = formatTimeHHMM(fromServerUTC(orderData.timeIn));
+        const formattedEndTime = formatTimeHHMM(fromServerUTC(orderData.timeOut));
         let title =
           status === "success"
             ? `Новое бронирование ${orderData.carNumber} ${orderData.carModel}`
@@ -496,6 +494,7 @@ const BookingModal = ({
             company.email,
             company.useEmail
           );
+          console.log("emailResponse", emailResponse);
           setSuccessfullySent(emailResponse.status === 200);
         } catch (emailError) {
           setSuccessfullySent(false);
@@ -566,13 +565,43 @@ const BookingModal = ({
     onClose();
   };
 
+  // Предотвращаем закрытие модального окна при клике вне его или нажатии Escape
+  const handleDialogClose = (event, reason) => {
+    // Закрываем только если это не backdropClick и не escapeKeyDown
+    if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
+      handleModalClose();
+    }
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog
+      open={open}
+      onClose={handleDialogClose}
+      disableEscapeKeyDown
+      fullWidth
+      maxWidth="sm"
+      sx={{
+        "& .MuiDialog-paper": {
+          borderRadius: 2,
+          m: { xs: 1, sm: 2 },
+          maxHeight: { xs: "95vh", sm: "90vh" },
+        },
+      }}
+    >
       {isLoading ? (
-        <Box sx={{ display: "flex", alignContent: "center", p: 10 }}>
-          <CircularProgress />
-          <CircularProgress sx={{ color: "primary.green" }} />
-          <CircularProgress sx={{ color: "primary.red" }} />
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 2,
+            p: 8,
+            minHeight: 200,
+          }}
+        >
+          <CircularProgress sx={{ color: "primary.main" }} />
+          <CircularProgress sx={{ color: "secondary.main" }} />
+          <CircularProgress sx={{ color: "triadic.green" }} />
         </Box>
       ) : (
         <React.Fragment>
@@ -583,21 +612,40 @@ const BookingModal = ({
                 position: { xs: "sticky", sm: "static" },
                 top: { xs: 0 },
                 zIndex: { xs: 40 },
-                backgroundColor: { xs: "background.paper" },
-                borderBottom: { xs: "1px solid" },
-                borderColor: { xs: "divider" },
-                pt: { xs: 2.4, sm: 1.2 },
-                pb: { xs: 1.3, sm: 1.2 },
+                backgroundColor: "background.paper",
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                pt: { xs: 2.4, sm: 1.5 },
+                pb: { xs: 1.3, sm: 1.5 },
                 mb: { xs: 0.3, sm: 0 },
+                position: "relative",
               }}
             >
+              {/* Close button */}
+              <IconButton
+                onClick={handleModalClose}
+                size="small"
+                sx={{
+                  position: "absolute",
+                  right: 8,
+                  top: 8,
+                  color: "text.secondary",
+                  "&:hover": { color: "primary.main" },
+                }}
+                aria-label="close"
+              >
+                <CloseIcon />
+              </IconButton>
+
               <Typography
                 variant="h6"
                 align="center"
                 sx={{
                   fontSize: { xs: "1.05rem", sm: "1.25rem" },
-                  m: 0,
-                  lineHeight: 1.15,
+                  px: 4, // Добавляем padding чтобы текст не заходил под кнопку
+                  m: 1,
+                  lineHeight: 1.25,
+                  fontWeight: 600,
                 }}
               >
                 {t("order.book", { model: car.model })}
@@ -635,71 +683,85 @@ const BookingModal = ({
                   lineHeight: 1.14,
                 }}
               >
-                {calcLoading ? (
+                <>
                   <Typography
+                    component="div"
                     variant="body2"
-                    sx={{ fontSize: { xs: "0.94rem", sm: "1.1rem" } }}
+                    sx={{
+                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
+                      m: 0,
+                      lineHeight: 1.14,
+                    }}
                   >
-                    {t("order.calculating")}
+                    {t("order.daysNumber", { count: daysAndTotal.days })}
+                    <Box
+                      component="span"
+                      sx={{
+                        fontWeight: "bold",
+                        color: "primary.main",
+                        mx: 0.5,
+                      }}
+                    >
+                      {daysAndTotal.days}
+                    </Box>
                   </Typography>
-                ) : (
-                  <>
-                    <Typography
-                      component="div"
-                      variant="body2"
+                  <Typography
+                    component="div"
+                    variant="body2"
+                    sx={{
+                      fontSize: { xs: "0.94rem", sm: "1.1rem" },
+                      m: 0,
+                      lineHeight: 1.14,
+                    }}
+                  >
+                    {t("order.price")}
+                    <Box
+                      component="span"
                       sx={{
-                        fontSize: { xs: "0.94rem", sm: "1.1rem" },
-                        m: 0,
-                        lineHeight: 1.14,
+                        fontWeight: "bold",
+                        color: "primary.main",
+                        mx: 0.5,
                       }}
                     >
-                      {t("order.daysNumber", { count: daysAndTotal.days })}
-                      <Box
-                        component="span"
-                        sx={{
-                          fontWeight: "bold",
-                          color: "primary.main",
-                          mx: 0.5,
-                        }}
-                      >
-                        {daysAndTotal.days}
-                      </Box>
-                    </Typography>
-                    <Typography
-                      component="div"
-                      variant="body2"
-                      sx={{
-                        fontSize: { xs: "0.94rem", sm: "1.1rem" },
-                        m: 0,
-                        lineHeight: 1.14,
-                      }}
-                    >
-                      {t("order.price")}
-                      <Box
-                        component="span"
-                        sx={{
-                          fontWeight: "bold",
-                          color: "primary.main",
-                          mx: 0.5,
-                        }}
-                      >
-                        {daysAndTotal.totalPrice}€
-                      </Box>
-                    </Typography>
-                  </>
-                )}
+                      {calcLoading 
+                        ? "" 
+                        : `${daysAndTotal.totalPrice}€`}
+                    </Box>
+                  </Typography>
+                </>
               </Box>
             </Box>
           )}
-          <DialogContent>
+          <DialogContent
+            sx={{
+              pt: isSubmitted ? 3 : 2,
+            }}
+          >
             {isSubmitted ? (
-              <SuccessMessage
-                submittedOrder={submittedOrder}
-                presetDates={presetDates}
-                onClose={onClose}
-                emailSent={emailSent}
-                message={message}
-              />
+              <Box sx={{ position: "relative", textAlign: "center" }}>
+                {/* Close button for success state */}
+                <IconButton
+                  onClick={handleModalClose}
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    right: -16,
+                    top: -16,
+                    color: "text.secondary",
+                    "&:hover": { color: "primary.main" },
+                  }}
+                  aria-label="close"
+                >
+                  <CloseIcon />
+                </IconButton>
+                <SuccessMessage
+                  submittedOrder={submittedOrder}
+                  presetDates={presetDates}
+                  onClose={onClose}
+                  emailSent={emailSent}
+                  message={message}
+                />
+              </Box>
             ) : (
               <Box>
                 {/* Удалён старый отдельный блок: теперь информация перенесена в липкий заголовок */}
@@ -718,36 +780,16 @@ const BookingModal = ({
                         gap: 1,
                       }}
                     >
-                      <TextField
+                      <BookingDateField
                         label={t("order.pickupDate") || "Дата получения"}
-                        variant="outlined"
                         value={
                           presetDates?.startDate
                             ? dayjs(presetDates.startDate).format("DD.MM.YYYY")
                             : ""
                         }
-                        InputLabelProps={{ shrink: true }}
-                        InputProps={{ readOnly: true }}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": {
-                            py: 0,
-                            px: 1.5,
-                            color: "primary.red",
-                            fontWeight: 600,
-                          },
-                        }}
-                        size="small"
                       />
-                      <TextField
+                      <BookingTimeField
                         label={t("order.pickupTime")}
-                        type="time"
-                        variant="outlined"
-                        InputLabelProps={{ shrink: true }}
                         value={startTime.format("HH:mm")}
                         inputProps={
                           timeLimits.minStart
@@ -755,15 +797,6 @@ const BookingModal = ({
                             : {}
                         }
                         onChange={(e) => handleStartTimeChange(e.target.value)}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
-                        }}
-                        size="small"
                         error={Boolean(timeErrors)}
                         helperText={
                           timeErrors
@@ -788,50 +821,21 @@ const BookingModal = ({
                         gap: 1,
                       }}
                     >
-                      <TextField
+                      <BookingDateField
                         label={t("order.returnDate") || "Дата возврата"}
-                        variant="outlined"
                         value={
                           presetDates?.endDate
                             ? dayjs(presetDates.endDate).format("DD.MM.YYYY")
                             : ""
                         }
-                        InputLabelProps={{ shrink: true }}
-                        InputProps={{ readOnly: true }}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": {
-                            py: 0,
-                            px: 1.5,
-                            color: "primary.red",
-                            fontWeight: 600,
-                          },
-                        }}
-                        size="small"
                       />
-                      <TextField
+                      <BookingTimeField
                         label={t("order.returnTime")}
-                        type="time"
-                        variant="outlined"
-                        InputLabelProps={{ shrink: true }}
                         value={endTime.format("HH:mm")}
                         inputProps={
                           timeLimits.maxEnd ? { max: timeLimits.maxEnd } : {}
                         }
                         onChange={(e) => handleEndTimeChange(e.target.value)}
-                        sx={{
-                          "& .MuiInputBase-root": { height: { sm: 40 } },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              "& .MuiInputBase-root": { height: 50 },
-                            },
-                          "& .MuiOutlinedInput-input": { py: 0, px: 1.5 },
-                        }}
-                        size="small"
                         error={Boolean(timeErrors)}
                         helperText={
                           timeErrors
@@ -848,168 +852,74 @@ const BookingModal = ({
                       />
                     </Box>
                   </Box>
-                  {/* Места получения/возврата — на мобильных экранах столбцом, на больших в строке */}
+                  {/* Места получения/возврата — всегда в одну строку */}
                   <Box
                     sx={{
                       display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      gap: { xs: 1, sm: 2 },
+                      flexDirection: "row",
+                      gap: 2,
                       mb: { xs: 1, sm: 2 },
                       mt: 0,
                       width: "100%",
                       alignItems: "stretch",
                     }}
                   >
-                    {/* Если выбран Airport и экран xs — показываем placeIn и flight в одной строке (60/40) */}
+                    {/* Если выбран Airport — показываем placeIn и flight в одной строке (60/40) */}
                     {placeIn && placeIn.toLowerCase() === "airport" ? (
                       <Box
                         sx={{
                           display: "flex",
-                          width: { xs: "100%", sm: "50%" },
+                          width: "50%",
                           gap: 2,
                           alignItems: "stretch",
                         }}
                       >
-                        <Autocomplete
-                          freeSolo
+                        <BookingLocationAutocomplete
+                          label={
+                            t("order.pickupLocation") || "Место получения"
+                          }
                           options={placeOptions}
                           value={placeIn}
                           onInputChange={(event, newInputValue) =>
                             setPlaceIn(newInputValue)
                           }
                           sx={{
-                            width: { xs: "60%", sm: "50%" },
+                            width: "60%",
                             minWidth: 0,
                           }}
-                          PaperProps={{
-                            sx: {
-                              border: "2px solid black !important",
-                              borderRadius: 1,
-                              boxShadow:
-                                "0 6px 18px rgba(0,0,0,0.12) !important",
-                              backgroundColor: "background.paper",
-                            },
-                          }}
-                          PopperProps={{ style: { zIndex: 1400 } }}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label={
-                                t("order.pickupLocation") || "Место получения"
-                              }
-                              variant="outlined"
-                              size="small"
-                              InputLabelProps={{ shrink: true }}
-                              fullWidth
-                              sx={{
-                                "& .MuiInputBase-root": { height: { sm: 40 } },
-                                "@media (max-width:600px) and (orientation: portrait)":
-                                  {
-                                    "& .MuiInputBase-root": { height: 50 },
-                                  },
-                              }}
-                            />
-                          )}
                         />
-                        <TextField
+                        <BookingFlightField
                           label={t("order.flightNumber") || "Номер рейса"}
                           value={flightNumber}
                           onChange={(e) => setFlightNumber(e.target.value)}
-                          size="small"
                           sx={{
-                            width: { xs: "40%", sm: "50%" },
+                            width: "40%",
                             alignSelf: "stretch",
-                            "& .MuiInputBase-root": { height: { sm: 40 } },
-                            "@media (max-width:600px) and (orientation: portrait)":
-                              {
-                                "& .MuiInputBase-root": { height: 50 },
-                              },
                           }}
-                          InputLabelProps={{ shrink: true }}
                         />
                       </Box>
                     ) : (
-                      <Autocomplete
-                        freeSolo
+                      <BookingLocationAutocomplete
+                        label={t("order.pickupLocation") || "Место получения"}
                         options={placeOptions}
                         value={placeIn}
                         onInputChange={(event, newInputValue) =>
                           setPlaceIn(newInputValue)
                         }
                         sx={{
-                          width: {
-                            xs: "100%",
-                            sm:
-                              placeIn && placeIn.toLowerCase() === "airport"
-                                ? "25%"
-                                : "50%",
-                          },
+                          width: "50%",
                           minWidth: 0,
                         }}
-                        PaperProps={{
-                          sx: {
-                            border: "2px solid black !important",
-                            borderRadius: 1,
-                            boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
-                            backgroundColor: "background.paper",
-                          },
-                        }}
-                        PopperProps={{ style: { zIndex: 1400 } }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label={
-                              t("order.pickupLocation") || "Место получения"
-                            }
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                            sx={{
-                              "& .MuiInputBase-root": { height: { sm: 40 } },
-                              "@media (max-width:600px) and (orientation: portrait)":
-                                {
-                                  "& .MuiInputBase-root": { height: 50 },
-                                },
-                            }}
-                          />
-                        )}
                       />
                     )}
-                    <Autocomplete
-                      freeSolo
+                    <BookingLocationAutocomplete
+                      label={t("order.returnLocation") || "Место возврата"}
                       options={placeOptions}
                       value={placeOut}
                       onInputChange={(event, newInputValue) =>
                         setPlaceOut(newInputValue)
                       }
-                      sx={{ width: { xs: "100%", sm: "50%" }, minWidth: 0 }}
-                      PaperProps={{
-                        sx: {
-                          border: "2px solid black !important",
-                          borderRadius: 1,
-                          boxShadow: "0 6px 18px rgba(0,0,0,0.12) !important",
-                          backgroundColor: "background.paper",
-                        },
-                      }}
-                      PopperProps={{ style: { zIndex: 1400 } }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label={t("order.returnLocation") || "Место возврата"}
-                          variant="outlined"
-                          size="small"
-                          InputLabelProps={{ shrink: true }}
-                          fullWidth
-                          sx={{
-                            "& .MuiInputBase-root": { height: { sm: 40 } },
-                            "@media (max-width:600px) and (orientation: portrait)":
-                              {
-                                "& .MuiInputBase-root": { height: 50 },
-                              },
-                          }}
-                        />
-                      )}
+                      sx={{ width: "50%", minWidth: 0 }}
                     />
                   </Box>
                   {/* <TextField
@@ -1022,13 +932,14 @@ const BookingModal = ({
                     error={!!errors.name}
                     helperText={errors.name}
                   /> */}
+                  {/* Страховка и детское кресло: всегда в одну строку */}
                   <Box
                     sx={{
                       display: "flex",
                       gap: 2,
                       mt: { xs: 1, sm: 1 },
                       mb: { xs: 1, sm: 3 },
-                      flexDirection: { xs: "column", sm: "row" },
+                      flexDirection: "row",
                     }}
                   >
                     <FormControl sx={{ flex: 1, width: { xs: "100%" } }}>
@@ -1096,60 +1007,43 @@ const BookingModal = ({
                     </FormControl>
                   </Box>
                   {/* Поле Name опущено ниже по вертикали с помощью mt: 2 */}
-                  <TextField
+                  <BookingTextField
                     label={
                       <>
                         <span>{t("order.yourName")}</span>
                         <span style={{ color: "red" }}>*</span>
                       </>
                     }
-                    variant="outlined"
-                    fullWidth
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    // required
                     error={!!errors.name}
                     helperText={errors.name}
                     sx={{
                       mt: 2,
-                      "& .MuiInputBase-root": { height: { sm: 56 } },
-                      "@media (max-width:600px) and (orientation: portrait)": {
-                        "& .MuiInputBase-root": { height: 50 },
-                      },
                     }}
                   />
 
-                  {/* Phone и Email: на портретном мобиле столбцом, на sm — в строке */}
+                  {/* Phone и Email: всегда в одну строку */}
                   <Box
                     sx={{
                       display: "flex",
-                      gap: { xs: 0.5, sm: 2 },
-                      flexDirection: { xs: "column", sm: "row" },
+                      gap: 2,
+                      flexDirection: "row",
                     }}
                   >
-                    <TextField
+                    <BookingTextField
                       label={
                         <>
                           <span>{t("order.phone")}</span>
                           <span style={{ color: "red" }}>*</span>
                         </>
                       }
-                      variant="outlined"
-                      fullWidth
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      //required
                       error={!!errors.phone}
                       helperText={errors.phone}
-                      sx={{
-                        "& .MuiInputBase-root": { height: { sm: 56 } },
-                        "@media (max-width:600px) and (orientation: portrait)":
-                          {
-                            "& .MuiInputBase-root": { height: 50 },
-                          },
-                      }}
                     />
-                    <TextField
+                    <BookingTextField
                       label={
                         <>
                           {t("order.email")}
@@ -1164,23 +1058,11 @@ const BookingModal = ({
                           </span>
                         </>
                       }
-                      variant="outlined"
-                      fullWidth
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
                       error={!!errors.email}
                       helperText={errors.email}
-                      sx={{
-                        "& .MuiInputBase-root": { height: { sm: 56 } },
-                        "@media (max-width:600px) and (orientation: portrait)":
-                          {
-                            "& .MuiInputBase-root": { height: 50 },
-                            mt: 0,
-                            mb: 0,
-                          },
-                      }}
-                      // required убран, поле необязательное
                     />
                   </Box>
                 </Box>
@@ -1207,85 +1089,60 @@ const BookingModal = ({
                     },
                   }}
                 >
-                  <Button
-                    onClick={handleModalClose}
-                    variant="outlined"
-                    sx={{
-                      "@media (max-width:600px) and (orientation: portrait)": {
-                        flexBasis: 0,
-                        flexGrow: 0.7,
-                        minWidth: 0,
-                      },
-                    }}
-                  >
-                    {isSubmitted ? "OK" : t("basic.cancel")}
-                  </Button>
-                  {!isSubmitted && (
-                    <Button
-                      ref={bookButtonRef}
-                      variant="contained"
-                      color="error"
-                      onClick={handleSubmit}
-                      disabled={
-                        isSubmitting ||
-                        !name ||
-                        !phone ||
-                        !presetDates?.startDate ||
-                        !presetDates?.endDate ||
-                        Boolean(timeErrors)
-                      }
-                      startIcon={
-                        isSubmitting ? <CircularProgress size={20} /> : null
-                      }
+                  {isSubmitted ? (
+                    <ConfirmButton
+                      onClick={handleModalClose}
+                      label="OK"
                       sx={{
-                        backgroundColor: "primary.red",
-                        color: "white",
-                        fontWeight: "bold",
-                        fontSize: "1.1rem",
-                        padding: "12px 32px",
-                        minWidth: "200px",
-                        margin: "0 auto",
-                        animation: "bookButtonPulse 1.5s ease-in-out infinite",
-                        display: "block",
-                        "&:hover": {
-                          backgroundColor: "#d32f2f",
-                          animation: "none",
+                        "@media (max-width:600px) and (orientation: portrait)": {
+                          flexBasis: 0,
+                          flexGrow: 1,
+                          minWidth: 0,
+                          backgroundColor: "secondary.main",
+                          color: "secondary.contrastText",
                         },
-                        "&:disabled": {
-                          backgroundColor: "#grey.400",
-                          animation: "none",
-                        },
-                        "@media (max-width:600px) and (orientation: portrait)":
-                          {
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <CancelButton
+                        onClick={handleModalClose}
+                        label={t("basic.cancel")}
+                        sx={{
+                          "@media (max-width:600px) and (orientation: portrait)": {
+                            flexBasis: 0,
+                            flexGrow: 0.7,
+                            minWidth: 0,
+                          },
+                        }}
+                      />
+                      <ConfirmButton
+                        ref={bookButtonRef}
+                        onClick={handleSubmit}
+                        loading={isSubmitting}
+                        pulse={!isSubmitting}
+                        disabled={
+                          !name ||
+                          !phone ||
+                          !presetDates?.startDate ||
+                          !presetDates?.endDate ||
+                          Boolean(timeErrors)
+                        }
+                        label={
+                          isSubmitting
+                            ? t("order.processing") || "Processing..."
+                            : t("order.confirmBooking")
+                        }
+                        sx={{
+                          "@media (max-width:600px) and (orientation: portrait)": {
                             flexBasis: 0,
                             flexGrow: 1.3,
                             minWidth: 0,
                             padding: "12px 20px",
-                            margin: 0,
                           },
-                        "@keyframes bookButtonPulse": {
-                          "0%": {
-                            backgroundColor: "primary.red",
-                            boxShadow: "0 0 10px rgba(211, 47, 47, 0.7)",
-                            transform: "scale(1)",
-                          },
-                          "50%": {
-                            backgroundColor: "#ff5252",
-                            boxShadow: "0 0 20px rgba(255, 82, 82, 0.9)",
-                            transform: "scale(1.05)",
-                          },
-                          "100%": {
-                            backgroundColor: "primary.red",
-                            boxShadow: "0 0 10px rgba(211, 47, 47, 0.7)",
-                            transform: "scale(1)",
-                          },
-                        },
-                      }}
-                    >
-                      {isSubmitting
-                        ? t("order.processing") || "Processing..."
-                        : t("order.confirmBooking")}
-                    </Button>
+                        }}
+                      />
+                    </>
                   )}
                 </Box>
               </Box>
@@ -1307,3 +1164,4 @@ export default BookingModal;
 // console.log("API: email =", typeof email, email);
 
 // На фронте ничего менять не нужно — email: "" это корректно для необязательного поля.
+

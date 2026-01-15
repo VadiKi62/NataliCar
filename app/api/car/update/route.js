@@ -1,5 +1,6 @@
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
+import { revalidatePath } from "next/cache";
 import dayjs from "dayjs";
 
 export const PUT = async (req) => {
@@ -15,16 +16,27 @@ export const PUT = async (req) => {
     });
 
     if (!updatedCar) {
-      return new Response({
-        success: false,
-        message: "Car not found",
-      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "Car not found",
+        }),
+        { status: 404 }
+      );
     }
+    
+    // Инвалидируем кеш для списка машин и конкретной машины
+    revalidatePath("/api/car/all");
+    revalidatePath(`/api/car/${_id}`);
+    
     return new Response(JSON.stringify(updatedCar), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response("Failed to update car", { status: 500, data: error });
+    return new Response(
+      JSON.stringify({ success: false, message: "Failed to update car", error: error.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 };

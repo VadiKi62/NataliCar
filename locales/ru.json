@@ -10,7 +10,8 @@
     "orders": "Заказы",
     "orderList": "Список заказов",
     "carClass": "Выберите класс автомобиля",
-    "transmission": "Выберите коробку передач"
+    "transmission": "Выберите коробку передач",
+    "logout": "Выйти"
   },
   "basic": {
     "close": "закрыть",
@@ -83,6 +84,7 @@
     "deleteOrder": "Удалить заказ",
     "sureDelOrder": "Вы уверены, что хотите удалить этот заказ?",
     "changeDates": "Все отлично ! Даты изменены",
+    "orderUpdated": "Заказ успешно обновлен",
     "discount": "Скидка",
     "flightNumber": "№ рейса",
     "minAllowed": "Не раньше: ",
@@ -167,7 +169,41 @@
     "rentEnd": "Конец Аренды",
     "days": "Дни",
     "price": "Цена",
-    "confirm": "Подтверждено"
+    "confirm": "Подтверждено",
+    "ordersTable": "Таблица заказов",
+    "orderNumber": "№ заказа",
+    "status": "Статус",
+    "origin": "Источник",
+    "pickup": "Получение",
+    "return": "Возврат",
+    "actions": "Действия",
+    "search": "Поиск...",
+    "filterByCar": "Фильтр по машине",
+    "filterByStatus": "Статус",
+    "filterByOrigin": "Источник",
+    "dateFrom": "С",
+    "dateTo": "До",
+    "startDate": "Дата начала",
+    "all": "Все",
+    "confirmed": "Подтверждён",
+    "pending": "Ожидает",
+    "clientOrder": "Клиент",
+    "adminOrder": "Админ",
+    "reset": "Сбросить",
+    "edit": "Редактировать",
+    "noOrders": "Заказы не найдены",
+    "loadingOrders": "Загрузка заказов...",
+    "rowsPerPage": "Строк на странице",
+    "exportExcel": "Экспорт Excel",
+    "exportPdf": "Экспорт PDF",
+    "protectedOrder": "Защищён",
+    "protectedOrderTooltip": "Только суперадмин может редактировать/удалять клиентские и суперадминские заказы.",
+    "delete": "Удалить",
+    "deleteConfirm": "Удалить заказ?",
+    "confirm": "Подтвердить",
+    "unconfirm": "Отменить подтверждение",
+    "customerName": "Имя клиента",
+    "loading": "Загрузка..."
   },
   "print": {
     "allOrders": "Все заказы",
@@ -188,5 +224,16 @@
     "yearSelect": "Выберите год",
     "thisMonth": "этот месяц",
     "nextMonthLabel": "следующий месяц"
+  },
+  "timeAdjust": {
+    "overridePending": "Подтверждённый заказ переопределит ожидающую заявку",
+    "blockedByConfirmed": "Невозможно: конфликт с подтверждённым заказом",
+    "pendingOverlap": "Предупреждение: пересечение двух ожидающих заказов",
+    "confirmedConflict": "Невозможно: конфликт двух подтверждённых заказов",
+    "confirmChanges": "Подтвердите изменения",
+    "acknowledgementRequired": "Требуется подтверждение",
+    "understandConsequences": "Я понимаю последствия и хочу продолжить",
+    "saveWithWarning": "Сохранить с предупреждением",
+    "cannotSaveDueToConflict": "Невозможно сохранить из-за конфликта"
   }
 }

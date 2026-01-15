@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, Box, Typography, Button, Grid } from "@mui/material";
 import Image from "next/image";
-import CarTypography from "../common/CarTypography";
+import CarTypography from "@/app/components/ui/typography/CarTypography";
 import { useTranslation } from "react-i18next";
 
 const CarDetailsModal = ({ open, onClose, car }) => {
@@ -174,7 +174,7 @@ const CarDetailsModal = ({ open, onClose, car }) => {
             position: "sticky",
             top: 0,
             zIndex: 5,
-            bgcolor: "#ffffff", // делаем фон полностью непрозрачным
+            bgcolor: "background.default",
             py: 1,
             mb: 2,
             borderBottom: "1px solid",

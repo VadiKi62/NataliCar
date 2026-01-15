@@ -1,5 +1,10 @@
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
+import { NextResponse } from "next/server";
+
+// Кеширование для статических данных (cars меняются редко)
+// Revalidate каждые 10 минут (600 секунд)
+export const revalidate = 600;
 
 export const GET = async () => {
   try {
@@ -7,20 +12,17 @@ export const GET = async () => {
 
     const cars = await Car.find();
 
-    return new Response(JSON.stringify(cars), {
+    return NextResponse.json(cars, {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control":
-          "no-store, no-cache, must-revalidate, proxy-revalidate",
-        Pragma: "no-cache",
-        Expires: "0",
-        "Surrogate-Control": "no-store",
+        // Кеширование на клиенте и CDN
+        "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300",
       },
     });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ success: false, message: "Failed to fetch cars" }),
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch cars" },
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
@@ -29,26 +31,23 @@ export const GET = async () => {
   }
 };
 
+// POST запросы не кешируются (для обновления данных)
 export const POST = async () => {
   try {
     await connectToDB();
 
     const cars = await Car.find();
 
-    return new Response(JSON.stringify(cars), {
+    return NextResponse.json(cars, {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control":
-          "no-store, no-cache, must-revalidate, proxy-revalidate",
-        Pragma: "no-cache",
-        Expires: "0",
-        "Surrogate-Control": "no-store",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ success: false, message: "Failed to fetch cars" }),
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch cars" },
       {
         status: 500,
         headers: { "Content-Type": "application/json" },

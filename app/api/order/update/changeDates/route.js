@@ -1,6 +1,8 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
+import { requireAdmin } from "@/lib/adminAuth";
+import { canEditOrderField } from "@/domain/orders/orderPermissions";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -81,6 +83,10 @@ function checkConflictsFixed(allOrders, newStart, newEnd) {
 export const PUT = async (req) => {
   try {
     await connectToDB();
+    
+    // Check admin authentication
+    const { session, errorResponse } = await requireAdmin(req);
+    if (errorResponse) return errorResponse;
 
     const {
       _id,
@@ -107,6 +113,38 @@ export const PUT = async (req) => {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
+    }
+    
+    // Check permissions for each field being updated (field-level granularity)
+    const fieldsToCheck = [
+      { field: "rentalStartDate", inPayload: rentalStartDate !== undefined },
+      { field: "rentalEndDate", inPayload: rentalEndDate !== undefined },
+      { field: "timeIn", inPayload: timeIn !== undefined },
+      { field: "timeOut", inPayload: timeOut !== undefined },
+      { field: "car", inPayload: car !== undefined },
+      { field: "placeIn", inPayload: placeIn !== undefined },
+      { field: "placeOut", inPayload: placeOut !== undefined },
+      { field: "insurance", inPayload: insurance !== undefined },
+      { field: "ChildSeats", inPayload: ChildSeats !== undefined },
+      { field: "franchiseOrder", inPayload: franchiseOrder !== undefined },
+      { field: "totalPrice", inPayload: totalPriceFromClient !== undefined },
+    ];
+
+    for (const { field, inPayload } of fieldsToCheck) {
+      if (inPayload) {
+        const permission = canEditOrderField(order, session.user, field);
+        if (!permission.allowed) {
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              message: permission.reason,
+              code: "PERMISSION_DENIED",
+              field: field,
+            }),
+            { status: 403, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
     // Если выбран новый автомобиль, обновляем его в заказе
@@ -229,18 +267,27 @@ export const PUT = async (req) => {
           const rentalDays202 = Math.ceil(
             (end - start) / (1000 * 60 * 60 * 24)
           );
-          let totalPrice202 = 0;
-          let days202 = rentalDays202;
-          if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
-            const result = await carDoc.calculateTotalRentalPricePerDay(
-              start,
-              end,
-              insurance,
-              ChildSeats
-            );
-            totalPrice202 = result.total;
-            days202 = result.days;
+          let totalPrice202 = order.totalPrice; // 🔧 FIX: Preserve existing price by default
+          let days202 = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+          
+          // Check if dates or price-affecting fields changed (not just time)
+          const datesChanged202 = rentalStartDate !== undefined || rentalEndDate !== undefined;
+          const priceAffectingFieldsChanged202 = insurance !== undefined || ChildSeats !== undefined || car !== undefined;
+          
+          if (datesChanged202 || priceAffectingFieldsChanged202) {
+            // Only recalculate if dates or price-affecting fields changed
+            if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
+              const result = await carDoc.calculateTotalRentalPricePerDay(
+                start,
+                end,
+                insurance ?? order.insurance,
+                ChildSeats ?? order.ChildSeats
+              );
+              totalPrice202 = result.total;
+              days202 = result.days;
+            }
           }
+          // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
           order.rentalStartDate = start.toDate();
           order.rentalEndDate = end.toDate();
@@ -281,23 +328,33 @@ export const PUT = async (req) => {
 
     // Recalculate the rental details
     const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    let totalPrice = 0;
-    let days = rentalDays;
+    let totalPrice = order.totalPrice; // 🔧 FIX: Preserve existing price by default
+    let days = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+    
+    // Check if dates or price-affecting fields changed (not just time)
+    const datesChanged = rentalStartDate !== undefined || rentalEndDate !== undefined;
+    const priceAffectingFieldsChanged = insurance !== undefined || ChildSeats !== undefined || car !== undefined;
+    
     if (
       typeof totalPriceFromClient === "number" &&
       !isNaN(totalPriceFromClient)
     ) {
+      // Manual price override
       totalPrice = totalPriceFromClient;
-    } else if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
-      const result = await carDoc.calculateTotalRentalPricePerDay(
-        start,
-        end,
-        insurance,
-        ChildSeats
-      );
-      totalPrice = result.total;
-      days = result.days;
+    } else if (datesChanged || priceAffectingFieldsChanged) {
+      // Only recalculate if dates or price-affecting fields changed
+      if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
+        const result = await carDoc.calculateTotalRentalPricePerDay(
+          start,
+          end,
+          insurance ?? order.insurance,
+          ChildSeats ?? order.ChildSeats
+        );
+        totalPrice = result.total;
+        days = result.days;
+      }
     }
+    // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
     // Update the order
     order.rentalStartDate = start.toDate();
@@ -341,14 +398,50 @@ export const PUT = async (req) => {
       my_order: order.my_order,
     });
 
-    await order.save();
+    const savedOrder = await order.save();
 
     console.log("Order updated successfully");
 
+    // In dev mode, re-read from DB to verify persistence
+    if (process.env.NODE_ENV !== "production") {
+      const reReadOrder = await Order.findById(_id);
+      if (reReadOrder) {
+        const requestedFields = { rentalStartDate, rentalEndDate, timeIn, timeOut };
+        const persistedFields = {
+          rentalStartDate: reReadOrder.rentalStartDate?.toISOString(),
+          rentalEndDate: reReadOrder.rentalEndDate?.toISOString(),
+          timeIn: reReadOrder.timeIn?.toISOString(),
+          timeOut: reReadOrder.timeOut?.toISOString(),
+        };
+        
+        // Check if requested fields match persisted fields
+        const mismatches = [];
+        if (rentalStartDate && persistedFields.rentalStartDate !== dayjs(rentalStartDate).utc().toISOString()) {
+          mismatches.push(`rentalStartDate: requested=${dayjs(rentalStartDate).utc().toISOString()}, persisted=${persistedFields.rentalStartDate}`);
+        }
+        if (rentalEndDate && persistedFields.rentalEndDate !== dayjs(rentalEndDate).utc().toISOString()) {
+          mismatches.push(`rentalEndDate: requested=${dayjs(rentalEndDate).utc().toISOString()}, persisted=${persistedFields.rentalEndDate}`);
+        }
+        if (timeIn && persistedFields.timeIn !== dayjs(timeIn).utc().toISOString()) {
+          mismatches.push(`timeIn: requested=${dayjs(timeIn).utc().toISOString()}, persisted=${persistedFields.timeIn}`);
+        }
+        if (timeOut && persistedFields.timeOut !== dayjs(timeOut).utc().toISOString()) {
+          mismatches.push(`timeOut: requested=${dayjs(timeOut).utc().toISOString()}, persisted=${persistedFields.timeOut}`);
+        }
+        
+        if (mismatches.length > 0) {
+          console.warn("[changeDates] Update not persisted correctly:", mismatches);
+        } else {
+          console.log("[changeDates] Update persisted correctly");
+        }
+      }
+    }
+
+    // Return updated order (use savedOrder which has all calculated fields)
     return new Response(
       JSON.stringify({
         message: `ВСЕ ОТЛИЧНО! Даты изменены.`,
-        data: order,
+        data: savedOrder,
       }),
       {
         status: 201,

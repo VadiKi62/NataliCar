@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+// 🔧 FIX: Import Car model to ensure it's registered before pre-save middleware
+import { Car } from "./car";
 
 const timeZone = "Europe/Athens";
 
@@ -74,8 +76,30 @@ const OrderSchema = new mongoose.Schema({
   numberOfDays: {
     type: Number,
   },
+  /**
+   * totalPrice
+   * Auto-calculated rental price based on car, dates, and options.
+   * This value is ALWAYS preserved as the real calculated price.
+   * Never manually overridden - use OverridePrice for manual pricing.
+   */
   totalPrice: {
     type: Number,
+    required: true,
+  },
+  /**
+   * OverridePrice
+   * Manual price entered by admin/superadmin.
+   * If set, it overrides totalPrice in UI and payments.
+   * Set to null to return to automatic pricing.
+   * 
+   * Rules:
+   * - OverridePrice NEVER changes automatically
+   * - When rental params change, totalPrice recalculates but OverridePrice stays
+   * - Admin must explicitly reset OverridePrice to return to auto pricing
+   */
+  OverridePrice: {
+    type: Number,
+    default: null,
   },
   carModel: {
     type: String,
@@ -94,9 +118,37 @@ const OrderSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  /**
+   * Role of admin who created this order:
+   * 0 = regular admin (default)
+   * 1 = superadmin
+   * 
+   * Used for permission control:
+   * - If my_order=true OR createdByRole=1, only superadmin can edit/delete
+   */
+  createdByRole: {
+    type: Number,
+    enum: [0, 1],
+    default: 0,
+  },
+  /**
+   * ID of admin who created this order (optional tracking)
+   */
+  createdByAdminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
   ChildSeats: {
     type: Number,
     default: 0,
+  },
+  // 🔧 TEMPORARY: Support old field name during migration
+  // This will be removed after migration is complete
+  childSeats: {
+    type: Number,
+    default: 0,
+    select: false, // Don't include in queries by default
   },
   insurance: {
     type: String,
@@ -117,8 +169,15 @@ const OrderSchema = new mongoose.Schema({
   },
 });
 
-// Pre-save middleware to calculate the number of days and total price
+// 🔧 MIGRATION SUPPORT: Sync childSeats (old) to ChildSeats (new) if needed
 OrderSchema.pre("save", async function (next) {
+  // If childSeats exists but ChildSeats doesn't, copy value
+  if (this.childSeats !== undefined && this.ChildSeats === undefined) {
+    this.ChildSeats = this.childSeats;
+  }
+  // Always use ChildSeats for calculations
+  const childSeatsValue = this.ChildSeats ?? this.childSeats ?? 0;
+  
   const rentalStart = new Date(this.rentalStartDate);
   const rentalEnd = new Date(this.rentalEndDate);
 
@@ -128,7 +187,7 @@ OrderSchema.pre("save", async function (next) {
   this.numberOfDays = numberOfDays;
 
   // Fetch car details and calculate price based on the number of days
-  const Car = mongoose.model("Car"); // Make sure the Car model is registered
+  // 🔧 FIX: Use imported Car model instead of mongoose.model() to avoid registration errors
   const car = await Car.findById(this.car);
 
   if (car) {
@@ -140,11 +199,18 @@ OrderSchema.pre("save", async function (next) {
       this.rentalStartDate,
       this.rentalEndDate,
       this.insurance,
-      this.ChildSeats
+      childSeatsValue
     );
   }
 
   next();
+});
+
+// 🔧 MIGRATION SUPPORT: After loading, sync childSeats to ChildSeats if needed
+OrderSchema.post("init", function () {
+  if (this.childSeats !== undefined && (this.ChildSeats === undefined || this.ChildSeats === 0)) {
+    this.ChildSeats = this.childSeats;
+  }
 });
 
 const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);

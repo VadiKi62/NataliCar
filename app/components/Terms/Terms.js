@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { Container } from "@mui/material";
 import { terms } from "@app/data/terms";
-import ApplyStyle from "@app/components/common/ApplyStyle";
+import ApplyStyle from "@/app/components/ui/ApplyStyle";
 
 import { useMainContext } from "@app/Context";
 

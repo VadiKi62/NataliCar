@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
-import { ThemeProvider, CssBaseline } from "@mui/material";
+import React, { useState, useEffect, Suspense, useMemo } from "react";
+import { ThemeProvider } from "@mui/material";
 import darkTheme from "@theme";
 import { I18nextProvider } from "react-i18next";
 import { unstable_noStore } from "next/cache";
@@ -11,23 +11,25 @@ import { Box } from "@mui/material";
 import i from "@locales/i18n";
 import { MainContextProvider } from "../Context";
 
-import CarGrid from "./CarGrid";
-import CarPage from "@app/components/CarPage";
-import ScrollButton from "./common/ScrollButton";
-// import BrowserLanguageInfo from "./common/BrowserLanguageInfo"; // Компонент для показа информации о языке
+import ScrollButton from "@/app/components/ui/buttons/ScrollButton";
 import Navbar from "@app/components/Navbar";
 import Footer from "@app/components/Footer";
 
 function Feed({ children, ...props }) {
-  unstable_noStore();
+  // unstable_noStore() не нужен в клиентском компоненте
 
   const shouldShowFooter = !props.isAdmin; // Скрываем Footer, если isAdmin === true
 
   // Quick fix: reduce main top padding for admin pages so content sits directly
   // under the fixed AppBar / admin topbar. Use a safe default (64px).
-  const mainPt = props.isAdmin
-    ? { xs: "0px", md: "0px" }
-    : { xs: "110px", md: "90px" };
+  // Мемоизируем mainPt, чтобы не пересоздавать объект при каждом рендере
+  const mainPt = useMemo(
+    () =>
+      props.isAdmin
+        ? { xs: "0px", md: "0px" }
+        : { xs: "110px", md: "90px" },
+    [props.isAdmin]
+  );
 
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -37,25 +39,40 @@ function Feed({ children, ...props }) {
     }
   }, []);
 
+  // Мемоизируем пропсы для Context, чтобы предотвратить ненужные ре-рендеры
+  const contextProps = useMemo(
+    () => ({
+      carsData: props.cars,
+      ordersData: props.orders,
+      companyData: props.company,
+    }),
+    // Используем только примитивные значения для сравнения
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      props.cars?.length,
+      props.cars?.[0]?._id,
+      props.orders?.length,
+      props.orders?.[0]?._id,
+      props.company?._id,
+    ]
+  );
+
   return (
     <Suspense fallback={<Loading />}>
       <ThemeProvider theme={darkTheme}>
         <I18nextProvider i18n={i}>
           <MainContextProvider
-            carsData={props.cars}
-            ordersData={props.orders}
-            companyData={props.company}
+            carsData={contextProps.carsData}
+            ordersData={contextProps.ordersData}
+            companyData={contextProps.companyData}
           >
             <Navbar isMain={props.isMain} isAdmin={props.isAdmin} />
             {/* main paddingTop keeps content below fixed Navbar + filters; responsive values */}
             <Box component="main" sx={{ pt: mainPt }}>
               {children}
             </Box>
-            {shouldShowFooter && <Footer />}{" "}
-            {/* Footer не отобразится, если isAdmin === true */}
+            {shouldShowFooter && <Footer />}
             <ScrollButton />
-            {/* <BrowserLanguageInfo /> */}{" "}
-            {/* Показывает информацию о языке браузера только в development */}
           </MainContextProvider>
         </I18nextProvider>
       </ThemeProvider>

@@ -1,0 +1,982 @@
+"use client";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Box,
+  TableContainer,
+  Select,
+  MenuItem,
+  Modal,
+  Grid,
+  Typography,
+  useTheme,
+} from "@mui/material";
+import { 
+  ActionButton, 
+  CancelButton, 
+  ConfirmModal, 
+  OrdersByDateModal, 
+  ModalLayout,
+  CalendarNavButton,
+  CalendarFirstColumn,
+  CalendarDayCell,
+} from "../ui";
+import dayjs from "dayjs";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+import { useMainContext } from "@app/Context";
+import { formatDate, isPast, BUSINESS_TZ } from "@utils/businessTime";
+import CarTableRow from "./CalendarRow";
+import {
+  extractArraysOfStartEndConfPending,
+  returnOverlapOrdersObjects,
+} from "@utils/functions";
+import EditOrderModal from "@/app/admin/features/orders/modals/EditOrderModal";
+import AddOrderModal from "@/app/admin/features/orders/modals/AddOrderModal";
+import { useSnackbar } from "notistack";
+import { changeRentalDates, moveOrderToCar } from "@utils/action";
+import EditCarModal from "@/app/admin/features/cars/modals/EditCarModal";
+import LegendCalendarAdmin from "./LegendCalendarAdmin";
+import { calendarStyles } from "@/theme";
+import {
+  useCalendarDays,
+  useMobileCalendarScroll,
+  buildOrderDateRange,
+} from "@/app/admin/features/calendar/hooks";
+
+// ============================================
+// BigCalendarLayout — визуальный каркас (без state/effects)
+// ============================================
+function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
+  return (
+    <Box
+      ref={calendarRef}
+      className="bigcalendar-root" // Оставляем для media queries в globals.css
+      sx={calendarStyles.root}
+    >
+      {/* Легенда календаря */}
+      {showLegend && (
+        <Box sx={calendarStyles.legend}>
+          <LegendCalendarAdmin />
+        </Box>
+      )}
+
+      {/* TableContainer */}
+      <TableContainer
+        sx={{
+          ...calendarStyles.tableContainer,
+          border: borderStyle,
+        }}
+      >
+        {children}
+      </TableContainer>
+    </Box>
+  );
+}
+
+// ============================================
+// BigCalendarHeader — UI-компонент шапки таблицы
+// ============================================
+function BigCalendarHeader({
+  days,
+  month,
+  year,
+  todayIndex,
+  viewMode,
+  rangeDirection,
+  monthNames,
+  weekday2,
+  currentLang,
+  isPortraitPhone,
+  onPrevMonth,
+  onNextMonth,
+  onMonthChange,
+  onYearChange,
+  onDayClick,
+  headerStyles,
+  calendarRef,
+}) {
+  return (
+    <TableHead>
+      <TableRow>
+        {/* Первая ячейка — выбор года/месяца */}
+        <TableCell
+          sx={{
+            ...calendarStyles.headerFirstCell,
+            backgroundColor: headerStyles.baseBg,
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            {/* Верхняя строка: год */}
+            <Box sx={calendarStyles.yearRow}>
+              <Select
+                className="bigcalendar-year-select" // Для globals.css
+                value={year}
+                onChange={onYearChange}
+                size="small"
+                sx={calendarStyles.yearSelect}
+                renderValue={() => {
+                  if (viewMode === "range15") {
+                    const start =
+                      rangeDirection === "forward"
+                        ? dayjs().year(year).month(month).date(15)
+                        : dayjs().year(year).month(month).subtract(1, "month").date(15);
+                    const end =
+                      rangeDirection === "forward"
+                        ? start.add(1, "month").date(15)
+                        : dayjs().year(year).month(month).date(15);
+                    const y1 = start.year();
+                    const y2 = end.year();
+                    return y1 === y2 ? `${y1}` : `${y1}-${y2}`;
+                  }
+                  return `${year}`;
+                }}
+              >
+                {Array.from({ length: 5 }, (_, index) => (
+                  <MenuItem key={index} value={year - 2 + index} sx={{ fontSize: 13, py: 0.2 }}>
+                    {year - 2 + index}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+
+            {/* Нижняя строка: стрелки + месяц */}
+            <Box sx={calendarStyles.monthRow}>
+              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0 }}>
+                <CalendarNavButton 
+                  direction="prev" 
+                  onClick={onPrevMonth} 
+                  color={headerStyles.weekdayText} 
+                />
+                <Select
+                  className="bigcalendar-month-select" // Для globals.css
+                  value={month}
+                  onChange={onMonthChange}
+                  size="small"
+                  sx={calendarStyles.monthSelect}
+                  renderValue={() => {
+                    const months = monthNames[currentLang] || monthNames.en;
+                    const abbr = (name) =>
+                      isPortraitPhone && viewMode === "range15" ? name.slice(0, 3) : name;
+                    if (viewMode === "range15") {
+                      if (rangeDirection === "forward") {
+                        const currentLabel = months[month];
+                        const nextLabel = months[(month + 1) % 12];
+                        return `${abbr(currentLabel)}-${abbr(nextLabel)}`;
+                      } else {
+                        const prevLabel = months[(month + 11) % 12];
+                        const currentLabel = months[month];
+                        return `${abbr(prevLabel)}-${abbr(currentLabel)}`;
+                      }
+                    }
+                    return months[month];
+                  }}
+                >
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <MenuItem key={index} value={index} sx={{ fontSize: 13, py: 0.2 }}>
+                      {(monthNames[currentLang] || monthNames.en)[index]}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <CalendarNavButton 
+                  direction="next" 
+                  onClick={onNextMonth} 
+                  color={headerStyles.weekdayText} 
+                />
+              </Box>
+            </Box>
+          </Box>
+        </TableCell>
+
+        {/* Ячейки дней */}
+        {days.map((day, idx) => (
+          <CalendarDayCell
+            key={day.dayjs.valueOf()}
+            colIndex={idx}
+            isToday={idx === todayIndex}
+            backgroundColor={idx === todayIndex ? headerStyles.todayBg : headerStyles.baseBg}
+            onClick={() => onDayClick(day)}
+            onMouseEnter={() => calendarRef?.current?.setAttribute("data-hover-col", idx)}
+            onMouseLeave={() => calendarRef?.current?.removeAttribute("data-hover-col")}
+            title="Нажмите для просмотра всех начинающихся и заканчивающихся заказов на эту дату"
+          >
+            <div style={{ color: day.isSunday ? headerStyles.sundayText : "inherit" }}>
+              {day.date}
+            </div>
+            <div style={{ color: day.isSunday ? headerStyles.sundayText : "inherit" }}>
+              {(weekday2[currentLang] || weekday2.en)[day.dayjs.day()]}
+            </div>
+          </CalendarDayCell>
+        ))}
+      </TableRow>
+    </TableHead>
+  );
+}
+
+// ============================================
+// BigCalendar — основной компонент
+// ============================================
+export default function BigCalendar({ cars, showLegend = true }) {
+  // ─────────────────────────────────────────
+  // Refs
+  // ─────────────────────────────────────────
+  const calendarRef = useRef(null);
+
+  // ─────────────────────────────────────────
+  // Тема и цвета
+  // ─────────────────────────────────────────
+  const theme = useTheme();
+  const calendarColors = theme.palette.calendar || {};
+
+  // Централизованные стили для header
+  const calendarHeaderStyles = useMemo(
+    () => ({
+      baseBg: "background.default" || "#121212",
+      todayBg: calendarColors.today || "calendar.today",
+      sundayText: calendarColors.sunday || theme.palette.primary.main,
+      weekdayText: "text.primary",
+      border: calendarColors.border || theme.palette.divider,
+    }),
+    [calendarColors, theme.palette.primary.main, theme.palette.divider]
+  );
+  
+  // i18n для динамического перевода месяцев и дней недели
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language || "en";
+
+  // Названия месяцев (полные) по языкам проекта
+  const monthNames = useMemo(
+    () => ({
+      en: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ],
+      ru: [
+        "Январь",
+        "Февраль",
+        "Март",
+        "Апрель",
+        "Май",
+        "Июнь",
+        "Июль",
+        "Август",
+        "Сентябрь",
+        "Октябрь",
+        "Ноябрь",
+        "Декабрь",
+      ],
+      el: [
+        "Ιανουάριος",
+        "Φεβρουάριος",
+        "Μάρτιος",
+        "Απρίλιος",
+        "Μάιος",
+        "Ιούνιος",
+        "Ιούλιος",
+        "Αύγουστος",
+        "Σεπτέμβριος",
+        "Οκτώβριος",
+        "Νοέμβριος",
+        "Δεκέμβριος",
+      ],
+    }),
+    []
+  );
+
+  // Двухсимвольные сокращения дней недели (индекс 0 = Sunday) по языкам
+  const weekday2 = useMemo(
+    () => ({
+      en: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+      ru: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
+      el: ["Κυ", "Δε", "Τρ", "Τε", "Πέ", "Πα", "Σά"],
+    }),
+    []
+  );
+  // ─────────────────────────────────────────
+  // Notifications (snackbar)
+  // ─────────────────────────────────────────
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const snackKeyRef = useRef(0);
+  const showSingleSnackbar = (message, options = {}) => {
+    snackKeyRef.current += 1;
+    enqueueSnackbar(message, { key: snackKeyRef.current, ...options });
+    if (snackKeyRef.current > 1) closeSnackbar(snackKeyRef.current - 1);
+  };
+
+  // ─────────────────────────────────────────
+  // Context
+  // ─────────────────────────────────────────
+  const { ordersByCarId, fetchAndUpdateOrders, allOrders, updateCarInContext } =
+    useMainContext();
+
+  // =======================
+  // 📅 Calendar navigation
+  // =======================
+  const [month, setMonth] = useState(() => {
+    const savedMonth = localStorage.getItem("bigCalendar_month");
+    return savedMonth !== null ? parseInt(savedMonth, 10) : dayjs().month();
+  });
+  const [year, setYear] = useState(() => {
+    const savedYear = localStorage.getItem("bigCalendar_year");
+    return savedYear !== null ? parseInt(savedYear, 10) : dayjs().year();
+  });
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bigCalendar_viewMode");
+      if (saved === "range15" || saved === "full") return saved;
+    }
+    return "full";
+  }); // 'full' | 'range15'
+  const [rangeDirection, setRangeDirection] = useState("forward"); // 'forward' | 'backward'
+  const [isPortraitPhone, setIsPortraitPhone] = useState(false);
+
+  // =======================
+  // 📦 Orders & selection
+  // =======================
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [startEndDates, setStartEndDates] = useState([]);
+  const [isConflictOrder, setIsConflictOrder] = useState(false);
+  const [headerOrdersModal, setHeaderOrdersModal] = useState({
+    open: false,
+    date: null,
+    orders: [],
+  });
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+
+  // =======================
+  // 🚚 Move order mode
+  // =======================
+  const [isMoving, setIsMoving] = useState(false);
+  const [selectedMoveOrder, setSelectedMoveOrder] = useState(null);
+  const [moveMode, setMoveMode] = useState(false);
+  const [orderToMove, setOrderToMove] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    newCar: null,
+  });
+
+  // =======================
+  // 🧩 UI modals
+  // =======================
+  const [open, setOpen] = useState(false);
+  const handleClose = () => setOpen(false);
+  const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [selectedCarForAdd, setSelectedCarForAdd] = useState(null);
+  const [selectedDateForAdd, setSelectedDateForAdd] = useState(null);
+  const [selectedCarForEdit, setSelectedCarForEdit] = useState(null);
+  const [isEditCarOpen, setIsEditCarOpen] = useState(false);
+
+  // =======================
+  // 💾 Persistence (localStorage)
+  // =======================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(
+      "(max-width: 600px) and (orientation: portrait)"
+    );
+    const handler = () => setIsPortraitPhone(mq.matches);
+    handler();
+    if (mq.addEventListener) mq.addEventListener("change", handler);
+    else if (mq.addListener) mq.addListener(handler);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", handler);
+      else if (mq.removeListener) mq.removeListener(handler);
+    };
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("bigCalendar_month", month.toString());
+  }, [month]);
+
+  useEffect(() => {
+    localStorage.setItem("bigCalendar_year", year.toString());
+  }, [year]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("bigCalendar_viewMode", viewMode);
+      } catch (e) {}
+    }
+  }, [viewMode]);
+
+  // Дни календаря и индекс текущего дня
+  const { days, todayIndex } = useCalendarDays({
+    month,
+    year,
+    viewMode,
+    rangeDirection,
+  });
+
+  // Автоматический скролл к текущему дню на мобильных устройствах
+  useMobileCalendarScroll({ days, todayIndex });
+
+  // =======================
+  // 🎮 Navigation handlers
+  // =======================
+  const handleSelectMonth = (e) => {
+    const newMonth = e.target.value;
+    setMonth(newMonth);
+    setViewMode("full");
+  };
+
+  const handleSelectYear = (e) => {
+    const newYear = e.target.value;
+    setYear(newYear);
+    setViewMode("full");
+  };
+
+  const handlePrevMonth = () => {
+    if (viewMode === "full") {
+      setRangeDirection("backward");
+      setViewMode("range15");
+    } else {
+      setViewMode("full");
+      const base = dayjs().year(year).month(month).subtract(1, "month");
+      setMonth(base.month());
+      setYear(base.year());
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMode === "full") {
+      setRangeDirection("forward");
+      setViewMode("range15");
+    } else {
+      setViewMode("full");
+      const base = dayjs().year(year).month(month).add(1, "month");
+      setMonth(base.month());
+      setYear(base.year());
+    }
+  };
+
+  // =======================
+  // 🚚 Move mode handlers
+  // =======================
+  const handleLongPress = (order) => {
+    if (!order?._id) return;
+    setSelectedMoveOrder(order);
+    setOrderToMove(order);
+    setMoveMode(true);
+    showSingleSnackbar(
+      "Выберите другой автомобиль для перемещения заказа. Доступные автомобили выделены желтым цветом",
+      { variant: "info", autoHideDuration: 8000 }
+    );
+  };
+
+  // =======================
+  // 📦 Orders handlers
+  // =======================
+  const ordersByCarIdWithAllorders = useCallback((carId, orders) => {
+    return orders?.filter((order) => order.car === carId);
+  }, []);
+
+  const handleSaveOrder = async (updatedOrder) => {
+    setSelectedOrders((prevSelectedOrders) =>
+      prevSelectedOrders.map((order) =>
+        order._id === updatedOrder._id ? updatedOrder : order
+      )
+    );
+    await fetchAndUpdateOrders();
+  };
+
+  // =======================
+  // 🚗 Car handlers
+  // =======================
+  const handleEditCar = (car) => {
+    setSelectedCarForEdit(car);
+    setIsEditCarOpen(true);
+  };
+
+  // =======================
+  // 📊 Derived state (orders)
+  // =======================
+  useEffect(() => {
+    const { startEnd } = extractArraysOfStartEndConfPending(allOrders);
+    setStartEndDates(startEnd);
+  }, [allOrders]);
+
+  const filteredStartEndDates = allOrders
+    ? allOrders.map((order) => ({
+        startStr: order.startDateISO || order.start,
+        endStr: order.endDateISO || order.end,
+        orderId: order._id,
+      }))
+    : [];
+
+  const sortedCars = useMemo(() => {
+    return [...cars].sort((a, b) => a.model.localeCompare(b.model));
+  }, [cars]);
+
+  // Генерируем массив дат для выбранного заказа в режиме перемещения
+  const selectedOrderDates = useMemo(() => {
+    if (!moveMode || !selectedMoveOrder) return [];
+    return buildOrderDateRange(selectedMoveOrder);
+  }, [moveMode, selectedMoveOrder]);
+
+  // Функция проверки совместимости автомобиля для перемещения
+  const isCarCompatibleForMove = useCallback(
+    (carId) => {
+      if (!moveMode || !selectedMoveOrder) return true;
+
+      // Исключаем автомобиль с текущим заказом
+      if (selectedMoveOrder.car === carId) return false;
+
+      // Получаем заказы целевого автомобиля
+      const carOrders = ordersByCarId(carId);
+
+      // Проверяем конфликты по времени (используем бизнес-таймзону)
+      const start = dayjs(selectedMoveOrder.rentalStartDate).tz(BUSINESS_TZ);
+      const end = dayjs(selectedMoveOrder.rentalEndDate).tz(BUSINESS_TZ);
+
+      const hasConflict = carOrders.some((order) => {
+        if (order._id === selectedMoveOrder._id) return false; // Исключаем сам перемещаемый заказ
+
+        const orderStart = dayjs(order.rentalStartDate).tz(BUSINESS_TZ);
+        const orderEnd = dayjs(order.rentalEndDate).tz(BUSINESS_TZ);
+
+        // Проверяем пересечение периодов
+        return orderStart.isSameOrBefore(end) && orderEnd.isSameOrAfter(start);
+      });
+
+      return !hasConflict;
+    },
+    [moveMode, selectedMoveOrder, ordersByCarId]
+  );
+
+  const handleAddOrderClick = (car, dateStr) => {
+    // Если в режиме перемещения - не открываем AddOrderModal
+    if (moveMode) return;
+
+    setSelectedCarForAdd(car);
+    setSelectedDateForAdd(dateStr);
+    setIsAddOrderOpen(true);
+  };
+
+  const selectedDate =
+    headerOrdersModal.date &&
+    dayjs(headerOrdersModal.date).format("YYYY-MM-DD");
+
+  const startedOrders = headerOrdersModal.orders.filter((order) => {
+    // Используем бизнес-таймзону для корректного сравнения
+    const start = formatDate(order.rentalStartDate, "YYYY-MM-DD");
+    return start === selectedDate;
+  });
+
+  const endedOrders = headerOrdersModal.orders.filter((order) => {
+    const end = formatDate(order.rentalEndDate, "YYYY-MM-DD");
+    return end === selectedDate;
+  });
+
+  const getRegNumberByCarNumber = (carNumber) => {
+    const car = cars.find((c) => c.carNumber === carNumber);
+    return car ? car.regNumber : carNumber;
+  };
+
+  // ИСПРАВЛЕННАЯ функция обработки выбора автомобиля для перемещения
+  const handleCarSelectForMove = (selectedCar) => {
+    if (!moveMode || !selectedMoveOrder) return;
+
+    // Находим информацию о старом автомобиле
+    const oldCar = cars.find((car) => car._id === selectedMoveOrder.car);
+
+    // Проверяем, что выбран другой автомобиль
+    // if (selectedMoveOrder.car === selectedCar._id) {
+    //   enqueueSnackbar("Заказ уже на этом автомобиле", { variant: "warning" });
+    //   return;
+    // }
+
+    // Показываем модальное окно подтверждения с правильными данными
+    setConfirmModal({
+      open: true,
+      newCar: selectedCar,
+      oldCar: oldCar, // Добавляем информацию о старом автомобиле
+    });
+  };
+
+  // Функция для выхода из режима перемещения
+  const exitMoveMode = () => {
+    setMoveMode(false);
+    setSelectedMoveOrder(null);
+    setOrderToMove(null);
+    showSingleSnackbar("Режим перемещения отключён", { variant: "info" });
+  };
+
+  const updateOrder = async (orderData) => {
+    console.log("🔄 Updating order with data:", orderData);
+
+    try {
+      const result = await changeRentalDates(
+        orderData._id,
+        new Date(orderData.rentalStartDate),
+        new Date(orderData.rentalEndDate),
+        new Date(orderData.timeIn || orderData.rentalStartDate),
+        new Date(orderData.timeOut || orderData.rentalEndDate),
+        orderData.placeIn || "",
+        orderData.placeOut || "",
+        orderData.car,
+        orderData.carNumber
+      );
+
+      if (result?.status === 201 || result?.status === 202) {
+        console.log("✅ Заказ успешно обновлён:", result.updatedOrder);
+      } else if (result?.status === 408) {
+        console.warn("⚠️ Конфликт по времени:", result.conflicts);
+        alert(
+          "Конфликт по времени аренды:\n" +
+            JSON.stringify(result.conflicts, null, 2)
+        );
+      } else {
+        console.error("❌ Ошибка при обновлении заказа", result);
+        alert("Не удалось обновить заказ");
+      }
+    } catch (error) {
+      console.error("🔥 Ошибка в updateOrder:", error);
+      alert("Произошла ошибка при обновлении заказа");
+    }
+  };
+
+  return (
+    <>
+    <BigCalendarLayout
+      showLegend={showLegend}
+      borderStyle={`1px solid ${calendarHeaderStyles.border}`}
+      calendarRef={calendarRef}
+    >
+      {/* Table с sticky header */}
+      <Table
+        stickyHeader
+        sx={{ width: "auto", minWidth: { xs: 700, sm: 0 } }}
+      >
+          {/* Шапка таблицы — вынесена в отдельный компонент */}
+          <BigCalendarHeader
+            days={days}
+            month={month}
+            year={year}
+            todayIndex={todayIndex}
+            viewMode={viewMode}
+            rangeDirection={rangeDirection}
+            monthNames={monthNames}
+            weekday2={weekday2}
+            currentLang={currentLang}
+            isPortraitPhone={isPortraitPhone}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            onMonthChange={handleSelectMonth}
+            onYearChange={handleSelectYear}
+            onDayClick={(day) => {
+              setHeaderOrdersModal({
+                open: true,
+                date: day.dayjs,
+                orders: allOrders,
+              });
+            }}
+            headerStyles={calendarHeaderStyles}
+            calendarRef={calendarRef}
+          />
+          <TableBody>
+            {sortedCars.map((car) => (
+              <TableRow key={car._id}>
+                <CalendarFirstColumn
+                  onClick={() => handleEditCar(car)}
+                  title="Нажмите для редактирования информации об автомобиле"
+                >
+                  {car.model} {car.regNumber}
+                </CalendarFirstColumn>
+
+                <CarTableRow
+                  key={car._id}
+                  car={car}
+                  orders={ordersByCarIdWithAllorders(car._id, allOrders)}
+                  days={days}
+                  ordersByCarId={ordersByCarId}
+                  setSelectedOrders={setSelectedOrders}
+                  setOpen={setOpen}
+                  onAddOrderClick={handleAddOrderClick}
+                  todayIndex={todayIndex}
+                  onLongPress={handleLongPress}
+                  filteredStartEndDates={filteredStartEndDates}
+                  moveMode={moveMode}
+                  onCarSelectForMove={handleCarSelectForMove}
+                  orderToMove={orderToMove}
+                  selectedMoveOrder={selectedMoveOrder}
+                  onExitMoveMode={exitMoveMode}
+                  selectedOrderDates={selectedOrderDates}
+                  isCarCompatibleForMove={isCarCompatibleForMove(car._id)}
+                />
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+    </BigCalendarLayout>
+
+      {/* Модальные окна — вне BigCalendarLayout */}
+
+      {/* Модальное окно редактирования заказов - открывается только при обычном клике */}
+      <Modal
+        open={open}
+        onClose={handleClose}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Box
+          onClick={(e) => {
+            // Закрываем модал при клике на backdrop (вне контента)
+            if (e.target === e.currentTarget) {
+              handleClose();
+            }
+          }}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <Grid
+            container
+            spacing={1}
+            justifyContent="center"
+            onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на контент
+            sx={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              overflow: "auto",
+              "&::-webkit-scrollbar": {
+                width: "4px",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "primary.main",
+                borderRadius: "4px",
+              },
+              "&::-webkit-scrollbar-track": {
+                backgroundColor: "background.paper",
+              },
+            }}
+          >
+          {/* Сортировка: сначала ранние, затем поздние */}
+          {[...selectedOrders]
+            .sort((a, b) => dayjs(a.rentalStartDate).valueOf() - dayjs(b.rentalStartDate).valueOf())
+            .map((order, index) => (
+            <Grid
+              item
+              key={order._id}
+              xs={12}
+              md={
+                selectedOrders.length === 1
+                  ? 12
+                  : selectedOrders.length === 2
+                  ? 6
+                  : selectedOrders.length >= 3 && selectedOrders.length <= 4
+                  ? 3
+                  : 2
+              }
+            >
+              <EditOrderModal
+                order={order}
+                open={open}
+                onClose={handleClose}
+                onSave={handleSaveOrder}
+                isConflictOrder={selectedOrders.length > 1 ? true : false}
+                setIsConflictOrder={setIsConflictOrder}
+                startEndDates={startEndDates}
+                cars={cars}
+                isViewOnly={isPast(order.rentalEndDate)}
+              />
+            </Grid>
+          ))}
+        </Grid>
+        </Box>
+      </Modal>
+
+      {/* AddOrderModal для создания нового заказа */}
+      {isAddOrderOpen && selectedCarForAdd && (
+        <AddOrderModal
+          open={isAddOrderOpen}
+          onClose={() => setIsAddOrderOpen(false)}
+          car={selectedCarForAdd}
+          date={selectedDateForAdd}
+          setUpdateStatus={(status) => {
+            console.log("Update status:", status);
+            if (status?.type === 200) {
+              fetchAndUpdateOrders();
+              setForceUpdateKey((prev) => prev + 1); // триггер перерисовки
+              // Автоматически закрываем модальное окно после успешного создания
+              setTimeout(() => {
+                setIsAddOrderOpen(false);
+              }, 1500);
+            }
+          }}
+        />
+      )}
+
+      {/* Модальное окно для заказов по дате в шапке */}
+      <OrdersByDateModal
+        open={headerOrdersModal.open}
+        onClose={() => setHeaderOrdersModal({ ...headerOrdersModal, open: false })}
+        date={headerOrdersModal.date}
+        startedOrders={startedOrders}
+        endedOrders={endedOrders}
+        getRegNumberByCarNumber={getRegNumberByCarNumber}
+      />
+
+      {/* Модальное окно подтверждения перемещения */}
+      <ModalLayout
+        open={confirmModal.open}
+        onClose={() => {
+          setConfirmModal({ open: false, newCar: null, oldCar: null });
+          exitMoveMode();
+        }}
+        title="Подтверждение перемещения"
+        size="small"
+        centerVertically={false}
+      >
+        <Typography sx={{ mb: 3, color: "text.primary" }}>
+          Вы хотите сдвинуть заказ с автомобиля{" "}
+          <strong>{confirmModal.oldCar?.model}</strong> ({confirmModal.oldCar?.regNumber})
+          на автомобиль <strong>{confirmModal.newCar?.model}</strong> ({confirmModal.newCar?.regNumber})?
+          </Typography>
+
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <CancelButton
+              onClick={() => {
+                setConfirmModal({ open: false, newCar: null, oldCar: null });
+                exitMoveMode();
+            }}
+            label="НЕТ"
+          />
+          <ActionButton
+            color="success"
+              onClick={async () => {
+                // 🔧 FIX: Capture values BEFORE clearing state
+                const newCar = confirmModal.newCar;
+                const order = selectedMoveOrder;
+                
+                // Defensive guards
+                if (!newCar?._id || !order?._id) {
+                  showSingleSnackbar("❌ Нет данных для перемещения", { variant: "error" });
+                  exitMoveMode();
+                  setConfirmModal({ open: false, newCar: null, oldCar: null });
+                  return;
+                }
+                
+                // Close modal after capturing values
+                setConfirmModal({ open: false, newCar: null, oldCar: null });
+                
+                // Debug logs (dev-friendly)
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[MOVE] newCar:", newCar);
+                  console.log("[MOVE] order:", order);
+                }
+                
+                let success = false;
+                try {
+                  // Use dedicated moveCar endpoint (allows ADMIN and SUPERADMIN)
+                  const result = await moveOrderToCar(
+                    order._id,
+                    newCar._id,
+                    newCar.carNumber
+                  );
+                  
+
+                  if (result?.status === 201 || result?.status === 202) {
+                    await fetchAndUpdateOrders();
+                    const conflictMsg = result.conflicts?.length > 0 
+                      ? " (есть конфликты с неподтвержденными заказами)" 
+                      : "";
+                    showSingleSnackbar(`Заказ сдвинут на ${newCar.model}${conflictMsg}`, { variant: "success" });
+                    success = true;
+                  } else if (result?.status === 409) {
+                    // Blocking conflict
+                    showSingleSnackbar(
+                      result.message || "Конфликт с подтвержденными заказами. Перемещение невозможно.",
+                      { variant: "error", autoHideDuration: 5000 }
+                    );
+                  } else {
+                    showSingleSnackbar(
+                      result.message || "Ошибка перемещения заказа",
+                      { variant: "error" }
+                    );
+                  }
+                } catch (error) {
+                  showSingleSnackbar(`Ошибка перемещения: ${error.message}`, { variant: "error" });
+                } finally {
+                  // Всегда выходим из режима перемещения после операции
+                  exitMoveMode();
+                }
+              }}
+            label="ДА"
+          />
+          </Box>
+      </ModalLayout>
+
+      {isEditCarOpen && selectedCarForEdit && (
+        <EditCarModal
+          open={isEditCarOpen}
+          onClose={() => {
+            setIsEditCarOpen(false);
+            setSelectedCarForEdit(null);
+          }}
+          updatedCar={selectedCarForEdit}
+          setUpdatedCar={setSelectedCarForEdit}
+          updateCarInContext={updateCarInContext}
+          handleChange={(e) =>
+            setSelectedCarForEdit((prev) => ({
+              ...prev,
+              [e.target.name]: e.target.value,
+            }))
+          }
+          handleCheckboxChange={(e) =>
+            setSelectedCarForEdit((prev) => ({
+              ...prev,
+              [e.target.name]: e.target.checked,
+            }))
+          }
+          handleUpdate={async () => {
+            const response = await updateCarInContext(selectedCarForEdit);
+            if (response?.type === 200) {
+              enqueueSnackbar("Машина обновлена", { variant: "success" });
+              fetchAndUpdateOrders();
+              setIsEditCarOpen(false);
+            } else {
+              enqueueSnackbar("Ошибка обновления", { variant: "error" });
+            }
+          }}
+        />
+      )}
+    </>
+  );
+}

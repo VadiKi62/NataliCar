@@ -20,15 +20,18 @@ import {
   Popover,
   MenuItem,
   TextField,
+  Chip,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
+import { useSession, signOut } from "next-auth/react";
+import { ROLE } from "@/domain/orders/admin-rbac";
 
 import LanguageIcon from "@mui/icons-material/Language";
 import { companyData } from "@utils/companyData";
 import { useMainContext } from "@app/Context";
-import LegendCalendarAdmin from "./common/LegendCalendarAdmin";
+import LegendCalendarAdmin from "@/app/components/calendar-ui/LegendCalendarAdmin";
 import { CAR_CLASSES } from "@models/enums";
-import SelectedFieldClass from "./common/SelectedFieldClass";
+import SelectedFieldClass from "@/app/components/ui/inputs/SelectedFieldClass";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -55,7 +58,8 @@ const StyledBox = styled(Box, {
   display: "flex",
   justifyContent: "center",
   py: theme.spacing(1),
-  backgroundColor: theme.palette.primary.main1,
+  backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
+  color: theme.palette.backgroundDark1?.text || "#ffffff",
   // можно использовать $isCarInfo для стилей, если нужно
 }));
 
@@ -70,7 +74,8 @@ const GradientAppBar = styled(AppBar, {
   }),
   willChange: "height, background-color",
   height: scrolled ? 52 : 60,
-  backgroundColor: theme.palette.primary.main1,
+  backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
+  color: theme.palette.backgroundDark1?.text || "#ffffff",
   boxShadow: "none",
   backdropFilter: scrolled ? "blur(10px)" : "none",
 }));
@@ -93,7 +98,7 @@ const Logo = styled(Typography)(({ theme }) => ({
 }));
 
 const LanguageSwitcher = styled(IconButton)(({ theme }) => ({
-  color: theme.palette.text?.black || theme.palette.text?.light,
+  color: theme.palette.text?.light || "#ffffff",
   display: "flex",
   alignItems: "center",
 }));
@@ -109,6 +114,17 @@ export default function NavBar({
   isCarInfo = false,
   setIsCarInfo = null,
 }) {
+  // Получаем информацию о сессии (для админки)
+  const { data: session } = useSession();
+  const adminRole = isAdmin && session?.user?.role !== undefined 
+    ? session.user.role 
+    : null; // ROLE.ADMIN = 1, ROLE.SUPERADMIN = 2
+  
+  // Обработчик logout
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/" });
+  };
+
   // Следим за выходом из полноэкранного режима
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -462,6 +478,29 @@ export default function NavBar({
                 </Typography>
               </LanguageSwitcher>
 
+              {/* Кнопка logout - только для админки */}
+              {isAdmin && adminRole !== null && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleLogout}
+                  sx={{
+                    color: "inherit",
+                    borderColor: "rgba(255, 255, 255, 0.5)",
+                    fontSize: "0.75rem",
+                    textTransform: "uppercase",
+                    px: 1.5,
+                    minWidth: "auto",
+                    "&:hover": {
+                      borderColor: "rgba(255, 255, 255, 0.8)",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    },
+                  }}
+                >
+                  {t("header.logout") || "Logout"}
+                </Button>
+              )}
+
               <Stack
                 direction="row"
                 spacing={2}
@@ -538,11 +577,10 @@ export default function NavBar({
                           textTransform: "uppercase",
                         }}
                       >
-                        {/* {t("header.calendar")} */}
-                        {t("header.orders")}
+                        {t("header.calendar")}
                       </Typography>
                     </Link>
-                    {/*<Link href="/admin/table">
+                    <Link href="/admin/orders">
                       <Typography
                         sx={{
                           px: { xs: 0.5, md: 3 },
@@ -550,9 +588,9 @@ export default function NavBar({
                           textTransform: "uppercase",
                         }}
                       >
-                        {t("header.orderList")}
+                        {t("header.table")}
                       </Typography>
-                    </Link>*/}
+                    </Link>
                   </>
                 )}
 
@@ -578,17 +616,48 @@ export default function NavBar({
               </Stack>
             </Stack>
 
-            <Link href="/">
-              <Logo
-                sx={{
-                  fontSize: "clamp(12px, calc(0.99rem + 1vw), 32px)",
-                }}
-              >
-                {companyData.name}
-                {isAdmin && " ADMIN"}
-              </Logo>
-            </Link>
+            <Box sx={{ position: "relative", display: "inline-flex" }}>
+              <Link href="/">
+                <Logo
+                  sx={{
+                    fontSize: "clamp(12px, calc(0.99rem + 1vw), 32px)",
+                  }}
+                >
+                  {companyData.name}
+                  {isAdmin && " ADMIN"}
+                </Logo>
+              </Link>
+              {/* Chip с ролью - только для админки, в правом верхнем углу логотипа */}
+              {isAdmin && adminRole === ROLE.SUPERADMIN && (
+                <Chip
+                  label={adminRole === ROLE.SUPERADMIN ? "Superadmin" : "Admin"}
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    top:-5,
+                    right: -5,
+                    backgroundColor: adminRole === ROLE.SUPERADMIN 
+                      ? "rgba(255, 193, 7, 0.2)" 
+                      : "rgba(33, 150, 243, 0.2)",
+                    color: adminRole === ROLE.SUPERADMIN 
+                      ? "#ffc107" 
+                      : "secondary.main",
+                    border: `1px solid ${adminRole === ROLE.SUPERADMIN ? "triadic.yellowBright" : "secondary.main"}`,
+                    fontWeight: 600,
+                    fontSize: "0.65rem",
+                    height: 20,
+                    zIndex: 1,
+                    // Скрываем на очень маленьких экранах
+                    display: { xs: "none", sm: "flex" },
+                  }}
+                />
+              )}
+            </Box>
+            
           </Stack>
+
+
+
         </Toolbar>
 
         <LanguagePopover
@@ -747,19 +816,12 @@ export default function NavBar({
                 <ListItem button component={Link} href="/admin/cars">
                   <ListItemText primary={t("header.cars")} />
                 </ListItem>
-                {/* <ListItem button component={Link} href="/admin/orders">
-                  <ListItemText primary={t("header.orders")} />
-                </ListItem>
                 <ListItem button component={Link} href="/admin/orders-calendar">
                   <ListItemText primary={t("header.calendar")} />
                 </ListItem>
-                */}
-                <ListItem button component={Link} href="/admin/orders-calendar">
-                  <ListItemText primary={t("header.orders")} />
+                <ListItem button component={Link} href="/admin/orders">
+                  <ListItemText primary={t("header.table")} />
                 </ListItem>
-                {/*<ListItem button component={Link} href="/admin/table">
-                  <ListItemText primary={t("header.orderList")} />
-                </ListItem>  */}
                 {isAdmin && (
                   <ListItem
                     button
@@ -771,6 +833,28 @@ export default function NavBar({
                     <ListItemText primary={discountButtonLabel} />
                   </ListItem>
                 )}
+              </>
+            )}
+
+            {/* Кнопка logout - только для админки в мобильном меню */}
+            {isAdmin && adminRole !== null && (
+              <>
+                <Box sx={{ px: 2, py: 1, borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={() => {
+                      setDrawerOpen(false);
+                      handleLogout();
+                    }}
+                    sx={{
+                      textTransform: "uppercase",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    {t("header.logout") || "Logout"}
+                  </Button>
+                </Box>
               </>
             )}
 
