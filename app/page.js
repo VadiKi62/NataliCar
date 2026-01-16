@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import Feed from "@app/components/Feed";
 import Script from "next/script";
 import { unstable_noStore } from "next/cache";
-import { fetchAllCars, reFetchAllOrders, fetchCompany } from "@utils/action";
+import { fetchAllCars, reFetchActiveOrders, fetchCompany } from "@utils/action";
 import CarGrid from "./components/CarGrid";
 import { companyData as companyDataConfig } from "@config/company";
 import { getSeoConfig } from "@config/seo";
@@ -36,7 +36,7 @@ export default async function Home() {
   // Загружаем данные параллельно для ускорения загрузки
   const [carsData, ordersData, companyData] = await Promise.all([
     fetchAllCars(),
-    reFetchAllOrders(),
+    reFetchActiveOrders(),
     fetchCompany(companyId),
   ]);
 

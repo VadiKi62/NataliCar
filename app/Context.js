@@ -12,6 +12,7 @@ import React, {
 import {
   fetchAllCars,
   reFetchAllOrders,
+  reFetchActiveOrders,
   updateCar,
   deleteCar,
 } from "@utils/action";
@@ -22,7 +23,8 @@ const MainContext = createContext({
   allOrders: [],
   setCars: () => {},
   setAllOrders: () => {},
-  fetchAndUpdateOrders: () => {},
+  fetchAndUpdateOrders: () => {}, // 🔴 ADMIN ONLY — fetches ALL orders
+  fetchAndUpdateActiveOrders: () => {}, // ✅ CLIENT-SAFE — fetches only active orders
   ordersByCarId: () => {},
   isLoading: false,
   resubmitCars: () => {},
@@ -211,6 +213,10 @@ export const MainContextProvider = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
+  // ============================================================
+  // 🔴 ADMIN ONLY — Fetches ALL orders including historical data.
+  // Use fetchAndUpdateActiveOrders() for client/public pages.
+  // ============================================================
   const fetchAndUpdateOrders = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -219,6 +225,23 @@ export const MainContextProvider = ({
       console.log("Updated orders data:", newOrdersData);
     } catch (error) {
       console.error("Error fetching orders:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // ============================================================
+  // ✅ CLIENT-SAFE — Fetches only active orders (startDate >= today Athens).
+  // Use this in client/public pages (BookingModal, CarItemComponent, etc.)
+  // ============================================================
+  const fetchAndUpdateActiveOrders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const newOrdersData = await reFetchActiveOrders();
+      setAllOrders(newOrdersData);
+      console.log("Updated active orders data:", newOrdersData);
+    } catch (error) {
+      console.error("Error fetching active orders:", error);
     } finally {
       setIsLoading(false);
     }
@@ -397,7 +420,8 @@ export const MainContextProvider = ({
       allOrders,
       setCars,
       setAllOrders,
-      fetchAndUpdateOrders,
+      fetchAndUpdateOrders, // 🔴 ADMIN ONLY
+      fetchAndUpdateActiveOrders, // ✅ CLIENT-SAFE
       ordersByCarId,
       isLoading,
       setIsLoading,
@@ -446,6 +470,7 @@ export const MainContextProvider = ({
       companyError,
       updateCompanyInContext,
       fetchAndUpdateOrders,
+      fetchAndUpdateActiveOrders,
       resubmitCars,
       updateCarInContext,
       deleteCarInContext,

@@ -103,16 +103,39 @@ export const fetchAllCars = async () => {
   }
 };
 
-// REFetch all orders using fetch
+// ============================================================
+// ✅ CLIENT-SAFE — Use this in public/client pages!
+// Fetches ONLY orders with rentalStartDate >= today (Athens timezone).
+// Server-side filtering ensures clients never receive historical data.
+// ============================================================
+export const reFetchActiveOrders = async () => {
+  try {
+    const apiUrl = `${API_URL}/api/order/refetch-active`;
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      next: { cache: "no-store" },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch active orders");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching active orders:", error);
+    throw error;
+  }
+};
+
+// ============================================================
+// 🔴 ADMIN ONLY — Do not use in client/public pages!
+// This function fetches ALL orders including historical data.
+// For client pages, use reFetchActiveOrders() instead.
+// ============================================================
 export const reFetchAllOrders = async () => {
   try {
     const apiUrl = `${API_URL}/api/order/refetch`;
     const response = await fetch(apiUrl, {
       next: { cache: "no-store" },
       method: "POST",
-      // headers: {
-      //   "Content-Type": "application/json",
-      // },
     });
     if (!response.ok) {
       throw new Error("Failed to fetch orders");
@@ -904,7 +927,7 @@ export async function fetchCompany(companyId) {
         "Content-Type": "application/json",
       },
       // Кеширование: данные обновляются каждый час
-      next: { revalidate: 3600 },
+      next: { revalidate: 24*3600 },
     });
 
     if (response.status === 404) {

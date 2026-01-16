@@ -183,7 +183,8 @@ const CarItemComponent = React.memo(function CarItemComponent({
 
   // Оптимизация: деструктурируем только нужные поля из контекста
   // и мемоизируем carOrders, чтобы избежать лишних ре-рендеров
-  const { fetchAndUpdateOrders, isLoading, ordersByCarId, allOrders } =
+  // ✅ CLIENT-SAFE: используем fetchAndUpdateActiveOrders (только активные заказы)
+  const { fetchAndUpdateActiveOrders, isLoading, ordersByCarId, allOrders } =
     useMainContext();
   
   // Мемоизируем carOrders вместо useState + useEffect для снижения TBT
@@ -325,41 +326,41 @@ const CarItemComponent = React.memo(function CarItemComponent({
               {/* КРИТИЧНО для CLS: используем fill prop от next/image
                   - Родитель (CarImage) имеет position: relative + фиксированные размеры
                   - fill заставляет изображение заполнить родителя БЕЗ layout shift */}
-              <CldImage
-                onClick={() => setDetailsModalOpen(true)}
-                src={car?.photoUrl || "NO_PHOTO_h2klff"}
-                alt={`Natali-Cars-${car.model}`}
+                  <CldImage
+                    onClick={() => setDetailsModalOpen(true)}
+                    src={car?.photoUrl || "NO_PHOTO_h2klff"}
+                    alt={`Natali-Cars-${car.model}`}
                 fill
-                crop="fill"
+                    crop="fill"
                 priority={isFirstCar}
                 sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 450px"
-                style={{
+                    style={{
                   objectFit: "cover",
-                  cursor: "pointer",
-                }}
-              />
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDetailsModalOpen(true);
-                }}
-                variant="outlined"
-                size="small"
-                sx={{
-                  position: "absolute",
-                  bottom: { xs: 4, sm: 8 },
-                  right: { xs: 4, sm: 8 },
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
-                  "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 1)",
-                  },
-                  fontSize: { xs: "0.65rem", sm: "0.75rem" },
-                  padding: { xs: "2px 6px", sm: "4px 8px" },
-                  zIndex: 1,
-                }}
-              >
-                {t("car.viewDetails")}
-              </Button>
+                      cursor: "pointer",
+                    }}
+                  />
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailsModalOpen(true);
+                    }}
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      position: "absolute",
+                      bottom: { xs: 4, sm: 8 },
+                      right: { xs: 4, sm: 8 },
+                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                      "&:hover": {
+                        backgroundColor: "rgba(255, 255, 255, 1)",
+                      },
+                      fontSize: { xs: "0.65rem", sm: "0.75rem" },
+                      padding: { xs: "2px 6px", sm: "4px 8px" },
+                      zIndex: 1,
+                    }}
+                  >
+                    {t("car.viewDetails")}
+                  </Button>
             </CarImage>
             <Suspense fallback={null}>
               <CarDetails car={car} />
@@ -466,7 +467,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
       {modalOpen && (
         <Suspense fallback={null}>
           <BookingModal
-            fetchAndUpdateOrders={fetchAndUpdateOrders}
+            fetchAndUpdateOrders={fetchAndUpdateActiveOrders}
             open={modalOpen}
             car={car}
             orders={carOrders}
