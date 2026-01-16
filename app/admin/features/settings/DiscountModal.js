@@ -2,22 +2,22 @@
 
 import React from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   Box,
-  TextField,
   Typography,
   Slider,
+  CircularProgress,
 } from "@mui/material";
+import DialogLayout from "@/app/components/ui/modals/DialogLayout";
 
 /**
  * DiscountModal - Admin-only component for setting discount dates
  * Heavy date picker libraries are lazy-loaded only when modal opens
  * 
  * Location: admin/features/settings/ (admin-only bundle)
+ * 
+ * NOTE: DialogLayout.loading используется ТОЛЬКО для UX-действий (сохранение).
+ * Lazy-loading библиотек обрабатывается внутренним placeholder в children.
  */
 export default function DiscountModal({
   open,
@@ -35,28 +35,39 @@ export default function DiscountModal({
   const [LocalizationProvider, setLocalizationProvider] = React.useState(null);
   const [DateAdapter, setDateAdapter] = React.useState(null);
   const [locale, setLocale] = React.useState(null);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [dayjs, setDayjs] = React.useState(null);
 
   React.useEffect(() => {
     if (open && !DatePicker && !LocalizationProvider) {
       // Load all date picker libraries only when modal opens for the first time
-      setIsLoading(true);
       Promise.all([
-        import("@mui/x-date-pickers/DatePicker").then((mod) => mod.DatePicker),
-        import("@mui/x-date-pickers/LocalizationProvider").then((mod) => mod.LocalizationProvider),
-        import("@mui/x-date-pickers/AdapterDateFnsV3").then((mod) => mod.default),
-        import("date-fns/locale/ru").then((mod) => mod.default),
+        // Используем DesktopDatePicker для компактного выпадающего календаря
+        import("@mui/x-date-pickers/DesktopDatePicker").then((mod) => mod.DesktopDatePicker || mod.default),
+        import("@mui/x-date-pickers/LocalizationProvider").then((mod) => mod.LocalizationProvider || mod.default),
+        import("@mui/x-date-pickers/AdapterDayjs").then((mod) => mod.AdapterDayjs || mod.default),
+        import("dayjs/locale/ru").then((mod) => mod.default || mod.ru),
+        import("dayjs").then((mod) => mod.default),
       ])
-        .then(([DatePickerComponent, LocalizationProviderComponent, adapter, ruLocale]) => {
-          setDatePicker(() => DatePickerComponent);
-          setLocalizationProvider(() => LocalizationProviderComponent);
-          setDateAdapter(() => adapter);
-          setLocale(ruLocale);
-          setIsLoading(false);
+        .then(([DatePickerComponent, LocalizationProviderComponent, adapter, ruLocale, dayjsLib]) => {
+          // Проверяем, что все компоненты загружены
+          if (DatePickerComponent && LocalizationProviderComponent && adapter && ruLocale && dayjsLib) {
+            setDatePicker(() => DatePickerComponent);
+            setLocalizationProvider(() => LocalizationProviderComponent);
+            setDateAdapter(() => adapter);
+            setLocale(ruLocale);
+            setDayjs(() => dayjsLib);
+          } else {
+            console.error("Some date picker components failed to load:", {
+              DatePickerComponent: !!DatePickerComponent,
+              LocalizationProviderComponent: !!LocalizationProviderComponent,
+              adapter: !!adapter,
+              ruLocale: !!ruLocale,
+              dayjs: !!dayjsLib,
+            });
+          }
         })
         .catch((err) => {
           console.error("Failed to load date picker libraries:", err);
-          setIsLoading(false);
         });
     }
   }, [open, DatePicker, LocalizationProvider]);
@@ -65,153 +76,140 @@ export default function DiscountModal({
     return null; // Don't render anything when modal is closed
   }
 
-  if (isLoading || !DatePicker || !LocalizationProvider || !DateAdapter || !locale) {
-    // Loading state - date picker libraries are being loaded
-    return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm">
-        <DialogContent>
-          <Typography>Загрузка...</Typography>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  const isReady = DatePicker && LocalizationProvider && DateAdapter && locale && dayjs;
 
   return (
-    <Dialog
+    <DialogLayout
       open={open}
       onClose={onClose}
       maxWidth="sm"
-      PaperProps={{
-        sx: { minHeight: 400, minWidth: 350 },
+      title={`Выбор скидки: ${selectedDiscount}%`}
+      showCloseButton={true}
+      closeOnBackdropClick={false}
+      closeOnEscape={false}
+      // loading НЕ используется для lazy-import — только для UX-действий
+      contentSx={{ minWidth: 350, pb: 3, pt: 3 }}
+      sx={{
+        "& .MuiDialog-paper": {
+          minHeight: 400,
+          minWidth: 350,
+        },
       }}
     >
-      <DialogTitle sx={{ pb: 2 }}>
-        Выбор скидки: {selectedDiscount}%
-      </DialogTitle>
-      <DialogContent sx={{ minWidth: 350, pb: 3, pt: 3 }}>
-        <LocalizationProvider dateAdapter={DateAdapter} adapterLocale={locale}>
-          <Box sx={{ mb: 3, mt: 6 }}>
-            <DatePicker
-              label="Дата начала скидки"
-              value={discountStartDate}
-              disablePast
-              minDate={new Date()}
-              onChange={(newValue) => {
-                if (!newValue) {
-                  setDiscountStartDate(null);
-                  return;
-                }
-                const d = new Date(
-                  newValue.getFullYear(),
-                  newValue.getMonth(),
-                  newValue.getDate()
-                );
-                const today = new Date();
-                const todayStart = new Date(
-                  today.getFullYear(),
-                  today.getMonth(),
-                  today.getDate()
-                );
-                if (d < todayStart) return;
-                setDiscountStartDate(d);
-                if (discountEndDate) {
-                  const endLocal = new Date(
-                    discountEndDate.getFullYear(),
-                    discountEndDate.getMonth(),
-                    discountEndDate.getDate()
+      {/* Внутренний placeholder пока библиотеки загружаются */}
+      {!isReady ? (
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <LocalizationProvider dateAdapter={DateAdapter} adapterLocale={locale}>
+            <Box sx={{ mb: 3, mt: 2 }}>
+              <DatePicker
+                label="Дата начала скидки"
+                value={discountStartDate ? dayjs(discountStartDate) : null}
+                disablePast
+                minDate={dayjs()}
+                onChange={(newValue) => {
+                  if (!newValue) {
+                    setDiscountStartDate(null);
+                    return;
+                  }
+                  const d = newValue.toDate();
+                  const today = new Date();
+                  const todayStart = new Date(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    today.getDate()
                   );
-                  if (endLocal <= d) setDiscountEndDate(null);
+                  if (d < todayStart) return;
+                  setDiscountStartDate(d);
+                  if (discountEndDate) {
+                    const endLocal = new Date(
+                      discountEndDate.getFullYear(),
+                      discountEndDate.getMonth(),
+                      discountEndDate.getDate()
+                    );
+                    if (endLocal <= d) setDiscountEndDate(null);
+                  }
+                }}
+                format="DD.MM.YYYY"
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    margin: "normal",
+                    sx: { mt: 2 },
+                  },
+                }}
+              />
+            </Box>
+            <Box sx={{ mb: 3 }}>
+              <DatePicker
+                label="Дата окончания скидки"
+                value={discountEndDate ? dayjs(discountEndDate) : null}
+                disablePast
+                minDate={
+                  discountStartDate
+                    ? dayjs(discountStartDate).add(1, "day")
+                    : dayjs().add(1, "day")
                 }
-              }}
-              inputFormat="dd.MM.yyyy"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  margin="normal"
-                  sx={{ mt: 2 }}
-                />
-              )}
-            />
-          </Box>
-          <Box sx={{ mb: 3 }}>
-            <DatePicker
-              label="Дата окончания скидки"
-              value={discountEndDate}
-              disablePast
-              minDate={
-                discountStartDate
-                  ? new Date(
+                onChange={(newValue) => {
+                  if (!newValue) {
+                    setDiscountEndDate(null);
+                    return;
+                  }
+                  const d = newValue.toDate();
+                  if (discountStartDate) {
+                    const startLocal = new Date(
                       discountStartDate.getFullYear(),
                       discountStartDate.getMonth(),
-                      discountStartDate.getDate() + 1
-                    )
-                  : (() => {
-                      const tomorrow = new Date();
-                      tomorrow.setDate(tomorrow.getDate() + 1);
-                      return tomorrow;
-                    })()
-              }
-              onChange={(newValue) => {
-                if (!newValue) {
-                  setDiscountEndDate(null);
-                  return;
-                }
-                const d = new Date(
-                  newValue.getFullYear(),
-                  newValue.getMonth(),
-                  newValue.getDate()
-                );
-                if (discountStartDate) {
-                  const startLocal = new Date(
-                    discountStartDate.getFullYear(),
-                    discountStartDate.getMonth(),
-                    discountStartDate.getDate()
+                      discountStartDate.getDate()
+                    );
+                    if (d <= startLocal) return;
+                  }
+                  const today = new Date();
+                  const todayStart = new Date(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    today.getDate()
                   );
-                  if (d <= startLocal) return;
-                }
-                const today = new Date();
-                const todayStart = new Date(
-                  today.getFullYear(),
-                  today.getMonth(),
-                  today.getDate()
-                );
-                if (d <= todayStart) return;
-                setDiscountEndDate(d);
-              }}
-              inputFormat="dd.MM.yyyy"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  margin="normal"
-                  sx={{ mt: 2 }}
-                />
-              )}
-            />
-          </Box>
-        </LocalizationProvider>
+                  if (d <= todayStart) return;
+                  setDiscountEndDate(d);
+                }}
+                format="DD.MM.YYYY"
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    margin: "normal",
+                    sx: { mt: 2 },
+                  },
+                }}
+              />
+            </Box>
+          </LocalizationProvider>
 
-        <Typography gutterBottom sx={{ mt: 6, mb: 5 }}>
-          Скидка на аренду (%):
-        </Typography>
-        <Slider
-          value={selectedDiscount}
-          onChange={(e, value) => setSelectedDiscount(value)}
-          valueLabelDisplay="on"
-          step={5}
-          marks
-          min={0}
-          max={100}
-          sx={{ width: "100%", mt: 1, maxWidth: 300 }}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Закрыть</Button>
-        <Button variant="contained" onClick={onSave}>
-          Сохранить
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <Typography gutterBottom sx={{ mt: 4, mb: 3 }}>
+            Скидка на аренду (%):
+          </Typography>
+          <Slider
+            value={selectedDiscount}
+            onChange={(e, value) => setSelectedDiscount(value)}
+            valueLabelDisplay="on"
+            step={5}
+            marks
+            min={0}
+            max={100}
+            sx={{ width: "100%", mt: 1, maxWidth: 300 }}
+          />
+        
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3 }}>
+            <Button onClick={onClose}>Закрыть</Button>
+            <Button variant="contained" onClick={onSave}>
+              Сохранить
+            </Button>
+          </Box>
+        </>
+      )}
+    </DialogLayout>
   );
 }

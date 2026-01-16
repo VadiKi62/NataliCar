@@ -17,12 +17,20 @@ import CloseIcon from "@mui/icons-material/Close";
 /**
  * Reusable Dialog Layout component
  * 
+ * Unified close behavior contract:
+ * - By default, modals cannot be closed by backdrop click or Escape key
+ *   (prevents accidental closure of transactional/destructive dialogs)
+ * - Close button (X) always closes the modal
+ * - Enable closeOnBackdropClick/closeOnEscape only for informational/confirmation dialogs
+ * 
  * @param {boolean} open - is dialog open
  * @param {function} onClose - close handler
  * @param {string} title - dialog title (optional)
  * @param {string} maxWidth - MUI maxWidth: "xs" | "sm" | "md" | "lg" | "xl"
  * @param {boolean} fullWidth - use full width
- * @param {boolean} showCloseButton - show close button in title
+ * @param {boolean} showCloseButton - show close button in title (default: true)
+ * @param {boolean} closeOnBackdropClick - allow closing by clicking outside (default: false)
+ * @param {boolean} closeOnEscape - allow closing by Escape key (default: false)
  * @param {boolean} loading - show loading state
  * @param {ReactNode} stickyHeader - content for sticky header (optional)
  * @param {ReactNode} actions - content for DialogActions (optional)
@@ -37,6 +45,8 @@ const DialogLayout = ({
   maxWidth = "sm",
   fullWidth = true,
   showCloseButton = true,
+  closeOnBackdropClick = false,
+  closeOnEscape = false,
   loading = false,
   stickyHeader,
   actions,
@@ -47,12 +57,30 @@ const DialogLayout = ({
 }) => {
   const theme = useTheme();
 
+  // Unified close handler that respects the close behavior contract
+  // MUI Dialog calls onClose(event, reason) where reason can be:
+  // - "backdropClick" - user clicked outside
+  // - "escapeKeyDown" - user pressed Escape
+  // - other values for programmatic close (X button, etc.)
+  const handleClose = (event, reason) => {
+    // X button and programmatic closes always work
+    if (reason === "backdropClick" && !closeOnBackdropClick) {
+      return; // Ignore backdrop clicks when disabled
+    }
+    if (reason === "escapeKeyDown" && !closeOnEscape) {
+      return; // Ignore Escape key when disabled
+    }
+    // All other reasons (including undefined for X button) are allowed
+    onClose(event, reason);
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       fullWidth={fullWidth}
       maxWidth={maxWidth}
+      disableEscapeKeyDown={!closeOnEscape}
       sx={{
         "& .MuiDialog-paper": {
           borderRadius: 2,
@@ -105,7 +133,7 @@ const DialogLayout = ({
               )}
               {showCloseButton && (
                 <IconButton
-                  onClick={onClose}
+                  onClick={(e) => handleClose(e, "buttonClick")}
                   size="small"
                   sx={{
                     position: "absolute",

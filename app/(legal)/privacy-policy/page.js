@@ -1,9 +1,5 @@
-import { Suspense } from "react";
-import { unstable_noStore } from "next/cache";
-import LoadingSpinner from "@app/loading";
-import Feed from "@app/components/Feed";
-import LegalDoc from "@app/components/Legal/LegalDoc";
 import { getSeoConfig } from "@config/seo";
+import LegalPageContent from "../_components/LegalPageContent";
 
 const seoConfig = getSeoConfig();
 
@@ -21,12 +17,5 @@ export const metadata = {
 };
 
 export default function PrivacyPolicyPage() {
-  unstable_noStore();
-  return (
-    <Feed>
-      <Suspense fallback={<LoadingSpinner />}>
-        <LegalDoc docType="privacy-policy" />
-      </Suspense>
-    </Feed>
-  );
+  return <LegalPageContent docType="privacy-policy" />;
 }

@@ -1,25 +1,22 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
-  Dialog,
   Grid,
-  DialogActions,
   MenuItem,
   Typography,
   Checkbox,
   FormControlLabel,
   FormControl,
-  DialogTitle,
   InputLabel,
   Select,
   Box,
   TextField,
   RadioGroup,
   Radio,
-  CircularProgress,
   InputAdornment,
   Stack,
   Autocomplete,
 } from "@mui/material";
+import DialogLayout from "@/app/components/ui/modals/DialogLayout";
 import { ConfirmButton, CancelButton } from "@/app/components/ui";
 import Snackbar from "@/app/components/ui/feedback/Snackbar";
 import { styled } from "@mui/material/styles";
@@ -58,7 +55,6 @@ const EditCarModal = ({
   const fileInputRef = useRef(null);
   const [imagePreview, setImagePreview] = useState(updatedCar.photoUrl || "");
   const [photoUrl, setPhotoUrl] = useState(updatedCar.photoUrl || "");
-  const handleCloseModal = () => onClose();
 
   const handleImageUpload = async () => {
     const file = fileInputRef.current.files[0];
@@ -189,13 +185,42 @@ const EditCarModal = ({
     add(updatedCar?.model);
     return merged.sort((a, b) => a.localeCompare(b));
   }, [dbCarModels, updatedCar?.model]);
+  
+  // Actions buttons for DialogLayout
+  const modalActions = (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        gap: 2,
+      }}
+    >
+      <CancelButton
+        onClick={onClose}
+        disabled={isLoading}
+        label={t("basic.cancel")}
+      />
+      <ConfirmButton
+        onClick={handleSave}
+        loading={isLoading}
+        label={t("basic.save")}
+      />
+    </Box>
+  );
+
   return (
-    <Dialog open={open} onClose={handleCloseModal} fullWidth maxWidth="lg">
-      {/* <Box sx={{ p: 3, position: "relative" }}> */}
-      <Box
-        sx={{ opacity: isLoading ? 0.3 : 1, transition: "opacity 0.2s", p: 2 }}
+    <DialogLayout
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="lg"
+      title={t("carPark.updateCar")}
+      showCloseButton={true}
+      closeOnBackdropClick={false}
+      closeOnEscape={false}
+      actions={modalActions}
+      contentSx={{ opacity: isLoading ? 0.3 : 1, transition: "opacity 0.2s", p: 2 }}
       >
-        <DialogTitle>{t("carPark.updateCar")}</DialogTitle>
         <Grid container spacing={3} sx={{ flexGrow: 1 }}>
           {/* Column 1 */}
           <Grid item xs={12} sm={3}>
@@ -446,35 +471,8 @@ const EditCarModal = ({
               setUpdatedCar={setUpdatedCar}
             />
           </Grid>
-
-          <Grid item xs={12}>
-            <DialogActions
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 2,
-                mt: 3,
-                pt: 2,
-                borderTop: "1px solid",
-                borderColor: "divider",
-              }}
-            >
-              <CancelButton
-                onClick={onClose}
-                disabled={isLoading}
-                label={t("basic.cancel")}
-              />
-              <ConfirmButton
-                onClick={handleSave}
-                loading={isLoading}
-                label={t("basic.save")}
-              />
-            </DialogActions>
-          </Grid>
         </Grid>
-      </Box>
-      {/* </Box> */}
-    </Dialog>
+    </DialogLayout>
   );
 };
 

@@ -5,16 +5,13 @@
  */
 
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   Typography,
   Box,
   Alert,
   Chip,
 } from "@mui/material";
+import DialogLayout from "./modals/DialogLayout";
 
 /**
  * @param {Object} props
@@ -40,12 +37,15 @@ export default function AutoFixDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        🔧 Автоматическое исправление времени
-      </DialogTitle>
-
-      <DialogContent>
+    <DialogLayout
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      title="🔧 Автоматическое исправление времени"
+      showCloseButton={true}
+      closeOnBackdropClick={false}
+      closeOnEscape={false}
+    >
         <Typography variant="body2" sx={{ mb: 2 }}>
           Текущее время: <strong>{currentPickupTime}</strong> —{" "}
           <strong>{currentReturnTime}</strong>
@@ -134,14 +134,13 @@ export default function AutoFixDialog({
             ))}
           </Box>
         )}
-      </DialogContent>
 
-      <DialogActions>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
         <Button onClick={onClose} color="inherit">
           Отмена
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </DialogLayout>
   );
 }
 

@@ -108,7 +108,9 @@ const OrdersByDateModal = ({
   open={open}
   onClose={onClose}
   size="fullWidth"
-  showCloseButton
+  showCloseButton={true}
+  closeOnBackdropClick={false}
+  closeOnEscape={true}
 >
     <Box id="print-orders-modal">
     <Grid     

@@ -269,23 +269,6 @@ export const fetchOrdersByCar = async (carId) => {
   }
 };
 
-// Fetch all orders using fetch
-export const fetchAllOrders = async () => {
-  try {
-    const apiUrl = `${API_URL}/api/order/all?timestamp=${new Date().getTime()}`;
-    const response = await fetch(apiUrl, {
-      next: { cache: "no-store" },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch orders");
-    }
-    const ordersData = await response.json();
-    return ordersData;
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    throw error;
-  }
-};
 
 // UPDATE 0. action for moving order to another car (ADMIN and SUPERADMIN allowed)
 /**

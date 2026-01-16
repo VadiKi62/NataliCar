@@ -222,9 +222,13 @@ export const MainContextProvider = ({
     try {
       const newOrdersData = await reFetchAllOrders();
       setAllOrders(newOrdersData);
-      console.log("Updated orders data:", newOrdersData);
+      if (process.env.NODE_ENV === "development") {
+        console.log("Updated orders data:", newOrdersData);
+      }
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching orders:", error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -239,9 +243,13 @@ export const MainContextProvider = ({
     try {
       const newOrdersData = await reFetchActiveOrders();
       setAllOrders(newOrdersData);
-      console.log("Updated active orders data:", newOrdersData);
+      if (process.env.NODE_ENV === "development") {
+        console.log("Updated active orders data:", newOrdersData);
+      }
     } catch (error) {
-      console.error("Error fetching active orders:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching active orders:", error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -252,13 +260,17 @@ export const MainContextProvider = ({
     try {
       const newCarsData = await fetchAllCars();
       setCars(newCarsData);
-      console.log("Updated cars data:", newCarsData);
+      if (process.env.NODE_ENV === "development") {
+        console.log("Updated cars data:", newCarsData);
+      }
 
       if (typeof callback === "function") {
         callback(newCarsData);
       }
     } catch (error) {
-      console.error("Error fetching cars:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching cars:", error);
+      }
       setError(true);
     } finally {
       setIsLoading(false);
@@ -271,7 +283,9 @@ export const MainContextProvider = ({
       setCars((prevCars) =>
         prevCars.map((car) => (car._id === newCar._id ? newCar : car))
       );
-      console.log("FROM CONTEXT?", newCar.photoUrl);
+      if (process.env.NODE_ENV === "development") {
+        console.log("FROM CONTEXT?", newCar.photoUrl);
+      }
       setUpdateStatus({
         type: 200,
         message: "Car updated successfully",
@@ -279,7 +293,9 @@ export const MainContextProvider = ({
       });
       return { data: newCar, type: 200, message: "Car updated successfully" };
     } catch (error) {
-      console.error("Failed to update car:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to update car:", error);
+      }
       setUpdateStatus({
         type: 500,
         message: error.message || "Car WAS NOT successfully",
@@ -305,7 +321,9 @@ export const MainContextProvider = ({
         };
       }
     } catch (error) {
-      console.error("Error deleting car:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error deleting car:", error);
+      }
       return {
         success: false,
         errorMessage: error.message || "An unexpected error occurred",
@@ -319,16 +337,20 @@ export const MainContextProvider = ({
       const { fetchCompany } = await import("@utils/action");
       const freshCompany = await fetchCompany(companyId);
       if (process.env.NODE_ENV === "development") {
-        console.log("[MainContext] Updating company", {
-          oldBufferTime: company?.bufferTime,
-          newBufferTime: freshCompany?.bufferTime,
-        });
+        if (process.env.NODE_ENV === "development") {
+          console.log("[MainContext] Updating company", {
+            oldBufferTime: company?.bufferTime,
+            newBufferTime: freshCompany?.bufferTime,
+          });
+        }
       }
       setCompany(freshCompany);
       companyDataRef.current = freshCompany;
       return { success: true, data: freshCompany };
     } catch (error) {
-      console.error("Error updating company in context:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error updating company in context:", error);
+      }
       return {
         success: false,
         errorMessage: error.message || "Failed to update company",
@@ -346,10 +368,12 @@ export const MainContextProvider = ({
   // 🎯 Computed map: какие pending заказы НЕ МОГУТ быть подтверждены
   const { pendingConfirmBlockById } = useMemo(() => {
     if (process.env.NODE_ENV === "development") {
-      console.log("[MainContext] Recomputing pendingConfirmBlockById", {
-        bufferTime: company?.bufferTime,
-        ordersCount: allOrders?.length,
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[MainContext] Recomputing pendingConfirmBlockById", {
+          bufferTime: company?.bufferTime,
+          ordersCount: allOrders?.length,
+        });
+      }
     }
     return buildPendingConfirmBlockMap(allOrders, company);
   }, [allOrders, company]);

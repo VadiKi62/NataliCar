@@ -7,11 +7,19 @@ import CloseIcon from "@mui/icons-material/Close";
 /**
  * Базовый layout для модальных окон
  * 
+ * Unified close behavior contract:
+ * - By default, modals cannot be closed by backdrop click or Escape key
+ *   (prevents accidental closure of transactional/destructive dialogs)
+ * - Close button (X) always closes the modal
+ * - Enable closeOnBackdropClick/closeOnEscape only for informational/confirmation dialogs
+ * 
  * @param {boolean} open - открыто ли окно
  * @param {function} onClose - обработчик закрытия
  * @param {string} title - заголовок (опционально)
  * @param {string} size - размер: "small" | "medium" | "large" | "fullWidth"
- * @param {boolean} showCloseButton - показывать крестик закрытия
+ * @param {boolean} showCloseButton - показывать крестик закрытия (default: true)
+ * @param {boolean} closeOnBackdropClick - разрешить закрытие по клику вне модального окна (default: false)
+ * @param {boolean} closeOnEscape - разрешить закрытие по Escape (default: false)
  * @param {boolean} centerVertically - центрировать по вертикали
  * @param {object} sx - дополнительные стили для контейнера
  * @param {ReactNode} children - содержимое
@@ -22,12 +30,31 @@ const ModalLayout = ({
   title,
   size = "medium",
   showCloseButton = true,
+  closeOnBackdropClick = false,
+  closeOnEscape = false,
   centerVertically = true,
   sx,
   children,
   ...props
 }) => {
   const theme = useTheme();
+
+  // Unified close handler that respects the close behavior contract
+  // MUI Modal calls onClose(event, reason) where reason can be:
+  // - "backdropClick" - user clicked outside
+  // - "escapeKeyDown" - user pressed Escape
+  // - other values for programmatic close (X button, etc.)
+  const handleClose = (event, reason) => {
+    // X button and programmatic closes always work
+    if (reason === "backdropClick" && !closeOnBackdropClick) {
+      return; // Ignore backdrop clicks when disabled
+    }
+    if (reason === "escapeKeyDown" && !closeOnEscape) {
+      return; // Ignore Escape key when disabled
+    }
+    // All other reasons (including undefined for X button) are allowed
+    onClose(event, reason);
+  };
 
   const sizeStyles = {
     small: { minWidth: 300, maxWidth: 400 },
@@ -39,7 +66,8 @@ const ModalLayout = ({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
+      disableEscapeKeyDown={!closeOnEscape}
       sx={{
         display: "flex",
         alignItems: centerVertically ? "center" : "flex-start",
@@ -84,7 +112,7 @@ const ModalLayout = ({
             )}
             {showCloseButton && (
               <IconButton
-                onClick={onClose}
+                onClick={(e) => handleClose(e, "buttonClick")}
                 size="small"
                 sx={{
                   ml: "auto",

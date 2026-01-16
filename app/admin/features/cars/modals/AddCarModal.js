@@ -1,9 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   Grid,
   Stack,
@@ -21,6 +17,7 @@ import {
   CircularProgress,
   Autocomplete,
 } from "@mui/material";
+import DialogLayout from "@/app/components/ui/modals/DialogLayout";
 import { ConfirmButton, CancelButton } from "@/app/components/ui";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -253,9 +250,44 @@ const AddCarModal = ({
     dbCarModels.forEach(add);
     return merged.sort((a, b) => a.localeCompare(b));
   }, [dbCarModels]);
+  
+  // Actions buttons for DialogLayout
+  const modalActions = (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        gap: 2,
+      }}
+    >
+      <CancelButton
+        onClick={onClose}
+        disabled={loading}
+        label={t("basic.cancel")}
+      />
+      <ConfirmButton
+        type="submit"
+        form="add-car-form"
+        loading={loading}
+        label={t("carPark.addCar")}
+      />
+    </Box>
+  );
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogLayout
+        open={open}
+        onClose={onClose}
+        maxWidth="lg"
+        fullWidth
+        title={t("carPark.addNewCar")}
+        showCloseButton={true}
+        closeOnBackdropClick={false}
+        closeOnEscape={false}
+        actions={modalActions}
+        contentSx={{ position: "relative", opacity: loading ? 0.3 : 1, transition: "opacity 0.2s" }}
+      >
         {loading && (
           <Box
             sx={{
@@ -274,10 +306,7 @@ const AddCarModal = ({
             <CircularProgress />
           </Box>
         )}
-        <Box sx={{ opacity: loading ? 0.3 : 1, transition: "opacity 0.2s" }}>
-          <DialogTitle>{t("carPark.addNewCar")}</DialogTitle>
-          <form onSubmit={handleSubmit}>
-            <DialogContent>
+        <form id="add-car-form" onSubmit={handleSubmit}>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={3}>
                   <Stack spacing={3}>
@@ -557,35 +586,9 @@ const AddCarModal = ({
                     defaultPrices={defaultPrices}
                   />
                 </Grid>
-              </Grid>
-            </DialogContent>
-            <Grid item xs={12}>
-              <DialogActions
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: 2,
-                  mt: 3,
-                  pt: 2,
-                  borderTop: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <CancelButton
-                  onClick={onClose}
-                  disabled={loading}
-                  label={t("basic.cancel")}
-                />
-                <ConfirmButton
-                  type="submit"
-                  loading={loading}
-                  label={t("carPark.addCar")}
-                />
-              </DialogActions>
             </Grid>
           </form>
-        </Box>
-      </Dialog>
+      </DialogLayout>
     </LocalizationProvider>
   );
 };

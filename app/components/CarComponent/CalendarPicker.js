@@ -233,8 +233,8 @@ const CalendarPicker = ({
     setConfirmedDates(confirmed);
     setStartEndDates(startEnd);
 
-    // Базовая сводка для быстрой проверки
-    if (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId) {
+    // Базовая сводка для быстрой проверки (только в development)
+    if (process.env.NODE_ENV === "development" && (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)) {
       console.log("[CalendarPicker] Dates prepared:", {
         carId,
         confirmedCount: confirmed?.length || 0,
@@ -245,7 +245,7 @@ const CalendarPicker = ({
     }
 
     // Точечная диагностика для конкретной даты (если указана DEBUG_DATE)
-    if (DEBUG_DATE && (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)) {
+    if (process.env.NODE_ENV === "development" && DEBUG_DATE && (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)) {
       const isConf = confirmed?.includes(DEBUG_DATE);
       const isUnav = unavailable?.includes(DEBUG_DATE);
       const se = startEnd?.filter((d) => d.date === DEBUG_DATE);
@@ -332,17 +332,19 @@ const CalendarPicker = ({
       const key = `${carId || "no-car"}::${dateStr}`;
       if (!loggedCellsRef.current.has(key)) {
         loggedCellsRef.current.add(key);
-        console.log(`[CalendarPicker][DEBUG ${dateStr}] cell flags`, {
-          carId,
-          isDisabled,
-          isConfirmed,
-          isUnavailable,
-          isStartDate,
-          isEndDate,
-          isStartAndEndDateOverlap,
-          startEndInfo,
-          overlapInfo: isStartAndEndDateOverlapInfo,
-        });
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[CalendarPicker][DEBUG ${dateStr}] cell flags`, {
+            carId,
+            isDisabled,
+            isConfirmed,
+            isUnavailable,
+            isStartDate,
+            isEndDate,
+            isStartAndEndDateOverlap,
+            startEndInfo,
+            overlapInfo: isStartAndEndDateOverlapInfo,
+          });
+        }
       }
     }
 
@@ -410,7 +412,9 @@ const CalendarPicker = ({
         dateStr === DEBUG_DATE &&
         (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
       ) {
-        console.log(`[CalendarPicker][DEBUG ${dateStr}] apply FULL RED`);
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[CalendarPicker][DEBUG ${dateStr}] apply FULL RED`);
+        }
       }
       backgroundColor = "primary.main";
       color = "common.white";
@@ -424,9 +428,11 @@ const CalendarPicker = ({
         dateStr === DEBUG_DATE &&
         (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
       ) {
-        console.log(
-          `[CalendarPicker][DEBUG ${dateStr}] apply PENDING background`
-        );
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            `[CalendarPicker][DEBUG ${dateStr}] apply PENDING background`
+          );
+        }
       }
       backgroundColor = "neutral.gray200"; // Ожидающие заказы - очень светло-серый
       color = "text.primary";
@@ -632,7 +638,7 @@ const CalendarPicker = ({
     // Скрываем кнопку через CSS display: none (неблокирующее обновление)
     // Используем startTransition для того, чтобы скрытие кнопки не блокировало открытие модального окна
     startTransition(() => {
-      setShowBookButton(false);
+    setShowBookButton(false);
     });
   };
 
@@ -823,17 +829,23 @@ const CalendarPicker = ({
               "YYYY-MM-DD HH:mm",
               "Europe/Athens"
             );
-            console.log("[CalendarPicker] Return date selected:", {
-              carId,
-              dateLocal: returnDateLocal.format("YYYY-MM-DD HH:mm"),
-              dateUTC: returnDateLocal.utc().format("YYYY-MM-DD HH:mm"),
-            });
+            if (process.env.NODE_ENV === "development") {
+              console.log("[CalendarPicker] Return date selected:", {
+                carId,
+                dateLocal: returnDateLocal.format("YYYY-MM-DD HH:mm"),
+                dateUTC: returnDateLocal.utc().format("YYYY-MM-DD HH:mm"),
+              });
+            }
           } catch (e) {
-            console.log("[CalendarPicker] Return date log error:", e);
+            if (process.env.NODE_ENV === "development") {
+              console.log("[CalendarPicker] Return date log error:", e);
+            }
           }
         }
         setShowBookButton(true);
-        console.log("selected time!!!!!!!", selectedTimes);
+        if (process.env.NODE_ENV === "development") {
+          console.log("selected time!!!!!!!", selectedTimes);
+        }
       }
     }
   };
@@ -988,93 +1000,93 @@ const CalendarPicker = ({
           - isLoading = background refresh заказов из Context
           - Не должен блокировать UI — календарь остаётся функциональным
           - Данные обновятся автоматически после refresh */}
-      <Box
-        sx={{
+            <Box
+              sx={{
           display: showBookButton ? "flex" : "none",
-          justifyContent: "center",
-          mb: 2,
-          mt: 1,
-        }}
-      >
-        <GradientBookButton
-          ref={bookButtonRef}
-          onClick={handleBooking}
-          sx={{
-            fontSize: "1.2rem",
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 0.5,
-              whiteSpace: "pre-line",
-            }}
-          >
-            <Box component="span">
-              {`${t("order.bookShort")}\n${selectedRange[0]
-                ?.locale(i18n.language)
-                .format("DD MMM")
-                .replace(/\./g, "")} - ${selectedRange[1]
-                ?.locale(i18n.language)
-                .format("DD MMM")
-                .replace(/\./g, "")}`}
-            </Box>
-            {calcLoading ? (
-              <Box
+                justifyContent: "center",
+                mb: 2,
+                mt: 1,
+              }}
+            >
+              <GradientBookButton
+                ref={bookButtonRef}
+                onClick={handleBooking}
                 sx={{
-                  display: "inline-flex",
-                  gap: 0.3,
-                  alignItems: "center",
-                  "& span": {
-                    width: "4px",
-                    height: "4px",
-                    borderRadius: "50%",
-                    backgroundColor: "rgba(255, 255, 255, 0.9)",
-                    display: "inline-block",
-                    animation: "dotPulse 1.4s ease-in-out infinite",
-                    "&:nth-of-type(1)": {
-                      animationDelay: "0s",
-                    },
-                    "&:nth-of-type(2)": {
-                      animationDelay: "0.2s",
-                    },
-                    "&:nth-of-type(3)": {
-                      animationDelay: "0.4s",
-                    },
-                    "@keyframes dotPulse": {
-                      "0%, 60%, 100%": {
-                        opacity: 0.3,
-                        transform: "scale(0.8)",
-                      },
-                      "30%": {
-                        opacity: 1,
-                        transform: "scale(1.2)",
-                      },
-                    },
-                  },
+                  fontSize: "1.2rem",
                 }}
               >
-                <Box component="span" />
-                <Box component="span" />
-                <Box component="span" />
-              </Box>
-            ) : totalPrice > 0 ? (
-              <Box component="span">{`${totalPrice}€`}</Box>
-            ) : null}
-          </Box>
-        </GradientBookButton>
-      </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 0.5,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  <Box component="span">
+                    {`${t("order.bookShort")}\n${selectedRange[0]
+                      ?.locale(i18n.language)
+                      .format("DD MMM")
+                      .replace(/\./g, "")} - ${selectedRange[1]
+                      ?.locale(i18n.language)
+                      .format("DD MMM")
+                      .replace(/\./g, "")}`}
+                  </Box>
+                  {calcLoading ? (
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        gap: 0.3,
+                        alignItems: "center",
+                        "& span": {
+                          width: "4px",
+                          height: "4px",
+                          borderRadius: "50%",
+                          backgroundColor: "rgba(255, 255, 255, 0.9)",
+                          display: "inline-block",
+                          animation: "dotPulse 1.4s ease-in-out infinite",
+                          "&:nth-of-type(1)": {
+                            animationDelay: "0s",
+                          },
+                          "&:nth-of-type(2)": {
+                            animationDelay: "0.2s",
+                          },
+                          "&:nth-of-type(3)": {
+                            animationDelay: "0.4s",
+                          },
+                          "@keyframes dotPulse": {
+                            "0%, 60%, 100%": {
+                              opacity: 0.3,
+                              transform: "scale(0.8)",
+                            },
+                            "30%": {
+                              opacity: 1,
+                              transform: "scale(1.2)",
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      <Box component="span" />
+                      <Box component="span" />
+                      <Box component="span" />
+                    </Box>
+                  ) : totalPrice > 0 ? (
+                    <Box component="span">{`${totalPrice}€`}</Box>
+                  ) : null}
+                </Box>
+              </GradientBookButton>
+            </Box>
 
-      <Calendar
-        fullscreen={false}
-        onSelect={onSelect}
-        fullCellRender={renderDateCell}
-        headerRender={headerRender}
-        value={currentDate}
-        disabledDate={disabledDate}
-      />
+          <Calendar
+            fullscreen={false}
+            onSelect={onSelect}
+            fullCellRender={renderDateCell}
+            headerRender={headerRender}
+            value={currentDate}
+            disabledDate={disabledDate}
+          />
     </Box>
   );
 };

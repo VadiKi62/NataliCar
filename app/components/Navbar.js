@@ -29,7 +29,6 @@ import { ROLE } from "@/domain/orders/admin-rbac";
 import LanguageIcon from "@mui/icons-material/Language";
 import { companyData } from "@utils/companyData";
 import { useMainContext } from "@app/Context";
-import LegendCalendarAdmin from "@/app/components/calendar-ui/LegendCalendarAdmin";
 import { CAR_CLASSES } from "@models/enums";
 import SelectedFieldClass from "@/app/components/ui/inputs/SelectedFieldClass";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -39,11 +38,12 @@ import {
 } from "@mui/material";
 import dynamic from "next/dynamic";
 
-// Date picker libraries are now lazy-loaded in DiscountModal component
-// Only loaded when admin opens discount modal (saves ~100KB+ on homepage)
-// Admin-only modal - moved to admin/features/settings for better bundle isolation
-const DiscountModal = dynamic(
-  () => import("@/app/admin/features/settings/DiscountModal"),
+// ============================================================
+// ADMIN-ONLY CODE ISOLATION
+// All admin UI is loaded via AdminRoot to prevent bundle leakage
+// ============================================================
+const AdminRoot = dynamic(
+  () => import("@app/admin/AdminRoot"),
   { ssr: false }
 );
 
@@ -183,9 +183,9 @@ export default function NavBar({
 
   const { i18n, t } = useTranslation();
 
+  // Загружаем скидку для ВСЕХ пользователей (чтобы показать активную скидку)
+  // Сохранение скидки доступно только админам (см. handleSaveDiscount)
   useEffect(() => {
-    if (!isAdmin) return;
-
     const fetchDiscountFromDB = async () => {
       try {
         const res = await fetch("/api/discount");
@@ -204,7 +204,7 @@ export default function NavBar({
     };
 
     fetchDiscountFromDB();
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
     // Админка больше не принудительно переключает язык на русский.
@@ -259,7 +259,9 @@ export default function NavBar({
       today.getDate()
     );
     if (!discountStartDate || !discountEndDate) {
-      console.error("❌ Даты скидки не заполнены");
+      if (process.env.NODE_ENV === "development") {
+        console.error("❌ Даты скидки не заполнены");
+      }
       alert("Укажите дату начала и дату окончания скидки");
       return;
     }
@@ -312,29 +314,58 @@ export default function NavBar({
         }),
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        console.log("✅ Скидка сохранена в MongoDB:", data);
+      const response = await res.json();
+      if (res.ok && response.success) {
+        // Обновляем состояние после успешного сохранения
+        // Используем данные из ответа API для консистентности
+        const savedData = response.data;
+        if (savedData) {
+          if (savedData.startDate) setDiscountStartDate(new Date(savedData.startDate));
+          if (savedData.endDate) setDiscountEndDate(new Date(savedData.endDate));
+          if (typeof savedData.discount === "number") setSelectedDiscount(savedData.discount);
+        }
       } else {
-        console.error("❌ Ошибка сохранения скидки:", data);
+        if (process.env.NODE_ENV === "development") {
+          console.error("❌ Ошибка сохранения скидки:", response);
+        }
       }
     } catch (error) {
-      console.error("❌ Ошибка при отправке скидки:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("❌ Ошибка при отправке скидки:", error);
+      }
     }
 
     setDiscountModalOpen(false);
   };
 
+  // Определение: есть ли настроенная скидка (активная или будущая)
+  const hasConfiguredDiscount = () => {
+    return selectedDiscount > 0 && discountStartDate && discountEndDate;
+  };
+
   // Определение: активна ли скидка сегодня (по локальной дате, без времени)
   const isDiscountActiveToday = () => {
-    if (!(selectedDiscount > 0 && discountStartDate && discountEndDate))
-      return false;
+    if (!hasConfiguredDiscount()) return false;
+    
     const normalize = (d) =>
       new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const today = normalize(new Date());
     const start = normalize(discountStartDate);
     const end = normalize(discountEndDate);
+    
     return today >= start && today <= end;
+  };
+  
+  // Определение: скидка в будущем
+  const isDiscountUpcoming = () => {
+    if (!hasConfiguredDiscount()) return false;
+    
+    const normalize = (d) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const today = normalize(new Date());
+    const start = normalize(discountStartDate);
+    
+    return today < start;
   };
 
   // Форматирование даты для надписи кнопки: DD.MM.YY
@@ -347,13 +378,25 @@ export default function NavBar({
   };
 
   // Итоговая надпись для кнопки скидки (десктоп / мобильное меню)
-  const discountButtonLabel = isDiscountActiveToday()
-    ? t("discount.activeRange", {
+  // Показываем информацию о скидке если она активна ИЛИ запланирована
+  const getDiscountButtonLabel = () => {
+    if (isDiscountActiveToday()) {
+      // Скидка активна сейчас
+      return t("discount.activeRange", {
         value: selectedDiscount,
         from: formatDiscountDate(discountStartDate),
         to: formatDiscountDate(discountEndDate),
-      })
-    : t("discount.inactive");
+      });
+    }
+    if (isDiscountUpcoming()) {
+      // Скидка запланирована на будущее
+      return `${selectedDiscount}% с ${formatDiscountDate(discountStartDate)} по ${formatDiscountDate(discountEndDate)}`;
+    }
+    // Нет настроенной скидки
+    return t("discount.inactive");
+  };
+  
+  const discountButtonLabel = getDiscountButtonLabel();
 
   return (
     <>
@@ -526,7 +569,7 @@ export default function NavBar({
                         {t("header.main")}
                       </Typography>
                     </Link>
-                    <Link href="/terms">
+                    <Link href="/rental-terms">
                       <Typography
                         sx={{
                           fontStretch: "extra-condensed",
@@ -716,9 +759,11 @@ export default function NavBar({
                   },
               }}
             >
-              {/* Legend: occupy only intrinsic space */}
+              {/* Legend: occupy only intrinsic space - loaded via AdminRoot */}
               <Box sx={{ flex: "0 0 auto", mr: 1, minWidth: 0 }}>
-                <LegendCalendarAdmin client={isMain} />
+                {isAdmin && (
+                  <AdminRoot showLegend={true} isMain={isMain} />
+                )}
               </Box>
 
               {/* Контейнер для фильтров - занимает оставшееся пространство и может сжиматься */}
@@ -870,17 +915,18 @@ export default function NavBar({
         </Box>
       </Drawer>
 
+      {/* Admin UI (DiscountModal) - loaded via AdminRoot */}
       {isAdmin && (
-        <DiscountModal
-          open={discountModalOpen}
-          onClose={() => setDiscountModalOpen(false)}
+        <AdminRoot
+          discountModalOpen={discountModalOpen}
+          setDiscountModalOpen={setDiscountModalOpen}
           selectedDiscount={selectedDiscount}
           setSelectedDiscount={setSelectedDiscount}
           discountStartDate={discountStartDate}
           setDiscountStartDate={setDiscountStartDate}
           discountEndDate={discountEndDate}
           setDiscountEndDate={setDiscountEndDate}
-          onSave={handleSaveDiscount}
+          onSaveDiscount={handleSaveDiscount}
         />
       )}
     </>

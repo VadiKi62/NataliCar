@@ -81,7 +81,7 @@ function Contacts() {
       await sendEmail(
         {
           email,
-          title: subject,
+          title: `Сообщение из формы на сайте :${subject}`,
           message: `${t("contact.emailNameLabel", { defaultValue: "Имя" })}: ${name}\n${t("order.email", { defaultValue: "Email" })}: ${email}\n\n${t("contact.message", { defaultValue: "Сообщение" })}:\n${message}`,
         },
         companyEmail
@@ -110,36 +110,50 @@ function Contacts() {
   };
 
   return (
-    <Container sx={{ my: 17, maxWidth: "lg" }}>
-      <Typography
-        variant="h4"
-        align="center"
-        color="secondary.main"
-        sx={{ my: 5 }}
-      >
-        {t("contact.title", { defaultValue: "Свяжитесь с нами" })}
-      </Typography>
-
-      <Typography
-        variant="bodyLarge"
-        align="center"
-        color="secondary.main"
-        sx={{ mb: 4, px: { xs: 2, sm: 0 } }}
-      >
-        {t("contact.subtitle", {
-          defaultValue: "У вас есть вопросы? Мы всегда рады помочь!",
-        })}
-      </Typography>
-
+    <Container 
+      sx={{ 
+        maxWidth: "lg",
+        py: { xs: 4, sm: 6, md: 8 },
+        px: { xs: 2, sm: 3, md: 4 },
+      }}
+    >
       <Box
-        component="form"
-        onSubmit={handleSubmit}
         sx={{
-          maxWidth: 600,
+          maxWidth: 700,
           mx: "auto",
-          px: { xs: 2, sm: 0 },
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
         }}
       >
+        <Typography
+          variant="h4"
+          align="center"
+          color="secondary.main"
+          sx={{ mb: 3, mt: { xs: 2, sm: 0 } }}
+        >
+          {t("contact.title", { defaultValue: "Свяжитесь с нами" })}
+        </Typography>
+
+        <Typography
+          variant="bodyLarge"
+          align="center"
+          color="secondary.main"
+          sx={{ mb: 4, px: { xs: 1, sm: 0 } }}
+        >
+          {t("contact.subtitle", {
+            defaultValue: "У вас есть вопросы? Мы всегда рады помочь!",
+          })}
+        </Typography>
+
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{
+            width: "100%",
+            maxWidth: 600,
+          }}
+        >
         <Typography
           variant="bodyLarge"
           align="center"
@@ -156,9 +170,9 @@ function Contacts() {
           <Typography
             variant="bodyLarge"
             color="secondary.main"
-            sx={{ mb: 1, fontWeight: 500 }}
+            sx={{ mb: 2, fontWeight: 500 }}
           >
-            {t("contact.emailLabel", { defaultValue: "Email поддержки" })}:
+            {t("contact.emailLabel", { defaultValue: "Email поддержки" })}
           </Typography>
           <MuiLink
             href={`mailto:${companyEmail}`}
@@ -166,6 +180,7 @@ function Contacts() {
             sx={{
               fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
               textDecoration: "none",
+              display: "block",
               "&:hover": {
                 textDecoration: "underline",
               },
@@ -253,6 +268,7 @@ function Contacts() {
               size="large"
             />
           </Box>
+        </Box>
         </Box>
       </Box>
     </Container>

@@ -212,7 +212,8 @@ const BookingModal = ({
                 TIME_ZONE
               )
             : null;
-        console.log("[BookingModal] Booking dates displayed:", {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[BookingModal] Booking dates displayed:", {
           carId: carIdentifier,
           presetStartDate: presetStartStr,
           presetEndDate: presetEndStr,
@@ -232,7 +233,8 @@ const BookingModal = ({
             : null,
           rawStartISO,
           rawEndISO,
-        });
+          });
+        }
       } catch (e) {
         console.log("[BookingModal] Return date log error:", e);
       }
@@ -494,7 +496,9 @@ const BookingModal = ({
             company.email,
             company.useEmail
           );
-          console.log("emailResponse", emailResponse);
+          if (process.env.NODE_ENV === "development") {
+            console.log("emailResponse", emailResponse);
+          }
           setSuccessfullySent(emailResponse.status === 200);
         } catch (emailError) {
           setSuccessfullySent(false);
@@ -536,7 +540,9 @@ const BookingModal = ({
           throw new Error(`Unexpected response status: ${response.status}`);
       }
     } catch (error) {
-      console.error("BookingModal: Ошибка при подтверждении заказа:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("BookingModal: Ошибка при подтверждении заказа:", error);
+      }
       setErrors({
         submit:
           error.message || "An error occurred while processing your request.",
@@ -565,9 +571,11 @@ const BookingModal = ({
     onClose();
   };
 
-  // Предотвращаем закрытие модального окна при клике вне его или нажатии Escape
+  // Unified close handler - only allow close button (not backdrop or Escape)
+  // This matches the default behavior contract: transactional modals should not close accidentally
   const handleDialogClose = (event, reason) => {
-    // Закрываем только если это не backdropClick и не escapeKeyDown
+    // Only close for button clicks and programmatic closes
+    // Block backdrop clicks and Escape key (default: closeOnBackdropClick=false, closeOnEscape=false)
     if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
       handleModalClose();
     }
@@ -577,7 +585,7 @@ const BookingModal = ({
     <Dialog
       open={open}
       onClose={handleDialogClose}
-      disableEscapeKeyDown
+      disableEscapeKeyDown={true}
       fullWidth
       maxWidth="sm"
       sx={{
@@ -932,29 +940,34 @@ const BookingModal = ({
                     error={!!errors.name}
                     helperText={errors.name}
                   /> */}
-                  {/* Страховка и детское кресло: всегда в одну строку */}
+                  {/* Страховка, франшиза (условно) и детское кресло */}
                   <Box
                     sx={{
                       display: "flex",
                       gap: 2,
                       mt: { xs: 1, sm: 1 },
                       mb: { xs: 1, sm: 3 },
-                      flexDirection: "row",
+                      flexDirection: { xs: "column", sm: "row" },
+                      alignItems: { sm: "center" },
                     }}
                   >
-                    <FormControl sx={{ flex: 1, width: { xs: "100%" } }}>
+                    <FormControl 
+                      size="small"
+                      sx={{ 
+                        flex: insurance === "TPL" ? 2 : 1, 
+                        width: { xs: "100%" } 
+                      }}
+                    >
                       <InputLabel>{t("order.insurance")}</InputLabel>
                       <Select
                         label={t("order.insurance")}
                         value={insurance}
                         onChange={(e) => setInsurance(e.target.value)}
-                        size="small"
                         sx={{
-                          flex: 1,
-                          minHeight: { sm: 40 },
+                          height: { sm: "40px" },
                           "@media (max-width:600px) and (orientation: portrait)":
                             {
-                              minHeight: 50,
+                              height: "50px",
                             },
                         }}
                       >
@@ -973,7 +986,32 @@ const BookingModal = ({
                         ))}
                       </Select>
                     </FormControl>
-                    <FormControl sx={{ flex: 1, width: { xs: "100%" } }}>
+                    {insurance === "CDW" && (
+                      <BookingTextField
+                        label={t("order.franchise")}
+                        type="number"
+                        value={franchiseOrder || 0}
+                        onChange={(e) =>
+                          setFranchiseOrder(parseFloat(e.target.value) || 0)
+                        }
+                        size="small"
+                        sx={{ 
+                          flex: 1,
+                          "& .MuiInputBase-root": {
+                            height: "40px !important",
+                            minHeight: "40px !important",
+                            "@media (max-width:600px) and (orientation: portrait)": {
+                              height: "50px !important",
+                              minHeight: "50px !important",
+                            },
+                          },
+                        }}
+                      />
+                    )}
+                    <FormControl 
+                      size="small" 
+                      sx={{ flex: 1, width: { xs: "100%" } }}
+                    >
                       <InputLabel>
                         {t("order.childSeats")}{" "}
                         {car.PriceChildSeats ? car.PriceChildSeats : 0}€/
@@ -985,13 +1023,11 @@ const BookingModal = ({
                         }€/${t("order.perDay")}`}
                         value={childSeats}
                         onChange={(e) => setChildSeats(Number(e.target.value))}
-                        size="small"
                         sx={{
-                          flex: 1,
-                          minHeight: { sm: 40 },
+                          height: { sm: "40px" },
                           "@media (max-width:600px) and (orientation: portrait)":
                             {
-                              minHeight: 50,
+                              height: "50px",
                             },
                         }}
                       >
@@ -1155,13 +1191,4 @@ const BookingModal = ({
 };
 
 export default BookingModal;
-
-// Ваш orderData формируется корректно: email: "" (пустая строка).
-// На фронте нет проблем с форматом email, если он пустой.
-// Если заказ не сохраняется, причина на сервере (API).
-
-// Для отладки можно добавить логгирование на сервере (route.js):
-// console.log("API: email =", typeof email, email);
-
-// На фронте ничего менять не нужно — email: "" это корректно для необязательного поля.
 

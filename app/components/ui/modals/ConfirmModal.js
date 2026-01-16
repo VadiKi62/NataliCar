@@ -36,6 +36,8 @@ const ConfirmModal = ({
       title={title}
       size="small"
       showCloseButton={false}
+      closeOnBackdropClick={false}
+      closeOnEscape={false}
       centerVertically={false}
     >
       <Typography sx={{ mb: 3, color: "text.primary" }}>{message}</Typography>

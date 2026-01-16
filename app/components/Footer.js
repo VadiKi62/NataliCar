@@ -1,217 +1,117 @@
 "use client";
 
-import React, { Suspense } from "react";
-import { Grid, Link as MuiLink, Typography, Stack, Box, Divider } from "@mui/material";
+import React from "react";
+import { Typography, Stack, Link as MuiLink, Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import dynamic from "next/dynamic";
 import DefaultButton from "@/app/components/ui/buttons/DefaultButton";
-
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { companyData } from "@utils/companyData";
+import { useTranslation } from "react-i18next";
 
-// Lazy-load MUI icons (Footer is below fold, reduces initial bundle size and TBT)
-// Using dynamic import with named exports wrapped in default
-const FacebookIcon = dynamic(() => import("@mui/icons-material/Facebook"), { ssr: false });
-const InstagramIcon = dynamic(() => import("@mui/icons-material/Instagram"), { ssr: false });
-const LocationOnIcon = dynamic(() => import("@mui/icons-material/LocationOn"), { ssr: false });
+// Lazy-load icons (Footer is below fold)
+const DirectionsIcon = dynamic(() => import("@mui/icons-material/Directions"), { ssr: false });
 const CallIcon = dynamic(() => import("@mui/icons-material/Call"), { ssr: false });
 const EmailIcon = dynamic(() => import("@mui/icons-material/Email"), { ssr: false });
-const DirectionsIcon = dynamic(() => import("@mui/icons-material/Directions"), { ssr: false });
+const LocationOnIcon = dynamic(() => import("@mui/icons-material/LocationOn"), { ssr: false });
 const QrCode2Icon = dynamic(() => import("@mui/icons-material/QrCode2"), { ssr: false });
 const CodeIcon = dynamic(() => import("@mui/icons-material/Code"), { ssr: false });
 const LinkedInIcon = dynamic(() => import("@mui/icons-material/LinkedIn"), { ssr: false });
 
+// ============================================================
+// STYLED COMPONENTS - Minimal & Mobile-First
+// ============================================================
+
 const Section = styled("section")(({ theme }) => ({
-  padding: theme.spacing(5),
-  borderTop: `1px solid ${theme.palette.secondary.complement}`,
+  padding: theme.spacing(4),
   textAlign: "center",
   background: theme.palette.secondary.main,
-  backdropFilter: "blur(60px)",
-  color: theme.palette.text.light || "#ffffff",
+  color: theme.palette.text.light,
 }));
 
-const SectionTitle = styled(Typography)(({ theme }) => ({
-  fontFamily: theme.typography.h1.fontFamily,
-  lineHeight: "2rem",
-  fontSize: "2.9rem",
-  marginBottom: theme.spacing(2),
+const LogoImg = styled(Image)(() => ({
+  display: "block",
+  marginInline: "auto",
 }));
 
 const Slogan = styled(Typography)(({ theme }) => ({
-  fontFamily: theme.typography.fontFamily,
+  marginTop: theme.spacing(1),
+  fontSize: "0.75rem",
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
-  fontSize: "1.2rem",
-  lineHeight: "1.8rem",
-  marginBottom: theme.spacing(1),
-  marginTop: theme.spacing(1),
-  color: theme.palette.text.light || "#ffffff",
+  color: "#ffffff",
 }));
 
-const FooterContainer = styled(Grid)(({ theme }) => ({
-  paddingBottom: theme.spacing(2),
-  fontFamily: theme.typography.fontFamily,
-  display: "flex",
-  flexDirection: "column",
-  alignContent: "center",
+const ContactInfo = styled(Stack)(({ theme }) => ({
+  marginTop: theme.spacing(3),
+  fontSize: "0.9rem",
+  gap: theme.spacing(1.5),
   alignItems: "center",
-  textAlign: "center",
 }));
 
-const SocialLinks = styled("div")(({ theme }) => ({
-  marginTop: theme.spacing(1),
-  marginBottom: theme.spacing(2),
-}));
-
-const ContactInfo = styled(Grid)(({ theme }) => ({
-  fontFamily: theme.typography.fontFamily,
-  fontSize: "1rem",
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "0.9rem",
+const ContactLink = styled("a")(({ theme }) => ({
+  color: "#ffffff",
+  textDecoration: "none",
+  fontSize: "0.9rem",
+  "&:hover": {
+    textDecoration: "underline",
   },
 }));
 
 const ContactIcon = styled("span")(({ theme }) => ({
   marginRight: theme.spacing(1),
   verticalAlign: "middle",
-  color: theme.palette.text.light || "#ffffff",
   "& svg": {
-    color: theme.palette.text.light || "#ffffff",
+    fontSize: "1.1rem",
+    color: "#ffffff",
   },
 }));
 
-const ContactText = styled("span")(({ theme }) => ({
-  fontSize: "inherit",
-  color: theme.palette.text.light || "#ffffff",
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "0.9rem",
-    textTransform: "uppercase",
-  },
-}));
-
-const ContactLink = styled("a")(({ theme }) => ({
-  fontSize: "1.3rem",
-  color: theme.palette.text.light || "#ffffff",
-  textDecoration: "none",
-  "&:hover": {
-    textDecoration: "underline",
-  },
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "0.9rem",
-    textTransform: "uppercase",
-  },
-}));
-
-const CopyrightInfo = styled("div")(({ theme }) => ({
-  marginTop: theme.spacing(2),
-  fontSize: "1rem",
-  opacity: 0.8,
-}));
-
-const LegalLinksContainer = styled(Box)(({ theme }) => ({
-  //marginTop: theme.spacing(19),
-  padding: theme.spacing(2, 3),
-  borderRadius: theme.shape.borderRadius,
-  // backgroundColor: "rgba(0, 0, 0, 0.03)",
-  border: `1px solid ${theme.palette.secondary.complement}`,
-  width: "100%",
-  maxWidth: "600px",
-  margin: `${theme.spacing(5)} auto 0`,
-}));
-
-const LegalLinks = styled(Stack)(({ theme }) => ({
+const ContactItem = styled("div")(() => ({
   display: "flex",
-  flexDirection: "row",
-  flexWrap: "wrap",
-  justifyContent: "center",
   alignItems: "center",
-  gap: theme.spacing(1),
-  textTransform: "uppercase",
-  [theme.breakpoints.down("sm")]: {
-    flexDirection: "column",
-    gap: theme.spacing(1.5),
-  },
-}));
-
-const LegalLinkDivider = styled(Divider)(({ theme }) => ({
-  borderColor: theme.palette.secondary.complement,
-  opacity: 0.5,
-  height: theme.spacing(8),
-  alignSelf: "stretch",
-  [theme.breakpoints.down("sm")]: {
-    display: "none",
-  },
+  justifyContent: "center",
 }));
 
 const LegalLink = styled(Link)(({ theme }) => ({
-  color: theme.palette.text.light || "#ffffff",
+  fontSize: "0.7rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
   textDecoration: "none",
-  padding: theme.spacing(0.75, 1.5),
-  borderRadius: theme.shape.borderRadius,
-  fontSize: "0.9rem",
-  fontWeight: 500,
-  transition: "all 0.2s ease",
-  opacity: 0.9,
+  color: "#ffffff",
   "&:hover": {
-    opacity: 1,
-
-    textDecoration: "none",
-    transform: "translateY(-1px)",
+    textDecoration: "underline",
   },
 }));
 
 const CreditsSection = styled("div")(({ theme }) => ({
-  marginTop: theme.spacing(2),
-  paddingTop: theme.spacing(3),
-  borderTop: `1px solid ${theme.palette.secondary.complement}`,
-  opacity: 0.7,
-  width: "100%",
-}));
-
-const CreditsCard = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: theme.spacing(2),
-  fontFamily: theme.typography.fontFamily,
+  marginTop: theme.spacing(3),
+  fontSize: "0.7rem",
+  color: "#ffffff",
 }));
 
 const CreditLink = styled(MuiLink)(({ theme }) => ({
-  color: theme.palette.text.light,
+  color: "#ffffff",
   textDecoration: "none",
   display: "flex",
   alignItems: "center",
   gap: theme.spacing(0.5),
-  fontSize: "0.9rem",
-  opacity: 1,
+  fontSize: "0.7rem",
   "&:hover": {
-    opacity: 1,
     textDecoration: "underline",
   },
 }));
 
-const Copyright = styled(Typography)(({ theme }) => ({
-  fontSize: "0.85rem",
-  opacity: 1,
-  color: theme.palette.text.light || "#ffffff",
-  fontFamily: theme.typography.fontFamily,
-}));
-
-const LogoImg = styled(Image)(({ theme }) => ({
-  // marginBottom: "-5px",
-  // marginTop: "-4px",
-  display: "flex",
-  alignContent: "center",
-  alignItems: "center",
-  textAlign: "center",
-}));
+// ============================================================
+// FOOTER COMPONENT
+// ============================================================
 
 function Footer() {
-  // const { contacts } = useMyContext();
   const { name, slogan, tel, tel2, email, address, coords } = companyData;
   const currentYear = new Date().getFullYear();
-
+  const { t } = useTranslation();
   const router = useRouter();
 
   const handleClick = () => {
@@ -221,122 +121,126 @@ function Footer() {
 
   return (
     <Section>
-      <FooterContainer>
-        {/* <SectionTitle variant="h3">{name}</SectionTitle> */}
-        <LogoImg
-          src="/favicon.png"
-          width={175}
-          height={175}
-          alt="to kati allo"
-        ></LogoImg>
-        <Slogan>{slogan}</Slogan>
-        <SocialLinks>
-          <MuiLink
-            href="https://www.facebook.com/people/Natali-carscom/100053110548109/?sk=about"
-            color="inherit"
-            target="_blank"
-          >
-            <FacebookIcon fontSize="large" />
-          </MuiLink>
-          <MuiLink
-            href="https://www.facebook.com/people/Natali-carscom/100053110548109/?sk=about"
-            color="inherit"
-            target="_blank"
-          >
-            <InstagramIcon fontSize="large" />
-          </MuiLink>
-        </SocialLinks>
-        <ContactInfo container spacing={2}>
-          <DefaultButton
-            onClick={handleClick}
-            label="Get Directions"
-            relative={true}
-            minWidth="100%"
-            startIcon={<DirectionsIcon />}
+      {/* Logo */}
+      <LogoImg
+        src="/favicon.png"
+        width={130}
+        height={130}
+        alt={name}
+      />
+
+      {/* Slogan */}
+      <Slogan>{slogan}</Slogan>
+
+      {/* CTA - Get Directions (mobile-first, первый экран) */}
+      <Box sx={{ mt: 3, mb: 2 }}>
+        <DefaultButton
+          onClick={handleClick}
+          label="Get Directions"
+          relative={true}
+          startIcon={<DirectionsIcon />}
+          sx={{
+            width: "100%",
+            maxWidth: 520,
+            marginInline: "auto",
+            backgroundColor: "primary.main",
+            color: "white",
+
+            m: 0,
+            "&:hover": {
+              backgroundColor: "primary.dark",
+            },
+          }}
+        />
+      </Box>
+
+      {/* Contacts */}
+      <ContactInfo>
+        {/* Phone */}
+        <ContactItem>
+          <ContactIcon>
+            <CallIcon />
+          </ContactIcon>
+          <ContactLink href={`tel:${tel}`}>{tel}</ContactLink>
+          {tel2 && (
+            <>
+              <span style={{ margin: "0 8px", opacity: 0.6 }}>·</span>
+              <ContactLink href={`tel:${tel2}`}>{tel2}</ContactLink>
+            </>
+          )}
+        </ContactItem>
+
+        {/* Email */}
+        <ContactItem>
+          <ContactIcon>
+            <EmailIcon />
+          </ContactIcon>
+          <ContactLink href={`mailto:${email}`}>{email}</ContactLink>
+        </ContactItem>
+
+        {/* Address */}
+        <ContactItem>
+          <ContactIcon>
+            <LocationOnIcon />
+          </ContactIcon>
+          <span style={{ color: "#ffffff" }}>{address}</span>
+        </ContactItem>
+      </ContactInfo>
+
+      {/* Legal Links - строка, не блок */}
+      <Stack
+        direction="row"
+        spacing={1}
+        justifyContent="center"
+        flexWrap="wrap"
+        sx={{ mt: 4 }}
+      >
+        <LegalLink href="/privacy-policy">
+          {t("footer.privacyPolicy", { defaultValue: "Privacy" })}
+        </LegalLink>
+        <span>·</span>
+        <LegalLink href="/terms-of-service">
+          {t("footer.termsOfService", { defaultValue: "Terms" })}
+        </LegalLink>
+        <span>·</span>
+        <LegalLink href="/cookie-policy">
+          {t("footer.cookiePolicy", { defaultValue: "Cookies" })}
+        </LegalLink>
+        <span>·</span>
+        <LegalLink href="/rental-terms">
+          {t("footer.rentalTerms", { defaultValue: "Rental" })}
+        </LegalLink>
+      </Stack>
+
+      {/* Credits - самый тихий слой */}
+      <CreditsSection>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={{ xs: 1.5, sm: 2 }}
+          alignItems="center"
+          justifyContent="center"
+          sx={{ mb: 2 }}
+        >
+          <CreditLink
+            href="https://www.bbqr.site"
             target="_blank"
             rel="noopener noreferrer"
-            sx={{
-              backgroundColor: "primary.main",
-              color: "secondary.contrastText",
-              "&:hover": {
-                color: "white",
-              },
-            }}
-          />
-          <Grid item xs={12} md={4}>
-            <ContactIcon>
-              <LocationOnIcon />
-            </ContactIcon>
-            <ContactText>{address}</ContactText>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <ContactIcon>
-              <EmailIcon />
-            </ContactIcon>
-            <ContactLink href={`mailto:${email}`}>
-              {email}
-            </ContactLink>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <ContactIcon>
-              <CallIcon />
-            </ContactIcon>
-            <ContactLink
-              style={{ marginRight: "1px" }}
-              href={`tel:${tel}`}
-            >
-              {tel}
-            </ContactLink>
-            <ContactIcon sx={{ ml: 1 }}>
-              <CallIcon />
-            </ContactIcon>
-            <ContactLink href={`tel:${tel2}`}>
-              {tel2}
-            </ContactLink>
-          </Grid>
-        </ContactInfo>
-        <LegalLinksContainer>
-          <LegalLinks>
-            <LegalLink href="/privacy-policy">Privacy Policy</LegalLink>
-            <LegalLinkDivider orientation="vertical" flexItem />
-            <LegalLink href="/terms-of-service">Terms of Service</LegalLink>
-            <LegalLinkDivider orientation="vertical" flexItem />
-            <LegalLink href="/cookie-policy">Cookie Policy</LegalLink>
-          </LegalLinks>
-        </LegalLinksContainer>
-      </FooterContainer>
-      <CreditsSection>
-        <CreditsCard>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={{ xs: 1.5, sm: 2 }}
-            alignItems="center"
-            justifyContent="center"
           >
-            <CreditLink
-              href="https://www.bbqr.site"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <QrCode2Icon sx={{ fontSize: 20 }} />
-              BBQR - Solutions for Restaurants
-            </CreditLink>
+            <QrCode2Icon sx={{ fontSize: 20 }} />
+            BBQR - Solutions for Restaurants
+          </CreditLink>
 
-            <CreditLink
-              href="https://www.linkedin.com/in/natalia-kirejeva/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <CodeIcon sx={{ fontSize: 20 }} />
-              Developed by NataliaKi
-              <LinkedInIcon sx={{ fontSize: 18 }} />
-            </CreditLink>
-          </Stack>
-
-          <Copyright>
-            © {currentYear} {name || "To Kati Allo"}. All rights reserved.
-          </Copyright>
-        </CreditsCard>
+          <CreditLink
+            href="https://www.linkedin.com/in/natalia-kirejeva/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <CodeIcon sx={{ fontSize: 20 }} />
+            Developed by NataliaKi
+            <LinkedInIcon sx={{ fontSize: 18 }} />
+          </CreditLink>
+        </Stack>
+        © {currentYear} {name}. All rights reserved.
       </CreditsSection>
     </Section>
   );
