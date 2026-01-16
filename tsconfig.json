@@ -16,6 +16,17 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@app/*": ["./app/*"],
+      "@utils/*": ["./utils/*"],
+      "@styles/*": ["./styles/*"],
+      "@config/*": ["./config/*"],
+      "@domain/*": ["./domain/*"],
+      "@models/*": ["./models/*"],
+      "@lib/*": ["./lib/*"]
+    },
     "plugins": [
       {
         "name": "next"

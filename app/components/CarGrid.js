@@ -87,13 +87,14 @@ function CarGrid() {
           direction="column"
           sx={{ alignItems: "center", alignContent: "center" }}
         >
-          {filteredCars?.map((car) => (
+          {filteredCars?.map((car, index) => (
             <Grid item xs={12} sx={{ padding: 2 }} key={car._id}>
               <CarItemComponent
                 car={car}
                 discount={discount}
                 discountStart={discountStart}
                 discountEnd={discountEnd}
+                isFirstCar={index === 0}
               />
             </Grid>
           ))}

@@ -41,9 +41,10 @@ import dynamic from "next/dynamic";
 
 // Date picker libraries are now lazy-loaded in DiscountModal component
 // Only loaded when admin opens discount modal (saves ~100KB+ on homepage)
+// Admin-only modal - moved to admin/features/settings for better bundle isolation
 const DiscountModal = dynamic(
-  () => import("@app/components/admin/DiscountModal"),
-  { ssr: false } // Client-only component
+  () => import("@/app/admin/features/settings/DiscountModal"),
+  { ssr: false }
 );
 
 const StyledBox = styled(Box, {
@@ -67,12 +68,15 @@ const GradientAppBar = styled(AppBar, {
 })(({ theme, scrolled }) => ({
   width: "100%",
   position: "fixed",
-  transition: theme.transitions.create(["height", "background-color"], {
+  // КРИТИЧНО для CLS: НЕ менять height после mount!
+  // Убрана анимация height — она вызывала layout shift
+  transition: theme.transitions.create(["background-color", "backdrop-filter"], {
     duration: theme.transitions.duration.standard,
     easing: theme.transitions.easing.easeInOut,
   }),
-  willChange: "height, background-color",
-  height: scrolled ? 52 : 60,
+  // Фиксированная высота — НЕ меняется при scroll
+  height: 60,
+  minHeight: 60,
   backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",
   color: theme.palette.backgroundDark1?.text || "#ffffff",
   boxShadow: "none",

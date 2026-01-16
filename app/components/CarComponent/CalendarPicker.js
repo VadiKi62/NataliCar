@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, startTransition } from "react";
 import {
   Box,
   Typography,
   IconButton,
-  CircularProgress,
   useMediaQuery,
   useTheme,
   Grid,
@@ -628,8 +627,13 @@ const CalendarPicker = ({
   };
 
   const handleBooking = () => {
+    // Открываем модальное окно немедленно (приоритетное обновление)
     onBookingComplete();
-    setShowBookButton(false);
+    // Скрываем кнопку через CSS display: none (неблокирующее обновление)
+    // Используем startTransition для того, чтобы скрытие кнопки не блокировало открытие модального окна
+    startTransition(() => {
+      setShowBookButton(false);
+    });
   };
 
   const onSelect = (date) => {
@@ -980,101 +984,97 @@ const CalendarPicker = ({
           {discountText}
         </Typography>
       )} */}
-      {isLoading ? (
-        <CircularProgress />
-      ) : (
-        <>
-          {showBookButton && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                mb: 2,
-                mt: 1,
-              }}
-            >
-              <GradientBookButton
-                ref={bookButtonRef}
-                onClick={handleBooking}
+      {/* Убран CircularProgress для isLoading:
+          - isLoading = background refresh заказов из Context
+          - Не должен блокировать UI — календарь остаётся функциональным
+          - Данные обновятся автоматически после refresh */}
+      <Box
+        sx={{
+          display: showBookButton ? "flex" : "none",
+          justifyContent: "center",
+          mb: 2,
+          mt: 1,
+        }}
+      >
+        <GradientBookButton
+          ref={bookButtonRef}
+          onClick={handleBooking}
+          sx={{
+            fontSize: "1.2rem",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 0.5,
+              whiteSpace: "pre-line",
+            }}
+          >
+            <Box component="span">
+              {`${t("order.bookShort")}\n${selectedRange[0]
+                ?.locale(i18n.language)
+                .format("DD MMM")
+                .replace(/\./g, "")} - ${selectedRange[1]
+                ?.locale(i18n.language)
+                .format("DD MMM")
+                .replace(/\./g, "")}`}
+            </Box>
+            {calcLoading ? (
+              <Box
                 sx={{
-                  fontSize: "1.2rem",
+                  display: "inline-flex",
+                  gap: 0.3,
+                  alignItems: "center",
+                  "& span": {
+                    width: "4px",
+                    height: "4px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(255, 255, 255, 0.9)",
+                    display: "inline-block",
+                    animation: "dotPulse 1.4s ease-in-out infinite",
+                    "&:nth-of-type(1)": {
+                      animationDelay: "0s",
+                    },
+                    "&:nth-of-type(2)": {
+                      animationDelay: "0.2s",
+                    },
+                    "&:nth-of-type(3)": {
+                      animationDelay: "0.4s",
+                    },
+                    "@keyframes dotPulse": {
+                      "0%, 60%, 100%": {
+                        opacity: 0.3,
+                        transform: "scale(0.8)",
+                      },
+                      "30%": {
+                        opacity: 1,
+                        transform: "scale(1.2)",
+                      },
+                    },
+                  },
                 }}
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 0.5,
-                    whiteSpace: "pre-line",
-                  }}
-                >
-                  <Box component="span">
-                    {`${t("order.bookShort")}\n${selectedRange[0]
-                      ?.locale(i18n.language)
-                      .format("DD MMM")
-                      .replace(/\./g, "")} - ${selectedRange[1]
-                      ?.locale(i18n.language)
-                      .format("DD MMM")
-                      .replace(/\./g, "")}`}
-                  </Box>
-                  {calcLoading ? (
-                    <Box
-                      sx={{
-                        display: "inline-flex",
-                        gap: 0.3,
-                        alignItems: "center",
-                        "& span": {
-                          width: "4px",
-                          height: "4px",
-                          borderRadius: "50%",
-                          backgroundColor: "rgba(255, 255, 255, 0.9)",
-                          display: "inline-block",
-                          animation: "dotPulse 1.4s ease-in-out infinite",
-                          "&:nth-of-type(1)": {
-                            animationDelay: "0s",
-                          },
-                          "&:nth-of-type(2)": {
-                            animationDelay: "0.2s",
-                          },
-                          "&:nth-of-type(3)": {
-                            animationDelay: "0.4s",
-                          },
-                          "@keyframes dotPulse": {
-                            "0%, 60%, 100%": {
-                              opacity: 0.3,
-                              transform: "scale(0.8)",
-                            },
-                            "30%": {
-                              opacity: 1,
-                              transform: "scale(1.2)",
-                            },
-                          },
-                        },
-                      }}
-                    >
-                      <Box component="span" />
-                      <Box component="span" />
-                      <Box component="span" />
-                    </Box>
-                  ) : totalPrice > 0 ? (
-                    <Box component="span">{`${totalPrice}€`}</Box>
-                  ) : null}
-                </Box>
-              </GradientBookButton>
-            </Box>
-          )}
+                <Box component="span" />
+                <Box component="span" />
+                <Box component="span" />
+              </Box>
+            ) : totalPrice > 0 ? (
+              <Box component="span">{`${totalPrice}€`}</Box>
+            ) : null}
+          </Box>
+        </GradientBookButton>
+      </Box>
 
-          <Calendar
-            fullscreen={false}
-            onSelect={onSelect}
-            fullCellRender={renderDateCell}
-            headerRender={headerRender}
-            value={currentDate}
-            disabledDate={disabledDate}
-          />
-        </>
-      )}
+      <Calendar
+        fullscreen={false}
+        onSelect={onSelect}
+        fullCellRender={renderDateCell}
+        headerRender={headerRender}
+        value={currentDate}
+        disabledDate={disabledDate}
+      />
     </Box>
   );
 };

@@ -1,10 +1,17 @@
 import React, { useState } from "react";
 import { Box, Typography, Stack, useTheme, Tooltip, IconButton } from "@mui/material";
-import SettingsIcon from "@mui/icons-material/Settings";
 import { useTranslation } from "react-i18next";
 import { ORDER_COLORS, getOrderColorsForLegend } from "@/config/orderColors";
 import { useMainContext } from "@app/Context";
-import BufferSettingsModal from "@/app/admin/features/settings/BufferSettingsModal";
+import dynamic from "next/dynamic";
+
+// ВАЖНО: Динамический импорт admin-only компонентов
+// Это исключает их из public bundle (экономия ~50KB+)
+const SettingsIcon = dynamic(() => import("@mui/icons-material/Settings"), { ssr: false });
+const BufferSettingsModal = dynamic(
+  () => import("@/app/admin/features/settings/BufferSettingsModal"),
+  { ssr: false }
+);
 
 /**
  * Легенда календаря для админки и клиентской части

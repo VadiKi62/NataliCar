@@ -16,6 +16,8 @@ import {
 /**
  * DiscountModal - Admin-only component for setting discount dates
  * Heavy date picker libraries are lazy-loaded only when modal opens
+ * 
+ * Location: admin/features/settings/ (admin-only bundle)
  */
 export default function DiscountModal({
   open,

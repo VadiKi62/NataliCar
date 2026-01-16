@@ -9,7 +9,6 @@ import {
   Divider,
   Chip,
   IconButton,
-  CircularProgress,
   Collapse,
   Button,
 } from "@mui/material";
@@ -94,20 +93,26 @@ const Wrapper = styled(Box)(({ theme }) => ({
 }));
 
 const CarImage = styled(Box)(({ theme }) => ({
+  // КРИТИЧНО для CLS: position: relative + фиксированные размеры
+  // Это позволяет использовать fill prop в CldImage/next/image
   position: "relative",
   width: "100%",
-  height: "auto",
+  // Используем padding-bottom hack для aspect-ratio (100% browser support)
+  // 66.67% = 2/3 = height/width для соотношения 3:2
+  paddingBottom: "66.67%",
   borderRadius: theme.shape.borderRadius,
   overflow: "hidden",
 
-  // Мобильные устройства - компактнее
+  // Мобильные устройства
   [theme.breakpoints.down("sm")]: {
-    marginBottom: theme.spacing(1), // Уменьшенный отступ снизу
+    marginBottom: theme.spacing(1),
   },
 
+  // Desktop: фиксированные размеры
   [theme.breakpoints.up("md")]: {
     width: 450,
     height: 300,
+    paddingBottom: 0, // Отключаем padding-bottom, используем height
   },
 }));
 
@@ -154,22 +159,13 @@ const CarItemComponent = React.memo(function CarItemComponent({
   discount, 
   discountStart, 
   discountEnd,
+  isFirstCar = false, // Only first car above-the-fold gets priority loading
 }) {
   const { t } = useTranslation();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   // Для хранения id последнего снэка
   const lastSnackRef = useRef(null);
   // --- Скидка теперь приходит из родителя ---
-  const [imageLoading, setImageLoading] = useState(true);
-  useEffect(() => {
-    // Set a 3-second delay before showing the image
-    const loadingTimer = setTimeout(() => {
-      setImageLoading(false);
-    }, 3000);
-
-    // Cleanup the timer when the component unmounts
-    return () => clearTimeout(loadingTimer);
-  }, []);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -185,15 +181,15 @@ const CarItemComponent = React.memo(function CarItemComponent({
   // Состояние для передачи месяца из календаря:
   const [currentCalendarDate, setCurrentCalendarDate] = useState(dayjs());
 
+  // Оптимизация: деструктурируем только нужные поля из контекста
+  // и мемоизируем carOrders, чтобы избежать лишних ре-рендеров
   const { fetchAndUpdateOrders, isLoading, ordersByCarId, allOrders } =
     useMainContext();
-  const [carOrders, setCarOrders] = useState([]);
-
-  // Update orders when allOrders or car._id changes
-  useEffect(() => {
-    const updatedOrders = ordersByCarId(car._id);
-    setCarOrders(updatedOrders);
-  }, [allOrders, car._id, ordersByCarId]);
+  
+  // Мемоизируем carOrders вместо useState + useEffect для снижения TBT
+  const carOrders = React.useMemo(() => {
+    return ordersByCarId(car._id);
+  }, [ordersByCarId, car._id]);
 
   const handleBookingComplete = () => {
     setModalOpen(true);
@@ -292,7 +288,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
               }}
             >
               {/* Стикер 'Без депозита' */}
-              {!imageLoading && car.deposit === 0 && (
+              {car.deposit === 0 && (
                 <Box
                   sx={{
                     position: "absolute",
@@ -326,67 +322,51 @@ const CarItemComponent = React.memo(function CarItemComponent({
                   {t("car.noDeposit") || "Без депозита"}
                 </Box>
               )}
-              {imageLoading ? (
-                <Box
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  height="100%"
-                >
-                  <CircularProgress />
-                  <CircularProgress sx={{ color: "primary.green" }} />
-                  <CircularProgress sx={{ color: "primary.red" }} />
-                </Box>
-              ) : (
-                <>
-                  <CldImage
-                    onClick={() => setDetailsModalOpen(true)}
-                    src={car?.photoUrl || "NO_PHOTO_h2klff"}
-                    alt={`Natali-Cars-${car.model}`}
-                    width="450"
-                    height="300"
-                    crop="fill"
-                    priority
-                    sizes="(max-width: 600px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    style={{
-                      objectFit: "contain",
-                      width: "100%",
-                      height: "auto",
-                      cursor: "pointer",
-                    }}
-                    onLoad={() => setImageLoading(false)}
-                  />
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDetailsModalOpen(true);
-                    }}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      position: "absolute",
-                      bottom: { xs: 4, sm: 8 },
-                      right: { xs: 4, sm: 8 },
-                      backgroundColor: "rgba(255, 255, 255, 0.9)",
-                      "&:hover": {
-                        backgroundColor: "rgba(255, 255, 255, 1)",
-                      },
-                      fontSize: { xs: "0.65rem", sm: "0.75rem" },
-                      padding: { xs: "2px 6px", sm: "4px 8px" },
-                      zIndex: 1,
-                    }}
-                  >
-                    {t("car.viewDetails")}
-                  </Button>
-                </>
-              )}
+              {/* КРИТИЧНО для CLS: используем fill prop от next/image
+                  - Родитель (CarImage) имеет position: relative + фиксированные размеры
+                  - fill заставляет изображение заполнить родителя БЕЗ layout shift */}
+              <CldImage
+                onClick={() => setDetailsModalOpen(true)}
+                src={car?.photoUrl || "NO_PHOTO_h2klff"}
+                alt={`Natali-Cars-${car.model}`}
+                fill
+                crop="fill"
+                priority={isFirstCar}
+                sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 450px"
+                style={{
+                  objectFit: "cover",
+                  cursor: "pointer",
+                }}
+              />
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDetailsModalOpen(true);
+                }}
+                variant="outlined"
+                size="small"
+                sx={{
+                  position: "absolute",
+                  bottom: { xs: 4, sm: 8 },
+                  right: { xs: 4, sm: 8 },
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 255, 255, 1)",
+                  },
+                  fontSize: { xs: "0.65rem", sm: "0.75rem" },
+                  padding: { xs: "2px 6px", sm: "4px 8px" },
+                  zIndex: 1,
+                }}
+              >
+                {t("car.viewDetails")}
+              </Button>
             </CarImage>
-            <Suspense fallback={<CircularProgress size={24} />}>
+            <Suspense fallback={null}>
               <CarDetails car={car} />
             </Suspense>
           </Box>
           <Box className="calendar-wrapper">
-            <Suspense fallback={<CircularProgress size={24} />}>
+            <Suspense fallback={null}>
               <CalendarPicker
               carId={car._id}
               car={car}
@@ -470,7 +450,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
               );
             })()}
             {car?.pricingTiers && (
-              <Suspense fallback={<CircularProgress size={24} />}>
+              <Suspense fallback={null}>
                 <PricingTiers
                   prices={car?.pricingTiers}
                   selectedDate={currentCalendarDate}
@@ -484,7 +464,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
         </MediaRow>
       </Wrapper>
       {modalOpen && (
-        <Suspense fallback={<CircularProgress size={24} />}>
+        <Suspense fallback={null}>
           <BookingModal
             fetchAndUpdateOrders={fetchAndUpdateOrders}
             open={modalOpen}
@@ -502,7 +482,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
         </Suspense>
       )}
       {detailsModalOpen && (
-        <Suspense fallback={<CircularProgress size={24} />}>
+        <Suspense fallback={null}>
           <CarDetailsModal
             open={detailsModalOpen}
             onClose={() => setDetailsModalOpen(false)}
@@ -517,6 +497,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
   // Сравниваем только примитивные значения для производительности
   const carChanged = prevProps.car?._id !== nextProps.car?._id;
   const discountChanged = prevProps.discount !== nextProps.discount;
+  const isFirstCarChanged = prevProps.isFirstCar !== nextProps.isFirstCar;
   
   // Для dayjs объектов сравниваем через valueOf (timestamp)
   const discountStartChanged = 
@@ -525,7 +506,7 @@ const CarItemComponent = React.memo(function CarItemComponent({
     prevProps.discountEnd?.valueOf() !== nextProps.discountEnd?.valueOf();
   
   // Возвращаем true если ничего не изменилось (не нужно ре-рендерить)
-  return !carChanged && !discountChanged && !discountStartChanged && !discountEndChanged;
+  return !carChanged && !discountChanged && !discountStartChanged && !discountEndChanged && !isFirstCarChanged;
 });
 
 CarItemComponent.displayName = "CarItemComponent";

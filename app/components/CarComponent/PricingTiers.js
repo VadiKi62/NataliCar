@@ -6,7 +6,7 @@ import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import { seasons } from "@utils/companyData";
-import { useTranslation } from "@node_modules/react-i18next";
+import { useTranslation } from "react-i18next";
 
 // Function to get the current season (same as above)
 // const getCurrentSeason = (date = dayjs()) => {

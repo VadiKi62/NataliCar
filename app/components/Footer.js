@@ -1,25 +1,27 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { Grid, Link as MuiLink, Typography, Stack, Box, Divider } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import FacebookIcon from "@mui/icons-material/Facebook";
-
-import InstagramIcon from "@mui/icons-material/Instagram";
-
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import CallIcon from "@mui/icons-material/Call";
-import EmailIcon from "@mui/icons-material/Email";
+import dynamic from "next/dynamic";
 import DefaultButton from "@/app/components/ui/buttons/DefaultButton";
-import DirectionsIcon from "@mui/icons-material/Directions";
-import QrCode2Icon from "@mui/icons-material/QrCode2";
-import CodeIcon from "@mui/icons-material/Code";
-import LinkedInIcon from "@mui/icons-material/LinkedIn";
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { companyData } from "@utils/companyData";
+
+// Lazy-load MUI icons (Footer is below fold, reduces initial bundle size and TBT)
+// Using dynamic import with named exports wrapped in default
+const FacebookIcon = dynamic(() => import("@mui/icons-material/Facebook"), { ssr: false });
+const InstagramIcon = dynamic(() => import("@mui/icons-material/Instagram"), { ssr: false });
+const LocationOnIcon = dynamic(() => import("@mui/icons-material/LocationOn"), { ssr: false });
+const CallIcon = dynamic(() => import("@mui/icons-material/Call"), { ssr: false });
+const EmailIcon = dynamic(() => import("@mui/icons-material/Email"), { ssr: false });
+const DirectionsIcon = dynamic(() => import("@mui/icons-material/Directions"), { ssr: false });
+const QrCode2Icon = dynamic(() => import("@mui/icons-material/QrCode2"), { ssr: false });
+const CodeIcon = dynamic(() => import("@mui/icons-material/Code"), { ssr: false });
+const LinkedInIcon = dynamic(() => import("@mui/icons-material/LinkedIn"), { ssr: false });
 
 const Section = styled("section")(({ theme }) => ({
   padding: theme.spacing(5),
