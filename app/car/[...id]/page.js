@@ -8,47 +8,50 @@ import Loading from "@app/loading";
 import Feed from "@app/components/Feed";
 import { getSeoConfig } from "@config/seo";
 
-export const generateMetadata = async ({ params }) => {
-  const { id } = params;
+// export const generateMetadata = async ({ params }) => {
+//   const { id } = params;
 
-  try {
-    const car = await fetchCar(id);
-    const carTitle = car?.model || "Car";
-    const title = `${carTitle} Rental in Halkidiki | Natali Cars`;
-    const description = `Rent ${carTitle} in Halkidiki, Greece with Natali Cars. Affordable rates, flexible pickup and return in Nea Kallikratia. Book online today.`;
-    const seoConfig = getSeoConfig();
+//   try {
+//     const car = await fetchCar(id);
+//     const carTitle = car?.model || "Car";
+//     const title = `${carTitle} Rental in Halkidiki | Natali Cars`;
+//     const description = `Rent ${carTitle} in Halkidiki, Greece with Natali Cars. Affordable rates, flexible pickup and return in Nea Kallikratia. Book online today.`;
+//     const seoConfig = getSeoConfig();
 
-    return {
-      title,
-      description,
-      alternates: {
-        canonical: `${seoConfig.baseUrl}/car/${id}`,
-      },
-      openGraph: {
-        title,
-        description,
-        url: `${seoConfig.baseUrl}/car/${id}`,
-        type: "website",
-      },
-    };
-  } catch (error) {
-    const seoConfig = getSeoConfig();
-    return {
-      title: "Car Rental in Halkidiki | Natali Cars",
-      description: seoConfig.defaultDescription,
-    };
-  }
-};
+//     return {
+//       title,
+//       description,
+//       alternates: {
+//         canonical: `${seoConfig.baseUrl}/car/${id}`,
+//       },
+//       openGraph: {
+//         title,
+//         description,
+//         url: `${seoConfig.baseUrl}/car/${id}`,
+//         type: "website",
+//       },
+//     };
+//   } catch (error) {
+//     const seoConfig = getSeoConfig();
+//     return {
+//       title: "Car Rental in Halkidiki | Natali Cars",
+//       description: seoConfig.defaultDescription,
+//     };
+//   }
+// };
 
 async function CarPageMain({ params }) {
-  unstable_noStore();
+  // unstable_noStore();
 
-  const carData = await fetchCar(params.id);
+  // const carData = await fetchCar(params.id);
 
   return (
-    <Suspense fallback={<Loading />}>
-      <Feed car={carData} />
-    </Suspense>
+    <>
+      <h1>Car Page</h1>
+      {/* <Suspense fallback={<Loading />}>
+        <Feed car={carData} />
+      </Suspense> */}
+    </>
   );
 }
 
