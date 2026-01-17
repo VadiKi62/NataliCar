@@ -15,6 +15,7 @@ import { useMainContext } from "@app/Context";
 import { ActionButton } from "@app/components/ui/buttons";
 import sendEmail from "@utils/sendEmail";
 import { companyData } from "@utils/companyData";
+import { DEVELOPER_EMAIL } from "@config/email";
 
 function Contacts() {
   const { t } = useTranslation();
@@ -28,7 +29,7 @@ function Contacts() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const companyEmail = "cars-support@bbqr.site";
+  const companyEmail = DEVELOPER_EMAIL;
 
   const validateEmail = (email) => {
     if (!email) return true;

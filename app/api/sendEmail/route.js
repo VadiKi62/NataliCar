@@ -10,11 +10,12 @@
 // Testing Mode (.env):
 //   EMAIL_TESTING=true - enables testing mode (customer email is ignored)
 //
-// Note: All emails are ALWAYS sent to cars@bbqr.site as the main recipient
+// Note: All emails are ALWAYS sent to DEVELOPER_EMAIL (cars@bbqr.site) as the main recipient
 //       Customer email is added as CC only in production mode
 //
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { DEVELOPER_EMAIL } from "@config/email";
 
 // Email signature constants (using theme colors)
 const EMAIL_SIGNATURE_HTML = `
@@ -168,8 +169,8 @@ function getTransporter() {
   return transporter;
 }
 
-// Fixed company email - all notifications go here
-const COMPANY_EMAIL = "cars@bbqr.site";
+// Use centralized developer email from config
+const COMPANY_EMAIL = DEVELOPER_EMAIL;
 
 export async function POST(request) {
   try {
@@ -192,7 +193,7 @@ export async function POST(request) {
     const body = await request.json();
     const { email, emailCompany, title, message } = body;
     
-    // Main recipient is ALWAYS cars@bbqr.site
+    // Main recipient is ALWAYS DEVELOPER_EMAIL (cars@bbqr.site)
     // In testing mode: only company email, customer email is ignored
     // In production: company email + customer email (if provided)
     const actualCustomerEmail = isTestingMode ? null : email;
@@ -219,7 +220,7 @@ export async function POST(request) {
     const htmlEmail = createEmailHTML(title, message);
 
     // Determine recipients: 
-    // - ALWAYS send to COMPANY_EMAIL (cars@bbqr.site)
+    // - ALWAYS send to DEVELOPER_EMAIL (cars@bbqr.site)
     // - In testing mode: only company email
     // - In production: company email + customer email (if provided)
     let recipients;

@@ -39,6 +39,7 @@ import { useTranslation } from "react-i18next";
 import { addOrderNew } from "@utils/action";
 import SuccessMessage from "@/app/components/ui/feedback/SuccessMessage";
 import sendEmail from "@utils/sendEmail";
+import { DEVELOPER_EMAIL } from "@config/email";
 import { setTimeToDatejs } from "@utils/functions";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -482,7 +483,7 @@ const BookingModal = ({
             ? "Создано бронирование в свободные даты."
             : "Бронирование в ожидании подтверждения.";
         return {
-          emailCompany: company.email,
+          emailCompany: DEVELOPER_EMAIL,
           email: orderData.email,
           title: title,
           message: `${statusMessage}\nБронь с ${formattedStartDate} (${formattedStartTime}) по ${formattedEndDate} (${formattedEndTime}). \n Кол-во дней : ${orderData.numberOfDays}  \n Сумма : ${response.data.totalPrice} евро. \n \n Данные машины :   ${orderData.carModel} regNumber : ${car.regNumber} \n \n Данные клиента : \n  Мейл : ${orderData.email}, \n Тел : ${orderData.phone} \n имя: ${orderData.customerName}`,
@@ -493,7 +494,7 @@ const BookingModal = ({
         try {
           const emailResponse = await sendEmail(
             formData,
-            company.email,
+            DEVELOPER_EMAIL,
             company.useEmail
           );
           if (process.env.NODE_ENV === "development") {
