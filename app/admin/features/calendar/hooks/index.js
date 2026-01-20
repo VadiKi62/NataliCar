@@ -6,3 +6,4 @@ export {
   useMobileCalendarScroll,
   buildOrderDateRange,
 } from "./calendarDays";
+export { useCalendarMoveMode } from "./useCalendarMoveMode";

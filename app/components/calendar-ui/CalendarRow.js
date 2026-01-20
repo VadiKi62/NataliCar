@@ -834,6 +834,50 @@ export default function CarTableRow({
         !isStartDate &&
         !isEndDate;
 
+      // Обработчик клика для overlap дат (CASE 2)
+      // Использует ordersForDate напрямую для согласованности с визуальным определением overlap
+      const handleOverlapCellClick = (e) => {
+        e?.stopPropagation();
+
+        // В режиме перемещения: проверяем клик по синей ячейке
+        if (moveMode) {
+          if (selectedMoveOrder && isPartOfSelectedOrder(dateStr)) {
+            if (onExitMoveMode) {
+              onExitMoveMode();
+            }
+          }
+          return;
+        }
+
+        // Открываем ВСЕ заказы для этой даты
+        if (ordersForDate && ordersForDate.length > 0) {
+          setSelectedOrders(ordersForDate);
+          setOpen(true);
+        }
+      };
+
+      // Обёртка для handleMouseUp для overlap дат
+      const handleOverlapMouseUp = (e) => {
+        const timer = pressTimerRef.current;
+        // Если таймер еще активен (быстрый клик), отменяем его и обрабатываем как обычный клик
+        if (timer) {
+          clearTimeout(timer);
+          pressTimerRef.current = null;
+          setPressTimer(null);
+          setClickBlocked(false);
+          wasLongPressRef.current = false;
+          // Используем специальный обработчик для overlap дат
+          handleOverlapCellClick(e);
+        } else if (!wasLongPressRef.current && !clickBlocked) {
+          // Обычный клик без long press
+          handleOverlapCellClick(e);
+        }
+        // Сбрасываем флаги
+        wasLongPressRef.current = false;
+        setWasLongPress(false);
+        setClickBlocked(false);
+      };
+
       // ИСПРАВЛЕННАЯ функция обработки клика по пустой ячейке
       const handleEmptyCellClick = () => {
         console.log("Empty cell click - moveMode:", moveMode, "car:", car);
@@ -1076,7 +1120,7 @@ export default function CarTableRow({
         return (
           <Box
             onMouseDown={() => handleLongPressStart(dateStr)}
-            onMouseUp={handleMouseUp}
+            onMouseUp={handleOverlapMouseUp}
             onMouseLeave={handleLongPressEnd}
             onContextMenu={(e) => e.preventDefault()}
             title={

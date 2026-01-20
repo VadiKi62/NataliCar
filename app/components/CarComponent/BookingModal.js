@@ -237,7 +237,7 @@ const BookingModal = ({
           });
         }
       } catch (e) {
-        console.log("[BookingModal] Return date log error:", e);
+        // Error in date calculation
       }
     }
   }, [
@@ -476,8 +476,8 @@ const BookingModal = ({
         const formattedEndTime = formatTimeHHMM(fromServerUTC(orderData.timeOut));
         let title =
           status === "success"
-            ? `Новое бронирование ${orderData.carNumber} ${orderData.carModel}`
-            : `Бронирование с неподтвержденными датами ${orderData.carNumber} ${orderData.carModel}`;
+            ? `Новое бронирование  ${orderData.carModel}`
+            : `Бронирование с неподтвержденными датами ${orderData.carModel}`;
         let statusMessage =
           status === "success"
             ? "Создано бронирование в свободные даты."

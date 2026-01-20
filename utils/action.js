@@ -151,52 +151,6 @@ export const reFetchAllOrders = async () => {
 //Adding new order using new order api
 export const addOrderNew = async (orderData) => {
   try {
-    // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ ОТСЛЕЖИВАНИЯ РАЗЛИЧИЙ
-    console.log("=== ACTION.JS: АНАЛИЗ ВРЕМЕНИ ===");
-    console.log(
-      "Источник:",
-      orderData.my_order ? "BookingModal" : "AddOrderModal"
-    );
-    console.log("orderData.timeIn тип:", typeof orderData.timeIn);
-    console.log("orderData.timeIn значение:", orderData.timeIn);
-    console.log("orderData.timeOut тип:", typeof orderData.timeOut);
-    console.log("orderData.timeOut значение:", orderData.timeOut);
-
-    // Проверяем, является ли объект dayjs
-    if (orderData.timeIn && typeof orderData.timeIn.format === "function") {
-      console.log("timeIn это dayjs объект:");
-      console.log(
-        "  timeIn.format('HH:mm'):",
-        orderData.timeIn.format("HH:mm")
-      );
-      console.log(
-        "  timeIn.format('YYYY-MM-DD HH:mm'):",
-        orderData.timeIn.format("YYYY-MM-DD HH:mm")
-      );
-      console.log("  timeIn.toISOString():", orderData.timeIn.toISOString());
-      console.log("  timeIn.$d (нативная дата):", orderData.timeIn.$d);
-    }
-
-    if (orderData.timeOut && typeof orderData.timeOut.format === "function") {
-      console.log("timeOut это dayjs объект:");
-      console.log(
-        "  timeOut.format('HH:mm'):",
-        orderData.timeOut.format("HH:mm")
-      );
-      console.log(
-        "  timeOut.format('YYYY-MM-DD HH:mm'):",
-        orderData.timeOut.format("YYYY-MM-DD HH:mm")
-      );
-      console.log("  timeOut.toISOString():", orderData.timeOut.toISOString());
-      console.log("  timeOut.$d (нативная дата):", orderData.timeOut.$d);
-    }
-
-    const stringifiedData = JSON.stringify(orderData);
-    const parsedBack = JSON.parse(stringifiedData);
-    console.log("После JSON.stringify -> JSON.parse:");
-    console.log("  timeIn:", parsedBack.timeIn);
-    console.log("  timeOut:", parsedBack.timeOut);
-    console.log("=== КОНЕЦ АНАЛИЗА ===");
 
     const response = await fetch(`${API_URL}/api/order/add`, {
       method: "POST",
@@ -1141,4 +1095,292 @@ export async function getLegalDoc({ docType, lang = "en", jur = "EU" }) {
     // No cache available - throw error
     throw new Error(`Failed to fetch legal document: ${error.message}`);
   }
+}
+
+// =============================================================================
+// TELEGRAM NOTIFICATIONS
+// =============================================================================
+
+/**
+ * Formats currency code to symbol
+ * @param {string} currency - Currency code (EUR, USD, etc.)
+ * @returns {string} Currency symbol
+ */
+function formatCurrencySymbol(currency) {
+  const symbols = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    RUB: "₽",
+  };
+  return symbols[currency?.toUpperCase()] || currency || "€";
+}
+
+/**
+ * Formats date string for Telegram message
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date (YYYY-MM-DD)
+ */
+function formatTelegramDate(dateString) {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return dateString;
+    }
+    return date.toISOString().split("T")[0];
+  } catch {
+    return dateString;
+  }
+}
+
+/**
+ * Validates order data for Telegram notification
+ * @param {Object} order - Order data
+ * @returns {string|null} Error message or null if valid
+ */
+function validateOrderForTelegram(order) {
+  if (!order || typeof order !== "object") {
+    return "Order must be a non-null object";
+  }
+
+  if (order.id === undefined || order.id === null) {
+    return "Order is missing required field: id";
+  }
+
+  if (!order.startDate || typeof order.startDate !== "string") {
+    return "Order is missing or has invalid field: startDate";
+  }
+
+  if (!order.endDate || typeof order.endDate !== "string") {
+    return "Order is missing or has invalid field: endDate";
+  }
+
+  if (typeof order.totalPrice !== "number" || isNaN(order.totalPrice)) {
+    return "Order is missing or has invalid field: totalPrice";
+  }
+
+  if (!order.currency || typeof order.currency !== "string") {
+    return "Order is missing or has invalid field: currency";
+  }
+
+  if (!order.customer || typeof order.customer !== "object") {
+    return "Order is missing required field: customer";
+  }
+
+  if (!order.customer.name || typeof order.customer.name !== "string") {
+    return "Order customer is missing required field: name";
+  }
+
+  return null;
+}
+
+/**
+ * Formats order data into a Telegram message
+ * @param {"new_order"|"order_deleted"} type - Notification type
+ * @param {Object} order - Order data
+ * @param {string} [deletedBy] - Email of user who deleted the order
+ * @returns {string} Formatted message
+ */
+function formatOrderTelegramMessage(type, order, deletedBy) {
+  const currencySymbol = formatCurrencySymbol(order.currency);
+  const formattedStartDate = formatTelegramDate(order.startDate);
+  const formattedEndDate = formatTelegramDate(order.endDate);
+
+  const lines = [];
+
+  // Header based on type
+  if (type === "new_order") {
+    lines.push("--------------------------------");
+    lines.push(`🆕 NEW ORDER #${order.id}`);
+  } else {
+    lines.push("--------------------------------");
+    lines.push(`❌ ORDER DELETED #${order.id}`);
+  }
+
+  // Order details
+  lines.push(`📅 From: ${formattedStartDate}`);
+  lines.push(`📅 To: ${formattedEndDate}`);
+  lines.push(`💰 Total: ${currencySymbol}${order.totalPrice}`);
+
+  // Customer information
+  lines.push("");
+  lines.push("👤 Customer:");
+  lines.push(`• Name: ${order.customer.name}`);
+
+  if (type === "new_order") {
+    // Include all customer details for new orders
+    if (order.customer.phone) {
+      lines.push(`• Phone: ${order.customer.phone}`);
+    }
+    if (order.customer.email) {
+      lines.push(`• Email: ${order.customer.email}`);
+    }
+  }
+
+  // Deleted by info (only for deletions)
+  if (type === "order_deleted" && deletedBy) {
+    lines.push("");
+    lines.push(`🛑 Deleted by: ${deletedBy}`);
+  }
+
+  lines.push("--------------------------------");
+
+  return lines.join("\n");
+}
+
+/**
+ * Sends a message to Telegram via internal API route
+ * @param {string} message - Formatted message to send
+ * @returns {Promise<boolean>} Success status
+ */
+async function sendTelegramMessage(message) {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (!chatId) {
+    console.error("[Telegram] TELEGRAM_CHAT_ID is not configured in environment variables");
+    return false;
+  }
+
+  const chatIdNumber = parseInt(chatId, 10);
+  if (isNaN(chatIdNumber)) {
+    console.error("[Telegram] TELEGRAM_CHAT_ID must be a valid number, got:", chatId);
+    return false;
+  }
+
+  // Use API_URL if available, otherwise construct from env
+  const baseUrl = API_URL || 
+    process.env.NEXT_PUBLIC_BASE_URL || 
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  
+  const apiUrl = `${baseUrl}/api/telegram/send`;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        endpoint: "/button2607",
+        chat_id: chatIdNumber,
+        message: message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("[Telegram] API returned error status:", response.status, errorData.error || "Unknown error");
+      return false;
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error("[Telegram] API returned failure:", result.error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    // Log error but don't throw - Telegram notifications must never break core flows
+    console.error("[Telegram] Failed to send message:", error.message || "Unknown error");
+    return false;
+  }
+}
+
+/**
+ * Sends a Telegram notification when a new order is created
+ * 
+ * @param {Object} order - Order data
+ * @param {string|number} order.id - Order ID or number
+ * @param {string} order.startDate - Rental start date (ISO string)
+ * @param {string} order.endDate - Rental end date (ISO string)
+ * @param {number} order.totalPrice - Total price
+ * @param {string} order.currency - Currency code (EUR, USD, etc.)
+ * @param {Object} order.customer - Customer info
+ * @param {string} order.customer.name - Customer name
+ * @param {string} [order.customer.phone] - Customer phone
+ * @param {string} [order.customer.email] - Customer email
+ * @returns {Promise<boolean>} True if sent successfully, false otherwise
+ * 
+ * @example
+ * await sendNewOrderTelegramNotification({
+ *   id: '1234',
+ *   startDate: '2026-02-01',
+ *   endDate: '2026-02-05',
+ *   totalPrice: 450,
+ *   currency: 'EUR',
+ *   customer: {
+ *     name: 'John Doe',
+ *     phone: '+353...',
+ *     email: 'john@email.com'
+ *   }
+ * });
+ */
+export async function sendNewOrderTelegramNotification(order) {
+  // Validate order
+  const validationError = validateOrderForTelegram(order);
+  if (validationError) {
+    console.error("[Telegram] New order notification failed:", validationError);
+    return false;
+  }
+
+  // Format and send message
+  const message = formatOrderTelegramMessage("new_order", order);
+  const success = await sendTelegramMessage(message);
+
+  if (success) {
+    console.log(`[Telegram] New order notification sent for order #${order.id}`);
+  }
+
+  return success;
+}
+
+/**
+ * Sends a Telegram notification when an order is deleted
+ * 
+ * @param {Object} order - Order data
+ * @param {string|number} order.id - Order ID or number
+ * @param {string} order.startDate - Rental start date (ISO string)
+ * @param {string} order.endDate - Rental end date (ISO string)
+ * @param {number} order.totalPrice - Total price
+ * @param {string} order.currency - Currency code (EUR, USD, etc.)
+ * @param {Object} order.customer - Customer info
+ * @param {string} order.customer.name - Customer name
+ * @param {string} deletedBy - Email or identifier of who deleted the order
+ * @returns {Promise<boolean>} True if sent successfully, false otherwise
+ * 
+ * @example
+ * await sendOrderDeletedTelegramNotification({
+ *   id: '1234',
+ *   startDate: '2026-02-01',
+ *   endDate: '2026-02-05',
+ *   totalPrice: 450,
+ *   currency: 'EUR',
+ *   customer: { name: 'John Doe' }
+ * }, 'admin@example.com');
+ */
+export async function sendOrderDeletedTelegramNotification(order, deletedBy) {
+  // Validate order
+  const validationError = validateOrderForTelegram(order);
+  if (validationError) {
+    console.error("[Telegram] Order deleted notification failed:", validationError);
+    return false;
+  }
+
+  // Validate deletedBy
+  if (!deletedBy || typeof deletedBy !== "string" || deletedBy.trim() === "") {
+    console.error("[Telegram] Order deleted notification failed: deletedBy is required");
+    return false;
+  }
+
+  // Format and send message
+  const message = formatOrderTelegramMessage("order_deleted", order, deletedBy);
+  const success = await sendTelegramMessage(message);
+
+  if (success) {
+    console.log(`[Telegram] Order deleted notification sent for order #${order.id}`);
+  }
+
+  return success;
 }

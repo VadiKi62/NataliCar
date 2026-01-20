@@ -3,6 +3,7 @@ import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
 import { canDeleteOrder } from "@/domain/orders/orderPermissions";
+import { sendOrderDeletedTelegramNotification } from "@utils/action";
 
 export const DELETE = async (request, { params }) => {
   try {
@@ -65,6 +66,23 @@ export const DELETE = async (request, { params }) => {
       console.log("allOrders from delete", allOrders);
       await removeConflictDates(orderToDelete, allOrders);
     }
+
+    // Send Telegram notification before deleting (we still have order data)
+    sendOrderDeletedTelegramNotification(
+      {
+        id: orderToDelete.orderNumber || orderToDelete._id,
+        startDate: orderToDelete.rentalStartDate.toISOString(),
+        endDate: orderToDelete.rentalEndDate.toISOString(),
+        totalPrice: orderToDelete.totalPrice,
+        currency: "EUR",
+        customer: {
+          name: orderToDelete.customerName,
+          phone: orderToDelete.phone,
+          email: orderToDelete.email,
+        },
+      },
+      session.user?.email || session.user?.name || "admin"
+    ).catch(() => {}); // Fire and forget, don't block response
 
     // Delete the order
     await Order.findByIdAndDelete(orderId);

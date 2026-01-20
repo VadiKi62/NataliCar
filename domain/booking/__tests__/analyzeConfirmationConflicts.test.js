@@ -167,7 +167,7 @@ describe("🔐 analyzeConfirmationConflicts", () => {
       expect(result.level).toBe("block");
       expect(result.blockedByConfirmed).toHaveLength(1);
       expect(result.blockedByConfirmed[0].customerName).toBe("Мария");
-      expect(result.message).toContain("пересекается");
+      expect(result.message).toContain("Пересечение");
       expect(result.message).toContain("Мария");
     });
 
@@ -277,8 +277,8 @@ describe("🔐 analyzeConfirmationConflicts", () => {
       expect(result.level).toBe("warning");
       expect(result.affectedPendingOrders).toHaveLength(1);
       expect(result.affectedPendingOrders[0].customerName).toBe("Мария");
-      expect(result.message).toContain("Заказ подтверждён");
-      expect(result.message).toContain("Конфликт");
+      expect(result.message).toContain("Пересечение");
+      expect(result.message).toContain("неподтверждённым");
     });
 
     it("показывает количество затронутых заказов при нескольких pending", () => {

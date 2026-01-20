@@ -45,8 +45,6 @@ const EditCarModal = ({
   setUpdatedCar,
   //updateCarInContext,
 }) => {
-  // Диагностика: выводим объект updatedCar в консоль при каждом рендере
-  // console.log('EditCarModal updatedCar:', updatedCar);
 
   const { updateCarInContext, setUpdateStatus, updateStatus } =
     useMainContext();
@@ -219,12 +217,12 @@ const EditCarModal = ({
       closeOnBackdropClick={false}
       closeOnEscape={false}
       actions={modalActions}
-      contentSx={{ opacity: isLoading ? 0.3 : 1, transition: "opacity 0.2s", p: 2 }}
+      contentSx={{ opacity: isLoading ? 0.3 : 1, transition: "opacity 0.2s" }}
       >
-        <Grid container spacing={3} sx={{ flexGrow: 1 }}>
+        <Grid container spacing={3} sx={{ flexGrow: 1, pt: 4 }}>
           {/* Column 1 */}
           <Grid item xs={12} sm={3}>
-            <Stack spacing={3}>
+            <Stack spacing={3} >
               <Autocomplete
                 freeSolo
                 options={autoCompleteOptions}

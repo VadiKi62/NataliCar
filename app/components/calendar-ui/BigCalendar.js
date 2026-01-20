@@ -44,7 +44,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 import { useMainContext } from "@app/Context";
-import { formatDate, isPast, BUSINESS_TZ } from "@utils/businessTime";
+import { formatDate, isPast } from "@utils/businessTime";
 import CarTableRow from "./CalendarRow";
 import {
   extractArraysOfStartEndConfPending,
@@ -53,14 +53,14 @@ import {
 import EditOrderModal from "@/app/admin/features/orders/modals/EditOrderModal";
 import AddOrderModal from "@/app/admin/features/orders/modals/AddOrderModal";
 import { useSnackbar } from "notistack";
-import { changeRentalDates, moveOrderToCar } from "@utils/action";
+import { changeRentalDates } from "@utils/action";
 import EditCarModal from "@/app/admin/features/cars/modals/EditCarModal";
 import LegendCalendarAdmin from "./LegendCalendarAdmin";
 import { calendarStyles } from "@/theme";
 import {
   useCalendarDays,
   useMobileCalendarScroll,
-  buildOrderDateRange,
+  useCalendarMoveMode,
 } from "@/app/admin/features/calendar/hooks";
 
 // ============================================
@@ -372,15 +372,13 @@ export default function BigCalendar({ cars, showLegend = true }) {
   const [forceUpdateKey, setForceUpdateKey] = useState(0);
 
   // =======================
-  // 🚚 Move order mode
+  // 🚚 Move order mode (via hook)
   // =======================
-  const [isMoving, setIsMoving] = useState(false);
-  const [selectedMoveOrder, setSelectedMoveOrder] = useState(null);
-  const [moveMode, setMoveMode] = useState(false);
-  const [orderToMove, setOrderToMove] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({
-    open: false,
-    newCar: null,
+  const moveModeHook = useCalendarMoveMode({
+    cars,
+    ordersByCarId,
+    fetchAndUpdateOrders,
+    showSingleSnackbar,
   });
 
   // =======================
@@ -479,18 +477,21 @@ export default function BigCalendar({ cars, showLegend = true }) {
   };
 
   // =======================
-  // 🚚 Move mode handlers
+  // 🚚 Move mode handlers (from hook)
   // =======================
-  const handleLongPress = (order) => {
-    if (!order?._id) return;
-    setSelectedMoveOrder(order);
-    setOrderToMove(order);
-    setMoveMode(true);
-    showSingleSnackbar(
-      "Выберите другой автомобиль для перемещения заказа. Доступные автомобили выделены желтым цветом",
-      { variant: "info", autoHideDuration: 8000 }
-    );
-  };
+  const {
+    moveMode,
+    selectedMoveOrder,
+    orderToMove,
+    confirmModal,
+    selectedOrderDates,
+    isCarCompatibleForMove,
+    handleLongPress,
+    handleCarSelectForMove,
+    exitMoveMode,
+    handleConfirmMove,
+    handleCloseConfirmModal,
+  } = moveModeHook;
 
   // =======================
   // 📦 Orders handlers
@@ -536,42 +537,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
     return [...cars].sort((a, b) => a.model.localeCompare(b.model));
   }, [cars]);
 
-  // Генерируем массив дат для выбранного заказа в режиме перемещения
-  const selectedOrderDates = useMemo(() => {
-    if (!moveMode || !selectedMoveOrder) return [];
-    return buildOrderDateRange(selectedMoveOrder);
-  }, [moveMode, selectedMoveOrder]);
-
-  // Функция проверки совместимости автомобиля для перемещения
-  const isCarCompatibleForMove = useCallback(
-    (carId) => {
-      if (!moveMode || !selectedMoveOrder) return true;
-
-      // Исключаем автомобиль с текущим заказом
-      if (selectedMoveOrder.car === carId) return false;
-
-      // Получаем заказы целевого автомобиля
-      const carOrders = ordersByCarId(carId);
-
-      // Проверяем конфликты по времени (используем бизнес-таймзону)
-      const start = dayjs(selectedMoveOrder.rentalStartDate).tz(BUSINESS_TZ);
-      const end = dayjs(selectedMoveOrder.rentalEndDate).tz(BUSINESS_TZ);
-
-      const hasConflict = carOrders.some((order) => {
-        if (order._id === selectedMoveOrder._id) return false; // Исключаем сам перемещаемый заказ
-
-        const orderStart = dayjs(order.rentalStartDate).tz(BUSINESS_TZ);
-        const orderEnd = dayjs(order.rentalEndDate).tz(BUSINESS_TZ);
-
-        // Проверяем пересечение периодов
-        return orderStart.isSameOrBefore(end) && orderEnd.isSameOrAfter(start);
-      });
-
-      return !hasConflict;
-    },
-    [moveMode, selectedMoveOrder, ordersByCarId]
-  );
-
   const handleAddOrderClick = (car, dateStr) => {
     // Если в режиме перемещения - не открываем AddOrderModal
     if (moveMode) return;
@@ -601,58 +566,8 @@ export default function BigCalendar({ cars, showLegend = true }) {
     return car ? car.regNumber : carNumber;
   };
 
-  // ИСПРАВЛЕННАЯ функция обработки выбора автомобиля для перемещения
-  const handleCarSelectForMove = (selectedCar) => {
-    if (!moveMode || !selectedMoveOrder) return;
-
-    // Находим информацию о старом автомобиле
-    const oldCar = cars.find((car) => car._id === selectedMoveOrder.car);
-
-    // Проверяем, что выбран другой автомобиль
-    // if (selectedMoveOrder.car === selectedCar._id) {
-    //   enqueueSnackbar("Заказ уже на этом автомобиле", { variant: "warning" });
-    //   return;
-    // }
-
-    // Показываем модальное окно подтверждения с правильными данными
-    setConfirmModal({
-      open: true,
-      newCar: selectedCar,
-      oldCar: oldCar, // Добавляем информацию о старом автомобиле
-    });
-  };
-
-  // Функция для выхода из режима перемещения
-  const exitMoveMode = useCallback(() => {
-    setMoveMode(false);
-    setSelectedMoveOrder(null);
-    setOrderToMove(null);
-    showSingleSnackbar("Режим перемещения отключён", { variant: "info" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // =======================
-  // 🎹 ESC key listener для выхода из режима перемещения
-  // =======================
-  useEffect(() => {
-    if (!moveMode) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        exitMoveMode();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [moveMode, exitMoveMode]);
 
   const updateOrder = async (orderData) => {
-    console.log("🔄 Updating order with data:", orderData);
-
     try {
       const result = await changeRentalDates(
         orderData._id,
@@ -849,7 +764,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
           car={selectedCarForAdd}
           date={selectedDateForAdd}
           setUpdateStatus={(status) => {
-            console.log("Update status:", status);
             if (status?.type === 200) {
               fetchAndUpdateOrders();
               setForceUpdateKey((prev) => prev + 1); // триггер перерисовки
@@ -875,10 +789,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
       {/* Модальное окно подтверждения перемещения */}
       <ModalLayout
         open={confirmModal.open}
-        onClose={() => {
-          setConfirmModal({ open: false, newCar: null, oldCar: null });
-          exitMoveMode();
-        }}
+        onClose={handleCloseConfirmModal}
         title="Подтверждение перемещения"
         size="small"
         centerVertically={false}
@@ -891,72 +802,12 @@ export default function BigCalendar({ cars, showLegend = true }) {
 
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
           <CancelButton
-              onClick={() => {
-                setConfirmModal({ open: false, newCar: null, oldCar: null });
-                exitMoveMode();
-            }}
+              onClick={handleCloseConfirmModal}
             label="НЕТ"
           />
           <ActionButton
             color="success"
-              onClick={async () => {
-                // 🔧 FIX: Capture values BEFORE clearing state
-                const newCar = confirmModal.newCar;
-                const order = selectedMoveOrder;
-                
-                // Defensive guards
-                if (!newCar?._id || !order?._id) {
-                  showSingleSnackbar("❌ Нет данных для перемещения", { variant: "error" });
-                  exitMoveMode();
-                  setConfirmModal({ open: false, newCar: null, oldCar: null });
-                  return;
-                }
-                
-                // Close modal after capturing values
-                setConfirmModal({ open: false, newCar: null, oldCar: null });
-                
-                // Debug logs (dev-friendly)
-                if (process.env.NODE_ENV === "development") {
-                  console.log("[MOVE] newCar:", newCar);
-                  console.log("[MOVE] order:", order);
-                }
-                
-                let success = false;
-                try {
-                  // Use dedicated moveCar endpoint (allows ADMIN and SUPERADMIN)
-                  const result = await moveOrderToCar(
-                    order._id,
-                    newCar._id,
-                    newCar.carNumber
-                  );
-                  
-
-                  if (result?.status === 201 || result?.status === 202) {
-                    await fetchAndUpdateOrders();
-                    const conflictMsg = result.conflicts?.length > 0 
-                      ? " (есть конфликты с неподтвержденными заказами)" 
-                      : "";
-                    showSingleSnackbar(`Заказ сдвинут на ${newCar.model}${conflictMsg}`, { variant: "success" });
-                    success = true;
-                  } else if (result?.status === 409) {
-                    // Blocking conflict
-                    showSingleSnackbar(
-                      result.message || "Конфликт с подтвержденными заказами. Перемещение невозможно.",
-                      { variant: "error", autoHideDuration: 5000 }
-                    );
-                  } else {
-                    showSingleSnackbar(
-                      result.message || "Ошибка перемещения заказа",
-                      { variant: "error" }
-                    );
-                  }
-                } catch (error) {
-                  showSingleSnackbar(`Ошибка перемещения: ${error.message}`, { variant: "error" });
-                } finally {
-                  // Всегда выходим из режима перемещения после операции
-                  exitMoveMode();
-                }
-              }}
+              onClick={handleConfirmMove}
             label="ДА"
           />
           </Box>

@@ -17,6 +17,7 @@ import {
   setTimeToDatejs,
   checkConflicts,
 } from "@utils/analyzeDates";
+import { sendNewOrderTelegramNotification } from "@utils/action";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -62,34 +63,8 @@ export async function POST(request) {
       }
     }
 
-    // Логгирование входящих данных
-    console.log("API: Получен запрос на создание заказа:");
-    console.log({
-      carNumber,
-      customerName,
-      phone,
-      email,
-      rentalStartDate,
-      rentalEndDate,
-      timeIn,
-      timeOut,
-      placeIn,
-      placeOut,
-      confirmed,
-      my_order,
-      ChildSeats,
-      insurance,
-      franchiseOrder,
-      orderNumber,
-      flightNumber,
-    });
-    console.log("API: typeof email =", typeof email, "значение:", email);
-
     // Явно присваиваем email пустую строку, если он не передан или undefined/null
     const safeEmail = typeof email === "string" ? email : "";
-
-    console.log("timeIn IS ", timeIn);
-    console.log("timeOut is ", timeOut);
 
     // status 405 for startdate = enddate - order NOT created
     if (dayjs(rentalStartDate).isSame(dayjs(rentalEndDate), "day")) {
@@ -151,7 +126,6 @@ export async function POST(request) {
           );
         //// TODO CREATE ORDERS FOR CASE 200
         case 200:
-          console.log(data);
           return new Response(
             JSON.stringify({
               message: data.conflictMessage,
@@ -225,6 +199,20 @@ export async function POST(request) {
 
       await updateConflictingOrders(conflicOrdersId, newOrder._id);
 
+      // Send Telegram notification for new order (pending)
+      sendNewOrderTelegramNotification({
+        id: newOrder.orderNumber || newOrder._id,
+        startDate: newOrder.rentalStartDate.toISOString(),
+        endDate: newOrder.rentalEndDate.toISOString(),
+        totalPrice: newOrder.totalPrice,
+        currency: "EUR",
+        customer: {
+          name: newOrder.customerName,
+          phone: newOrder.phone,
+          email: newOrder.email,
+        },
+      }).catch(() => {}); // Fire and forget, don't block response
+
       return new Response(
         JSON.stringify({
           messageCode: "bookMesssages.bookPendingDates",
@@ -245,8 +233,19 @@ export async function POST(request) {
     // Save the updated car document
     await existingCar.save();
 
-    // После сохранения заказа, логгируйте результат:
-    console.log("API: Заказ успешно создан:", newOrder);
+    // Send Telegram notification for new order
+    sendNewOrderTelegramNotification({
+      id: newOrder.orderNumber || newOrder._id,
+      startDate: newOrder.rentalStartDate.toISOString(),
+      endDate: newOrder.rentalEndDate.toISOString(),
+      totalPrice: newOrder.totalPrice,
+      currency: "EUR",
+      customer: {
+        name: newOrder.customerName,
+        phone: newOrder.phone,
+        email: newOrder.email,
+      },
+    }).catch(() => {}); // Fire and forget, don't block response
 
     return new Response(JSON.stringify(newOrder), {
       status: 201,
@@ -284,8 +283,6 @@ async function updateConflictingOrders(conflicOrdersId, newOrderId) {
         }
       }
     }
-
-    console.log("Conflicting orders updated successfully");
   } catch (error) {
     console.error("Error updating conflicting orders:", error);
   }
