@@ -291,6 +291,10 @@ export default function CarTableRow({
 
     if (allowLongPress) {
       const timer = setTimeout(() => {
+        // Очищаем ref сразу после срабатывания таймера
+        pressTimerRef.current = null;
+        setPressTimer(null);
+
         // Предпочитаем заказ, который НАЧИНАЕТСЯ в эту дату (требование: на совмещённой дате выбирать начинающийся заказ)
         const startingOrder = relevantOrders.find(
           (order) =>
@@ -330,14 +334,38 @@ export default function CarTableRow({
     }
   }, [moveMode, startEndDates, startEndOverlapDates, carOrders, hasOrder, isLastDateForOrder, getOrderByDate, onLongPress]);
 
-  const handleLongPressEnd = () => {
+  // Отмена таймера (вызывается только при mouseup ДО срабатывания long press)
+  const cancelLongPressTimer = useCallback(() => {
     const timer = pressTimerRef.current;
     if (timer) {
       clearTimeout(timer);
       pressTimerRef.current = null;
       setPressTimer(null);
     }
-    setClickBlocked(false);
+  }, []);
+
+  // Document-level mouseup listener для отлова отпускания мыши вне ячейки
+  useEffect(() => {
+    const handleDocumentMouseUp = () => {
+      // Если таймер ещё активен (long press не сработал), отменяем его
+      if (pressTimerRef.current) {
+        cancelLongPressTimer();
+        setClickBlocked(false);
+      }
+      // Если long press уже сработал (wasLongPressRef.current = true), ничего не делаем
+      // moveMode уже включен
+    };
+
+    document.addEventListener("mouseup", handleDocumentMouseUp);
+    return () => {
+      document.removeEventListener("mouseup", handleDocumentMouseUp);
+    };
+  }, [cancelLongPressTimer]);
+
+  // Старый handleLongPressEnd теперь не отменяет таймер при mouseLeave
+  const handleLongPressEnd = () => {
+    // НЕ отменяем таймер здесь - пусть long press срабатывает даже если мышь ушла с ячейки
+    // Таймер будет отменён только при mouseup (через document listener или handleMouseUp)
   };
 
   const renderDateCell = useCallback(
@@ -397,7 +425,7 @@ export default function CarTableRow({
                     sx={{
                       width: "50%",
                       height: "100%",
-                      backgroundColor: theme.palette.primary.main, // Синий
+                      backgroundColor: MOVE_MODE_COLORS.BLUE_SELECTED, // Синий из палитры
                       borderRadius: "50% 0 0 50%",
                     }}
                   />
@@ -436,7 +464,7 @@ export default function CarTableRow({
                     sx={{
                       width: "50%",
                       height: "100%",
-                      backgroundColor: theme.palette.primary.main, // Синий
+                      backgroundColor: MOVE_MODE_COLORS.BLUE_SELECTED, // Синий из палитры
                       borderRadius: "0 50% 50% 0",
                     }}
                   />
@@ -657,7 +685,7 @@ export default function CarTableRow({
         );
 
         if (shouldApplyImperativeBlue) {
-          backgroundColor = theme.palette.primary.main; // Синий цвет для выбранного заказа
+          backgroundColor = MOVE_MODE_COLORS.BLUE_SELECTED; // Синий цвет для выбранного заказа из палитры
           color = "white";
         }
       }
@@ -1079,7 +1107,7 @@ export default function CarTableRow({
                       : "text.primary";
                   })(),
               backgroundColor: isPartOfSelectedOrder(dateStr)
-                ? theme.palette.primary.main
+                ? MOVE_MODE_COLORS.BLUE_SELECTED
                 : overlapBackgroundColor,
               cursor:
                 isPastDay && isEndDate && !isStartDate
@@ -1257,9 +1285,9 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowLastMoveDay
-                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
+                  ? MOVE_MODE_COLORS.YELLOW_SOLID // Желтый цвет для режима перемещения
                   : shouldHighlightLeft
-                  ? theme.palette.primary.main
+                  ? MOVE_MODE_COLORS.BLUE_SELECTED
                   : isStartAndEndDateOverlapInfo.endConfirmed
                   ? (() => {
                       // Ищем только заказ, который заканчивается в этот день
@@ -1296,9 +1324,9 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
+                  ? MOVE_MODE_COLORS.YELLOW_SOLID // Желтый цвет для режима перемещения
                   : shouldHighlightRight
-                  ? theme.palette.primary.main
+                  ? MOVE_MODE_COLORS.BLUE_SELECTED
                   : isStartAndEndDateOverlapInfo.startConfirmed
                   ? (() => {
                       // Ищем только заказ, который начинается в этот день
@@ -1432,9 +1460,9 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "50% 0 0 50%",
                 backgroundColor: shouldShowFirstMoveDay
-                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
+                  ? MOVE_MODE_COLORS.YELLOW_SOLID // Желтый цвет для режима перемещения
                   : shouldHighlightRight
-                  ? theme.palette.primary.main
+                  ? MOVE_MODE_COLORS.BLUE_SELECTED
                   : startEndInfo.confirmed
                   ? (() => {
                       // Получаем заказ для startEndInfo
@@ -1568,9 +1596,9 @@ export default function CarTableRow({
                 height: "100%",
                 borderRadius: "0 50% 50% 0",
                 backgroundColor: shouldShowLastMoveDay
-                  ? "#ffeb3b" // Явный желтый цвет для режима перемещения
+                  ? MOVE_MODE_COLORS.YELLOW_SOLID // Желтый цвет для режима перемещения
                   : shouldHighlightLeft
-                  ? theme.palette.primary.main
+                  ? MOVE_MODE_COLORS.BLUE_SELECTED
                   : startEndInfo.confirmed
                   ? (() => {
                       // Получаем заказ для startEndInfo
@@ -1601,7 +1629,7 @@ export default function CarTableRow({
                 width: "50%",
                 height: "100%",
                 borderRadius: shouldHighlightRight ? "50% 0 0 50%" : undefined,
-                backgroundColor: shouldHighlightRight ? theme.palette.primary.main : undefined,
+                backgroundColor: shouldHighlightRight ? MOVE_MODE_COLORS.BLUE_SELECTED : undefined,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1760,7 +1788,7 @@ export default function CarTableRow({
       ordersByCarId,
       theme.palette.divider,
       theme.palette.neutral?.black,
-      theme.palette.primary.main,
+      MOVE_MODE_COLORS.BLUE_SELECTED,
     ]
   );
 

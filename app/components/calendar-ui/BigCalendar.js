@@ -623,12 +623,32 @@ export default function BigCalendar({ cars, showLegend = true }) {
   };
 
   // Функция для выхода из режима перемещения
-  const exitMoveMode = () => {
+  const exitMoveMode = useCallback(() => {
     setMoveMode(false);
     setSelectedMoveOrder(null);
     setOrderToMove(null);
     showSingleSnackbar("Режим перемещения отключён", { variant: "info" });
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // =======================
+  // 🎹 ESC key listener для выхода из режима перемещения
+  // =======================
+  useEffect(() => {
+    if (!moveMode) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        exitMoveMode();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [moveMode, exitMoveMode]);
 
   const updateOrder = async (orderData) => {
     console.log("🔄 Updating order with data:", orderData);

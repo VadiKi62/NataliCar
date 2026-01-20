@@ -611,7 +611,7 @@ const EditOrderModal = ({
               )}
             </Box>
 
-            <Box sx={{ mb: 1 }}>
+            <Box sx={{ mb: 0 }}>
               {/* Даты — вертикально на мобильных */}
               <Box
                 sx={{
@@ -822,7 +822,7 @@ const EditOrderModal = ({
                 display: "flex", 
                 flexDirection: { xs: "column", sm: "row" },
                 gap: { xs: 1, sm: 2 }, 
-                mb: 0 
+                mb: 0
               }}>
                 <FormControl
                   fullWidth
@@ -901,14 +901,6 @@ const EditOrderModal = ({
                 </FormControl>
               </Box>
             </Box>
-
-            {/* <Divider
-              sx={{
-                my: 2,
-                borderColor: editedOrder?.my_order ? "success.main" : "error.main",
-                borderWidth: 2,
-              }}
-            /> */}
 
             {/* Блок данных клиента: имя на отдельной строке, телефон и email — ниже в одну строку */}
             <Box sx={{ mb: 0 }}>

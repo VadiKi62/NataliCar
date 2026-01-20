@@ -49,6 +49,7 @@ import {
   toServerUTC,
   formatTimeHHMM,
 } from "@/domain/time/athensTime";
+import { RenderTextField } from "@/app/components/ui/inputs/Fields";
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
@@ -503,64 +504,83 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
 
     return (
       <Box sx={{ mb: 2, mt: 0 }}>
-        {/* Insurance and extras */}
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            gap: { xs: 1, sm: 2 },
-            mb: 1,
-          }}
-        >
-          <FormControl fullWidth size="small" sx={{ flex: orderDetails.insurance === "TPL" ? 2 : 1 }}>
+        {/* Страховка и детские кресла — адаптивно */}
+        <Box sx={{ 
+          display: "flex", 
+          flexDirection: { xs: "column", sm: "row" },
+          gap: { xs: 1, sm: 2 }, 
+          mb: 1
+        }}>
+          <FormControl
+            fullWidth
+            sx={{
+              width: { 
+                xs: "100%", 
+                sm: orderDetails.insurance === "TPL" ? "49%" : "30%" 
+              },
+            }}
+          >
             <InputLabel>{t("order.insurance")}</InputLabel>
             <Select
-              value={orderDetails.insurance || "TPL"}
               label={t("order.insurance")}
+              value={orderDetails.insurance || ""}
               onChange={(e) => handleFieldChange("insurance", e.target.value)}
             >
-              {insuranceOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label} {option.price ? `(+€${option.price})` : ""}
-                </MenuItem>
-              ))}
+              {(() => {
+                const kaskoPrice = car?.PriceKacko ?? 0;
+                return (t("order.insuranceOptions", { returnObjects: true }) || []).map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.value === "CDW"
+                      ? `${option.label} ${kaskoPrice}€/${t("order.perDay")}`
+                      : option.label}
+                  </MenuItem>
+                ));
+              })()}
             </Select>
           </FormControl>
           {orderDetails.insurance === "CDW" && (
-            <BookingTextField
-              label={t("order.franchise")}
-              type="number"
-              value={orderDetails.franchiseOrder || 0}
-              onChange={(e) =>
-                handleFieldChange(
-                  "franchiseOrder",
-                  parseFloat(e.target.value) || 0
-                )
-              }
-              sx={{ flex: 1 }}
-            />
+            <Box sx={{ width: "16%" }}>
+              <RenderTextField
+                name="franchiseOrder"
+                label={t("car.franchise") || "Франшиза заказа"}
+                type="number"
+                updatedCar={orderDetails}
+                handleChange={(e) =>
+                  handleFieldChange("franchiseOrder", Number(e.target.value))
+                }
+                isLoading={false}
+                sx={{ mb: 0 }}
+              />
+            </Box>
           )}
-          <FormControl fullWidth size="small" sx={{ flex: 1 }}>
-            <InputLabel>{t("order.childSeats")}</InputLabel>
+          <FormControl fullWidth sx={{ width: { xs: "100%", sm: "49%" } }}>
+            <InputLabel>
+              {t("order.childSeats")}{" "}
+              {car?.PriceChildSeats ?? 0}
+              €/{t("order.perDay")}
+            </InputLabel>
             <Select
-              value={orderDetails.ChildSeats || 0}
-              label={t("order.childSeats")}
+              label={`${t("order.childSeats")} ${car?.PriceChildSeats ?? 0}€/${t("order.perDay")}`}
+              value={
+                typeof orderDetails.ChildSeats === "number"
+                  ? orderDetails.ChildSeats
+                  : 0
+              }
               onChange={(e) =>
-                handleFieldChange("ChildSeats", parseInt(e.target.value) || 0)
+                handleFieldChange("ChildSeats", Number(e.target.value))
               }
             >
-              {[0, 1, 2, 3].map((num) => (
+              <MenuItem value={0}>{t("order.childSeatsNone")}</MenuItem>
+              {[1, 2, 3, 4].map((num) => (
                 <MenuItem key={num} value={num}>
-                  {num} {num === 1 ? t("order.childSeat") : t("order.childSeats")}
-                  {num > 0 && car?.PriceChildSeats
-                    ? ` (+€${car.PriceChildSeats * num})`
-                    : ""}
+                  {num}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
         </Box>
         {/* Customer fields */}
+         <Box sx={{ mb: 0 }}>
         <BookingTextField
           label={t("order.name")}
           value={orderDetails.customerName || ""}
@@ -568,20 +588,29 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           required
           sx={{ mb: 1 }}
         />
+          <Box sx={{ 
+                display: "flex", 
+                flexDirection: { xs: "column", sm: "row" },
+                gap: { xs: 0.5, sm: 2 }, 
+                mb: 0 
+              }}>
         <BookingTextField
           label={t("order.phone")}
           value={orderDetails.phone || ""}
           onChange={(e) => handleFieldChange("phone", e.target.value)}
           required
-          sx={{ mb: 1 }}
+          sx={{ mb: 1, flex: 1, minHeight: 36  }}
+
         />
         <BookingTextField
           label={t("order.email")}
           value={orderDetails.email || ""}
           onChange={(e) => handleFieldChange("email", e.target.value)}
           type="email"
-          sx={{ mb: 1 }}
+          sx={{ mb: 1, flex: 1, minHeight: 36}}
         />
+        </Box>
+        </Box>
       </Box>
     );
   };
