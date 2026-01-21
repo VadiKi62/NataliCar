@@ -8,6 +8,8 @@
  * - RU: Russian-speaking tourists (Russia, Ukraine, Belarus, Kazakhstan)
  * - DE: German-speaking tourists (Germany, Austria, Switzerland)
  * - SR: Serbian-speaking tourists (Serbia, Montenegro, Bosnia)
+ * - RO: Romanian-speaking tourists (Romania, Moldova)
+ * - BG: Bulgarian-speaking tourists (Bulgaria)
  * - EL: Greek local market
  */
 
@@ -35,6 +37,8 @@ export const multilingualDescriptions = {
   ru: "Аренда авто в Халкидики, Греция — Натали Карс. Прокат машин без депозита. Гибкие условия получения и возврата. Лучший прокат авто в Халкидики, Неа Каликратия, Кассандра, Ситония.",
   de: "Mietwagen in Chalkidiki, Griechenland bei Natali Cars. Günstige Autovermietung mit flexiblen Abhol- und Rückgabeoptionen. Bester Mietwagenservice in Chalkidiki, Nea Kallikratia, Kassandra, Sithonia.",
   sr: "Rent a car u Halkidikiju, Grčka — Natali Cars. Povoljno iznajmljivanje auta bez depozita. Fleksibilni uslovi preuzimanja i vraćanja. Najbolji rent a car u Halkidikiju, Nea Kalikratija, Kasandra, Sitonija.",
+  ro: "Închirieri auto în Halkidiki, Grecia — Natali Cars. Rent a car ieftin fără depozit. Condiții flexibile de preluare și returnare. Cel mai bun serviciu de închiriere auto în Halkidiki, Nea Kallikratia, Kassandra, Sithonia.",
+  bg: "Рент а кар в Халкидики, Гърция — Натали Карс. Евтин наем на коли без депозит. Гъвкави условия за получаване и връщане. Най-добър рент а кар в Халкидики, Неа Каликратия, Касандра, Ситония.",
   el: "Ενοικίαση αυτοκινήτου στη Χαλκιδική, Ελλάδα με την Natali Cars. Οικονομική ενοικίαση με ευέλικτες επιλογές παραλαβής και επιστροφής. Καλύτερη υπηρεσία ενοικίασης στη Χαλκιδική.",
 };
 
@@ -46,6 +50,8 @@ export const multilingualTitles = {
   ru: "Натали Карс - Аренда авто в Халкидики, Греция",
   de: "Natali Cars - Mietwagen in Chalkidiki, Griechenland",
   sr: "Natali Cars - Rent a car Halkidiki, Grčka",
+  ro: "Natali Cars - Închirieri auto Halkidiki, Grecia",
+  bg: "Натали Карс - Рент а кар Халкидики, Гърция",
   el: "Natali Cars - Ενοικίαση αυτοκινήτου Χαλκιδική",
 };
 
@@ -62,7 +68,7 @@ export function getSeoConfig(dbCompanyData = null) {
     siteName: companyData?.name || fallbackCompanyData.name || "Natali Cars",
     baseUrl: getBaseUrl(),
     defaultLocale: "en",
-    supportedLocales: ["en", "ru", "de", "sr", "el"],
+    supportedLocales: ["en", "ru", "de", "sr", "ro", "bg", "el"],
     primaryLocation: "Halkidiki, Greece",
     titleTemplate: "%s | Natali Cars - Car Rental in Halkidiki",
     defaultTitle: "Natali Cars - Car Rental in Halkidiki, Greece",

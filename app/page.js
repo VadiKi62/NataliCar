@@ -20,6 +20,8 @@ export async function generateMetadata() {
     "Аренда авто в Халкидики, Греция — прокат машин без депозита. " +
     "Mietwagen Chalkidiki Griechenland — günstige Autovermietung. " +
     "Rent a car Halkidiki — iznajmljivanje auta Grčka. " +
+    "Închirieri auto Halkidiki Grecia — rent a car ieftin. " +
+    "Рент а кар Халкидики Гърция — евтин наем на коли. " +
     "Affordable car hire Nea Kallikratia, Kassandra, Sithonia.";
 
   return {
@@ -32,15 +34,17 @@ export async function generateMetadata() {
         "ru": seoConfig.baseUrl,
         "de": seoConfig.baseUrl,
         "sr": seoConfig.baseUrl,
+        "ro": seoConfig.baseUrl,
+        "bg": seoConfig.baseUrl,
         "el": seoConfig.baseUrl,
       },
     },
     openGraph: {
-      title: "Car Rental Halkidiki Greece | Аренда авто Халкидики | Mietwagen Chalkidiki",
+      title: "Car Rental Halkidiki Greece | Аренда авто Халкидики | Mietwagen Chalkidiki | Închirieri auto | Рент а кар",
       description: multilingualDescription,
       url: seoConfig.baseUrl,
       locale: "en_US",
-      alternateLocale: ["ru_RU", "de_DE", "sr_RS", "el_GR"],
+      alternateLocale: ["ru_RU", "de_DE", "sr_RS", "ro_RO", "bg_BG", "el_GR"],
     },
   };
 }
@@ -71,12 +75,14 @@ export default async function Home() {
       "Natali Cars Halkidiki",
       "Натали Карс Халкидики", // Russian
       "Natali Cars Chalkidiki", // German spelling
+      "Natali Cars Halkidiki Grecia", // Romanian
+      "Натали Карс Халкидики Гърция", // Bulgarian
     ],
     url: seoConfig.baseUrl,
     logo: `${seoConfig.baseUrl}/favicon.png`,
     image: `${seoConfig.baseUrl}/favicon.png`,
     // Multilingual description
-    description: "Car rental in Halkidiki, Greece. Аренда авто в Халкидики, Греция. Mietwagen Chalkidiki Griechenland. Rent a car Halkidiki - iznajmljivanje auta Grčka.",
+    description: "Car rental in Halkidiki, Greece. Аренда авто в Халкидики, Греция. Mietwagen Chalkidiki Griechenland. Rent a car Halkidiki - iznajmljivanje auta Grčka. Închirieri auto Halkidiki Grecia. Рент а кар Халкидики Гърция.",
     address: {
       "@type": "PostalAddress",
       streetAddress: seoConfig.contact.address.split(",")[0] || seoConfig.contact.address,
@@ -111,6 +117,8 @@ export default async function Home() {
         { "@type": "Language", name: "Russian", alternateName: "ru" },
         { "@type": "Language", name: "German", alternateName: "de" },
         { "@type": "Language", name: "Serbian", alternateName: "sr" },
+        { "@type": "Language", name: "Romanian", alternateName: "ro" },
+        { "@type": "Language", name: "Bulgarian", alternateName: "bg" },
       ],
     },
     sameAs: [

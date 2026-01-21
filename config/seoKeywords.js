@@ -3,7 +3,9 @@
  * 
  * Keywords optimized for search indexing in multiple languages.
  * Target markets: English (international), Russian (tourists from CIS),
- * German (tourists from DACH region), Serbian (Balkans tourists), Greek (local)
+ * German (tourists from DACH region), Serbian (Balkans tourists), 
+ * Romanian (tourists from Romania/Moldova), Bulgarian (tourists from Bulgaria),
+ * Greek (local)
  */
 
 export const seoKeywords = {
@@ -143,6 +145,76 @@ export const seoKeywords = {
     "Natali Cars",
     "Natali Cars Halkidiki",
     "rent a car Natali",
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ROMANIAN — Tourists from Romania and Moldova
+  // ═══════════════════════════════════════════════════════════════════════════
+  ro: [
+    // Termeni principali de căutare
+    "închirieri auto Halkidiki",
+    "rent a car Halkidiki Grecia",
+    "închiriere mașină Grecia",
+    "rent a car Nea Kallikratia",
+    "închirieri auto Kassandra",
+    "rent a car Sithonia",
+    
+    // Aeroport și transport
+    "rent a car aeroport Salonic",
+    "închiriere auto Salonic",
+    "mașină de închiriat Grecia",
+    
+    // Preț și condiții
+    "rent a car ieftin Grecia",
+    "închiriere auto fără depozit Halkidiki",
+    "mașină ieftină de închiriat Grecia",
+    "rent a car fără garanție",
+    
+    // Vacanță și turism
+    "mașină pentru vacanță Grecia",
+    "rent a car pentru mare Halkidiki",
+    "închiriere auto concediu Grecia",
+    "mașină pentru familie Halkidiki",
+    
+    // Brand
+    "Natali Cars",
+    "Natali Cars Halkidiki",
+    "rent a car Natali Grecia",
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BULGARIAN — Tourists from Bulgaria
+  // ═══════════════════════════════════════════════════════════════════════════
+  bg: [
+    // Основни търсения
+    "рент а кар Халкидики",
+    "кола под наем Халкидики",
+    "наем на кола Гърция",
+    "коли под наем Неа Каликратия",
+    "рент а кар Касандра",
+    "наем на автомобил Ситония",
+    
+    // Летище и транспорт
+    "рент а кар летище Солун",
+    "наем на кола Солун",
+    "автомобил под наем Гърция",
+    
+    // Цена и условия
+    "евтин рент а кар Гърция",
+    "евтини коли под наем Халкидики",
+    "наем на кола без депозит Гърция",
+    "рент а кар без гаранция",
+    
+    // Почивка и туризъм
+    "кола за почивка Гърция",
+    "рент а кар за море Халкидики",
+    "наем на кола за ваканция",
+    "семеен рент а кар Гърция",
+    
+    // Бранд
+    "Натали Карс",
+    "Natali Cars Халкидики",
+    "рент а кар Натали",
   ],
 
   // ═══════════════════════════════════════════════════════════════════════════
