@@ -366,17 +366,24 @@ export const MainContextProvider = ({
   );
 
   // 🎯 Computed map: какие pending заказы НЕ МОГУТ быть подтверждены
+  // Извлекаем bufferTime чтобы избежать пересчёта при изменении других полей company
+  const bufferTime = company?.bufferTime;
+  
   const { pendingConfirmBlockById } = useMemo(() => {
-    if (process.env.NODE_ENV === "development") {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[MainContext] Recomputing pendingConfirmBlockById", {
-          bufferTime: company?.bufferTime,
-          ordersCount: allOrders?.length,
-        });
-      }
+    // Ранний выход если нет заказов - нечего считать
+    if (!allOrders || allOrders.length === 0) {
+      return { pendingConfirmBlockById: {} };
     }
-    return buildPendingConfirmBlockMap(allOrders, company);
-  }, [allOrders, company]);
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[MainContext] Recomputing pendingConfirmBlockById", {
+        bufferTime,
+        ordersCount: allOrders.length,
+      });
+    }
+    // Передаём объект с bufferTime для совместимости с buildPendingConfirmBlockMap
+    return buildPendingConfirmBlockMap(allOrders, { bufferTime });
+  }, [allOrders, bufferTime]);
 
   // 🎯 Conflict highlight state for calendar visualization
   const [conflictHighlightById, setConflictHighlightById] = useState({});
