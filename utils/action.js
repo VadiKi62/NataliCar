@@ -151,13 +151,12 @@ export const reFetchAllOrders = async () => {
 //Adding new order using new order api
 export const addOrderNew = async (orderData) => {
   try {
-
     const response = await fetch(`${API_URL}/api/order/add`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: stringifiedData,
+      body: JSON.stringify(orderData),
     });
 
     const result = await response.json();
