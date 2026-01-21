@@ -237,9 +237,25 @@ function BigCalendarHeader({
 // ============================================
 export default function BigCalendar({ cars, showLegend = true }) {
   // ─────────────────────────────────────────
+  // 🔍 DEV INSTRUMENTATION (removed in production build)
+  // ─────────────────────────────────────────
+  if (process.env.NODE_ENV !== "production") {
+    // Track render count to detect render storms
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const renderCountRef = useRef(0);
+    renderCountRef.current += 1;
+    // Log every 10th render to avoid spam
+    if (renderCountRef.current % 10 === 0) {
+      console.log(`[BigCalendar] Render count: ${renderCountRef.current}`);
+    }
+  }
+
+  // ─────────────────────────────────────────
   // Refs
   // ─────────────────────────────────────────
   const calendarRef = useRef(null);
+  // 🔧 PERF FIX: Track timeout to prevent memory leak if component unmounts
+  const addOrderTimeoutRef = useRef(null);
 
   // ─────────────────────────────────────────
   // Тема и цвета
@@ -426,6 +442,15 @@ export default function BigCalendar({ cars, showLegend = true }) {
     }
   }, [viewMode]);
 
+  // 🔧 PERF FIX: Cleanup timeout on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (addOrderTimeoutRef.current) {
+        clearTimeout(addOrderTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Дни календаря и индекс текущего дня
   const { days, todayIndex } = useCalendarDays({
     month,
@@ -525,13 +550,16 @@ export default function BigCalendar({ cars, showLegend = true }) {
     setStartEndDates(startEnd);
   }, [allOrders]);
 
-  const filteredStartEndDates = allOrders
-    ? allOrders.map((order) => ({
-        startStr: order.startDateISO || order.start,
-        endStr: order.endDateISO || order.end,
-        orderId: order._id,
-      }))
-    : [];
+  // 🔧 PERF FIX: Memoize derived array to prevent recalculation on every render
+  // Previously computed on every render, causing O(n) operations each time
+  const filteredStartEndDates = useMemo(() => {
+    if (!allOrders) return [];
+    return allOrders.map((order) => ({
+      startStr: order.startDateISO || order.start,
+      endStr: order.endDateISO || order.end,
+      orderId: order._id,
+    }));
+  }, [allOrders]);
 
   const sortedCars = useMemo(() => {
     return [...cars].sort((a, b) => a.model.localeCompare(b.model));
@@ -546,20 +574,41 @@ export default function BigCalendar({ cars, showLegend = true }) {
     setIsAddOrderOpen(true);
   };
 
-  const selectedDate =
-    headerOrdersModal.date &&
-    dayjs(headerOrdersModal.date).format("YYYY-MM-DD");
+  // 🔧 PERF FIX: Memoize handler to prevent re-creating function on every render
+  // Inline functions in props cause unnecessary re-renders of child components
+  const handleDayClick = useCallback((day) => {
+    setHeaderOrdersModal({
+      open: true,
+      date: day.dayjs,
+      orders: allOrders,
+    });
+  }, [allOrders]);
 
-  const startedOrders = headerOrdersModal.orders.filter((order) => {
-    // Используем бизнес-таймзону для корректного сравнения
-    const start = formatDate(order.rentalStartDate, "YYYY-MM-DD");
-    return start === selectedDate;
-  });
+  // 🔧 PERF FIX: Memoize selectedDate to prevent dayjs re-parsing every render
+  const selectedDate = useMemo(() => {
+    return headerOrdersModal.date
+      ? dayjs(headerOrdersModal.date).format("YYYY-MM-DD")
+      : null;
+  }, [headerOrdersModal.date]);
 
-  const endedOrders = headerOrdersModal.orders.filter((order) => {
-    const end = formatDate(order.rentalEndDate, "YYYY-MM-DD");
-    return end === selectedDate;
-  });
+  // 🔧 PERF FIX: Memoize filtered orders - previously running formatDate (dayjs)
+  // on every order for every render, even when modal was closed
+  const startedOrders = useMemo(() => {
+    if (!selectedDate || !headerOrdersModal.orders) return [];
+    return headerOrdersModal.orders.filter((order) => {
+      // Используем бизнес-таймзону для корректного сравнения
+      const start = formatDate(order.rentalStartDate, "YYYY-MM-DD");
+      return start === selectedDate;
+    });
+  }, [headerOrdersModal.orders, selectedDate]);
+
+  const endedOrders = useMemo(() => {
+    if (!selectedDate || !headerOrdersModal.orders) return [];
+    return headerOrdersModal.orders.filter((order) => {
+      const end = formatDate(order.rentalEndDate, "YYYY-MM-DD");
+      return end === selectedDate;
+    });
+  }, [headerOrdersModal.orders, selectedDate]);
 
   const getRegNumberByCarNumber = (carNumber) => {
     const car = cars.find((c) => c.carNumber === carNumber);
@@ -627,13 +676,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
             onNextMonth={handleNextMonth}
             onMonthChange={handleSelectMonth}
             onYearChange={handleSelectYear}
-            onDayClick={(day) => {
-              setHeaderOrdersModal({
-                open: true,
-                date: day.dayjs,
-                orders: allOrders,
-              });
-            }}
+            onDayClick={handleDayClick}
             headerStyles={calendarHeaderStyles}
             calendarRef={calendarRef}
           />
@@ -767,9 +810,14 @@ export default function BigCalendar({ cars, showLegend = true }) {
             if (status?.type === 200) {
               fetchAndUpdateOrders();
               setForceUpdateKey((prev) => prev + 1); // триггер перерисовки
+              // 🔧 PERF FIX: Track timeout with ref to prevent memory leak
               // Автоматически закрываем модальное окно после успешного создания
-              setTimeout(() => {
+              if (addOrderTimeoutRef.current) {
+                clearTimeout(addOrderTimeoutRef.current);
+              }
+              addOrderTimeoutRef.current = setTimeout(() => {
                 setIsAddOrderOpen(false);
+                addOrderTimeoutRef.current = null;
               }, 1500);
             }
           }}

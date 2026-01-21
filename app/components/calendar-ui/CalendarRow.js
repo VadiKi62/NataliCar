@@ -311,17 +311,20 @@ export default function CarTableRow({
           wasLongPressRef.current = true;
           setWasLongPress(true);
           setClickBlocked(true);
-          console.log("Long press detected on order:", {
-            id: order._id,
-            customer: order.customerName,
-            carId: order.car,
-            dates: order.rentalStartDate + " - " + order.rentalEndDate,
-            picked: startingOrder
-              ? "starting"
-              : endingOrder
-              ? "ending"
-              : "fallback",
-          });
+          // 🔧 PERF FIX: Gate console.log behind dev check to reduce production overhead
+          if (process.env.NODE_ENV !== "production") {
+            console.log("Long press detected on order:", {
+              id: order._id,
+              customer: order.customerName,
+              carId: order.car,
+              dates: order.rentalStartDate + " - " + order.rentalEndDate,
+              picked: startingOrder
+                ? "starting"
+                : endingOrder
+                ? "ending"
+                : "fallback",
+            });
+          }
           setSelectedOrderId(order._id);
           if (onLongPress) {
             onLongPress(order);
@@ -880,7 +883,10 @@ export default function CarTableRow({
 
       // ИСПРАВЛЕННАЯ функция обработки клика по пустой ячейке
       const handleEmptyCellClick = () => {
-        console.log("Empty cell click - moveMode:", moveMode, "car:", car);
+        // 🔧 PERF FIX: Gate console.log behind dev check
+        if (process.env.NODE_ENV !== "production") {
+          console.log("Empty cell click - moveMode:", moveMode, "car:", car);
+        }
 
         // Блокируем клик по пустой ячейке, если дата в прошлом
         if (isPastDay) {
@@ -900,13 +906,16 @@ export default function CarTableRow({
             return;
           }
 
-          console.log("=== Режим перемещения активен ===");
-          console.log("Выбранный заказ для перемещения:", selectedMoveOrder);
-          console.log("Целевой автомобиль:", {
-            id: car._id,
-            number: car.carNumber,
-            model: car.model,
-          });
+          // 🔧 PERF FIX: Gate console.log behind dev check
+          if (process.env.NODE_ENV !== "production") {
+            console.log("=== Режим перемещения активен ===");
+            console.log("Выбранный заказ для перемещения:", selectedMoveOrder);
+            console.log("Целевой автомобиль:", {
+              id: car._id,
+              number: car.carNumber,
+              model: car.model,
+            });
+          }
 
           // Проверяем, что есть заказ для перемещения
           if (!selectedMoveOrder) {
@@ -960,10 +969,13 @@ export default function CarTableRow({
 
         // Обычный режим - создание нового заказа
         if (onAddOrderClick) {
-          console.log("Создание нового заказа на", {
-            car: car._id,
-            date: dateStr,
-          });
+          // 🔧 PERF FIX: Gate console.log behind dev check
+          if (process.env.NODE_ENV !== "production") {
+            console.log("Создание нового заказа на", {
+              car: car._id,
+              date: dateStr,
+            });
+          }
           onAddOrderClick(car, dateStr);
         }
       };
@@ -1698,12 +1710,14 @@ export default function CarTableRow({
         const isLastMoveDay =
           selectedOrderDates[selectedOrderDates.length - 1] === dateStr;
 
-        // Логгирование для контроля
-        console.log(
-          `[BigCalendar][MOVE] Желтый overlay: ${
-            isFirstMoveDay ? "первый день" : "последний день"
-          } для авто ${car.model} (${car.regNumber}), дата: ${dateStr}`
-        );
+        // 🔧 PERF FIX: Gate console.log behind dev check
+        if (process.env.NODE_ENV !== "production") {
+          console.log(
+            `[BigCalendar][MOVE] Желтый overlay: ${
+              isFirstMoveDay ? "первый день" : "последний день"
+            } для авто ${car.model} (${car.regNumber}), дата: ${dateStr}`
+          );
+        }
 
         return (
           <Box
