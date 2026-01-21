@@ -4,9 +4,14 @@ import Providers from "./providers";
 import { Suspense } from "react";
 import LoaderWrapper from "./components/Loader/LoaderWrapper";
 import { getSeoConfig } from "@config/seo";
+import { getPrimaryKeywords } from "@config/seoKeywords";
 
 // Use fallback data for global layout metadata (layout loads before pages)
 const seoConfig = getSeoConfig();
+
+// SEO: Multilingual keywords for better indexing in target markets
+// EN (international), RU (CIS tourists), DE (DACH region), SR (Balkans), EL (local)
+const multilangKeywords = getPrimaryKeywords(8);
 
 export const metadata = {
   metadataBase: new URL(seoConfig.baseUrl),
@@ -15,13 +20,7 @@ export const metadata = {
     template: seoConfig.titleTemplate,
   },
   description: seoConfig.defaultDescription,
-  keywords: [
-    "car rental Halkidiki",
-    "car hire Halkidiki",
-    "rent a car Greece",
-    "car rental Nea Kallikratia",
-    "Natali Cars",
-  ],
+  keywords: multilangKeywords,
   authors: [{ name: seoConfig.siteName }],
   creator: seoConfig.siteName,
   publisher: seoConfig.siteName,

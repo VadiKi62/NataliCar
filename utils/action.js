@@ -1127,7 +1127,11 @@ function formatTelegramDate(dateString) {
     if (isNaN(date.getTime())) {
       return dateString;
     }
-    return date.toISOString().split("T")[0];
+    // Format: DD-MM-YY
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
   } catch {
     return dateString;
   }
@@ -1197,6 +1201,14 @@ function formatOrderTelegramMessage(type, order, deletedBy) {
     lines.push(`❌ ORDER DELETED #${order.id}`);
   }
 
+  // Car information
+  if (order.car) {
+    const carInfo = order.car.model 
+      ? `${order.car.model}${order.car.regNumber ? ` (${order.car.regNumber})` : ""}`
+      : order.car;
+    lines.push(`🚗 Car: ${carInfo}`);
+  }
+
   // Order details
   lines.push(`📅 From: ${formattedStartDate}`);
   lines.push(`📅 To: ${formattedEndDate}`);
@@ -1207,14 +1219,12 @@ function formatOrderTelegramMessage(type, order, deletedBy) {
   lines.push("👤 Customer:");
   lines.push(`• Name: ${order.customer.name}`);
 
-  if (type === "new_order") {
-    // Include all customer details for new orders
-    if (order.customer.phone) {
-      lines.push(`• Phone: ${order.customer.phone}`);
-    }
-    if (order.customer.email) {
-      lines.push(`• Email: ${order.customer.email}`);
-    }
+  // Always include phone and email for both new and deleted orders
+  if (order.customer.phone) {
+    lines.push(`• Phone: ${order.customer.phone}`);
+  }
+  if (order.customer.email) {
+    lines.push(`• Email: ${order.customer.email}`);
   }
 
   // Deleted by info (only for deletions)
@@ -1297,6 +1307,9 @@ async function sendTelegramMessage(message) {
  * @param {string} order.endDate - Rental end date (ISO string)
  * @param {number} order.totalPrice - Total price
  * @param {string} order.currency - Currency code (EUR, USD, etc.)
+ * @param {Object} [order.car] - Car info
+ * @param {string} [order.car.model] - Car model
+ * @param {string} [order.car.regNumber] - Car registration number
  * @param {Object} order.customer - Customer info
  * @param {string} order.customer.name - Customer name
  * @param {string} [order.customer.phone] - Customer phone
@@ -1310,6 +1323,10 @@ async function sendTelegramMessage(message) {
  *   endDate: '2026-02-05',
  *   totalPrice: 450,
  *   currency: 'EUR',
+ *   car: {
+ *     model: 'Toyota Yaris',
+ *     regNumber: 'XYZ-1234'
+ *   },
  *   customer: {
  *     name: 'John Doe',
  *     phone: '+353...',
@@ -1345,8 +1362,13 @@ export async function sendNewOrderTelegramNotification(order) {
  * @param {string} order.endDate - Rental end date (ISO string)
  * @param {number} order.totalPrice - Total price
  * @param {string} order.currency - Currency code (EUR, USD, etc.)
+ * @param {Object} [order.car] - Car info
+ * @param {string} [order.car.model] - Car model
+ * @param {string} [order.car.regNumber] - Car registration number
  * @param {Object} order.customer - Customer info
  * @param {string} order.customer.name - Customer name
+ * @param {string} [order.customer.phone] - Customer phone
+ * @param {string} [order.customer.email] - Customer email
  * @param {string} deletedBy - Email or identifier of who deleted the order
  * @returns {Promise<boolean>} True if sent successfully, false otherwise
  * 
@@ -1357,7 +1379,15 @@ export async function sendNewOrderTelegramNotification(order) {
  *   endDate: '2026-02-05',
  *   totalPrice: 450,
  *   currency: 'EUR',
- *   customer: { name: 'John Doe' }
+ *   car: {
+ *     model: 'Toyota Yaris',
+ *     regNumber: 'XYZ-1234'
+ *   },
+ *   customer: { 
+ *     name: 'John Doe',
+ *     phone: '+353...',
+ *     email: 'john@email.com'
+ *   }
  * }, 'admin@example.com');
  */
 export async function sendOrderDeletedTelegramNotification(order, deletedBy) {

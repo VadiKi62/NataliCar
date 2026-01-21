@@ -206,6 +206,10 @@ export async function POST(request) {
         endDate: newOrder.rentalEndDate.toISOString(),
         totalPrice: newOrder.totalPrice,
         currency: "EUR",
+        car: {
+          model: existingCar.model,
+          regNumber: existingCar.regNumber,
+        },
         customer: {
           name: newOrder.customerName,
           phone: newOrder.phone,
@@ -240,6 +244,10 @@ export async function POST(request) {
       endDate: newOrder.rentalEndDate.toISOString(),
       totalPrice: newOrder.totalPrice,
       currency: "EUR",
+      car: {
+        model: existingCar.model,
+        regNumber: existingCar.regNumber,
+      },
       customer: {
         name: newOrder.customerName,
         phone: newOrder.phone,

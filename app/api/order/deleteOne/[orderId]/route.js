@@ -75,6 +75,10 @@ export const DELETE = async (request, { params }) => {
         endDate: orderToDelete.rentalEndDate.toISOString(),
         totalPrice: orderToDelete.totalPrice,
         currency: "EUR",
+        car: {
+          model: carOfTheOrder.model,
+          regNumber: carOfTheOrder.regNumber,
+        },
         customer: {
           name: orderToDelete.customerName,
           phone: orderToDelete.phone,
