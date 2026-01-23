@@ -17,10 +17,12 @@ export const seoKeywords = {
     "car rental Halkidiki",
     "car hire Halkidiki",
     "rent a car Halkidiki Greece",
+    "car rental Greece",
     "car rental Nea Kallikratia",
     "rent car Kassandra",
     "rent car Sithonia",
     "car hire Thessaloniki airport",
+    "car rental Thessaloniki airport",
     
     // Service keywords
     "cheap car rental Greece",
@@ -84,12 +86,15 @@ export const seoKeywords = {
     "Mietwagen Chalkidiki",
     "Auto mieten Chalkidiki",
     "Autovermietung Chalkidiki Griechenland",
+    "Autovermietung Griechenland",
+    "Mietwagen Griechenland",
     "Mietwagen Nea Kallikratia",
     "Auto mieten Kassandra",
     "Mietwagen Sithonia",
     
     // Flughafen und Transport
     "Mietwagen Flughafen Thessaloniki",
+    "Autovermietung Flughafen Thessaloniki",
     "Auto mieten Thessaloniki",
     "Leihwagen Griechenland",
     
@@ -119,13 +124,16 @@ export const seoKeywords = {
     "rent a kar Halkidiki",
     "iznajmljivanje auta Halkidiki",
     "rentiranje automobila Grčka",
+    "iznajmljivanje auta Grčka",
     "najam vozila Halkidiki",
     "rent a car Nea Kalikratija",
+    "iznajmljivanje auta Nea Kalikratija",
     "iznajmljivanje auta Kasandra",
     "rent a car Sitonija",
     
     // Aerodrom i transport
     "rent a car aerodrom Solun",
+    "iznajmljivanje auta aerodrom Solun",
     "iznajmljivanje vozila Solun",
     "najam auta Grčka",
     
@@ -155,12 +163,16 @@ export const seoKeywords = {
     "închirieri auto Halkidiki",
     "rent a car Halkidiki Grecia",
     "închiriere mașină Grecia",
+    "închirieri auto Grecia",
+    "rent a car Grecia",
     "rent a car Nea Kallikratia",
+    "închirieri auto Nea Kallikratia",
     "închirieri auto Kassandra",
     "rent a car Sithonia",
     
     // Aeroport și transport
     "rent a car aeroport Salonic",
+    "închirieri auto aeroport Salonic",
     "închiriere auto Salonic",
     "mașină de închiriat Grecia",
     
@@ -190,12 +202,16 @@ export const seoKeywords = {
     "рент а кар Халкидики",
     "кола под наем Халкидики",
     "наем на кола Гърция",
+    "рент а кар Гърция",
+    "кола под наем Гърция",
     "коли под наем Неа Каликратия",
+    "рент а кар Неа Каликратия",
     "рент а кар Касандра",
     "наем на автомобил Ситония",
     
     // Летище и транспорт
     "рент а кар летище Солун",
+    "кола под наем летище Солун",
     "наем на кола Солун",
     "автомобил под наем Гърция",
     
@@ -224,12 +240,16 @@ export const seoKeywords = {
     // Κύριοι όροι αναζήτησης
     "ενοικίαση αυτοκινήτου Χαλκιδική",
     "rent a car Χαλκιδική",
+    "ενοικίαση αυτοκινήτου Ελλάδα",
+    "rent a car Ελλάδα",
     "ενοικιάσεις αυτοκινήτων Νέα Καλλικράτεια",
+    "ενοικίαση αυτοκινήτου Νέα Καλλικράτεια",
     "ενοικίαση αυτοκινήτου Κασσάνδρα",
     "ενοικίαση αυτοκινήτου Σιθωνία",
     
     // Αεροδρόμιο
     "ενοικίαση αυτοκινήτου αεροδρόμιο Θεσσαλονίκη",
+    "rent a car αεροδρόμιο Θεσσαλονίκη",
     "rent a car Θεσσαλονίκη",
     
     // Τιμές

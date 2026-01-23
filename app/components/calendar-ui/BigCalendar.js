@@ -62,16 +62,22 @@ import {
   useMobileCalendarScroll,
   useCalendarMoveMode,
 } from "@/app/admin/features/calendar/hooks";
+import { useFirstColumnWidth } from "@/hooks/useFirstColumnWidth";
 
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
 // ============================================
-function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children }) {
+function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children, firstColumnWidth }) {
   return (
     <Box
       ref={calendarRef}
       className="bigcalendar-root" // Оставляем для media queries в globals.css
-      sx={calendarStyles.root}
+      sx={{
+        ...calendarStyles.root,
+        ...(firstColumnWidth && {
+          "--resource-col-width": `${firstColumnWidth}px`,
+        }),
+      }}
     >
       {/* Легенда календаря */}
       {showLegend && (
@@ -123,6 +129,10 @@ function BigCalendarHeader({
           sx={{
             ...calendarStyles.headerFirstCell,
             backgroundColor: headerStyles.baseBg,
+            // Use CSS variable for width to match body first column
+            width: "var(--resource-col-width, auto)",
+            minWidth: "var(--resource-col-width, auto)",
+            maxWidth: "var(--resource-col-width, auto)",
           }}
         >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -565,6 +575,14 @@ export default function BigCalendar({ cars, showLegend = true }) {
     return [...cars].sort((a, b) => a.model.localeCompare(b.model));
   }, [cars]);
 
+  // Calculate first column width based on longest vehicle name
+  // Uses computed styles from actual DOM for accurate measurement
+  const { width: firstColumnWidth, setMeasurementRef } = useFirstColumnWidth(cars, {
+    minWidth: 160,
+    maxWidth: 400,
+    debounceMs: 150,
+  });
+
   const handleAddOrderClick = (car, dateStr) => {
     // Если в режиме перемещения - не открываем AddOrderModal
     if (moveMode) return;
@@ -654,6 +672,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
       showLegend={showLegend}
       borderStyle={`1px solid ${calendarHeaderStyles.border}`}
       calendarRef={calendarRef}
+      firstColumnWidth={firstColumnWidth}
     >
       {/* Table с sticky header */}
       <Table
@@ -681,9 +700,10 @@ export default function BigCalendar({ cars, showLegend = true }) {
             calendarRef={calendarRef}
           />
           <TableBody>
-            {sortedCars.map((car) => (
+            {sortedCars.map((car, index) => (
               <TableRow key={car._id}>
                 <CalendarFirstColumn
+                  ref={index === 0 ? setMeasurementRef : null}
                   onClick={() => handleEditCar(car)}
                   title="Нажмите для редактирования информации об автомобиле"
                 >

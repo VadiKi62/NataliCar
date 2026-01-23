@@ -744,7 +744,9 @@ export const calendarStyles = {
     left: 0,
     zIndex: 5,
     fontWeight: "bold",
-    minWidth: 120,
+    // Width controlled by CSS variable --resource-col-width (set dynamically)
+    // Fallback to 120px if variable not set
+    minWidth: "var(--resource-col-width, 120px)",
     height: 82,
     py: 0,
   },
@@ -773,9 +775,11 @@ export const calendarStyles = {
       sm: "4px 8px !important", 
       md: "6px 12px !important" 
     },
-    width: { xs: 55, sm: 100, md: 140 },
-    minWidth: { xs: 55, sm: 100, md: 140 },
-    maxWidth: { xs: 55, sm: 100, md: 140 },
+    // Width controlled by CSS variable --resource-col-width (set dynamically)
+    // Fallback to responsive widths if variable not set
+    width: { xs: "var(--resource-col-width, 55px)", sm: "var(--resource-col-width, 100px)", md: "var(--resource-col-width, 140px)" },
+    minWidth: { xs: "var(--resource-col-width, 55px)", sm: "var(--resource-col-width, 100px)", md: "var(--resource-col-width, 140px)" },
+    maxWidth: { xs: "var(--resource-col-width, 55px)", sm: "var(--resource-col-width, 100px)", md: "var(--resource-col-width, 140px)" },
     fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.875rem" },
     fontWeight: 500,
     lineHeight: 1.2,
