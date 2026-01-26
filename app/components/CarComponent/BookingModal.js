@@ -966,10 +966,10 @@ const BookingModal = ({
                         onChange={(e) => setInsurance(e.target.value)}
                         sx={{
                           height: { sm: "40px" },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              height: "50px",
-                            },
+                          // Используем правильный синтаксис MUI для кастомных media queries
+                          "@media (max-width:600px) and (orientation: portrait)": {
+                            height: "50px",
+                          },
                         }}
                       >
                         {(
@@ -998,13 +998,16 @@ const BookingModal = ({
                         size="small"
                         sx={{ 
                           flex: 1,
-                          "& .MuiInputBase-root": {
-                            height: "40px !important",
-                            minHeight: "40px !important",
-                            "@media (max-width:600px) and (orientation: portrait)": {
+                          // Используем правильный синтаксис MUI для кастомных media queries
+                          "@media (max-width:600px) and (orientation: portrait)": {
+                            "& .MuiInputBase-root": {
                               height: "50px !important",
                               minHeight: "50px !important",
                             },
+                          },
+                          "& .MuiInputBase-root": {
+                            height: "40px !important",
+                            minHeight: "40px !important",
                           },
                         }}
                       />
@@ -1026,10 +1029,10 @@ const BookingModal = ({
                         onChange={(e) => setChildSeats(Number(e.target.value))}
                         sx={{
                           height: { sm: "40px" },
-                          "@media (max-width:600px) and (orientation: portrait)":
-                            {
-                              height: "50px",
-                            },
+                          // Используем правильный синтаксис MUI для кастомных media queries
+                          "@media (max-width:600px) and (orientation: portrait)": {
+                            height: "50px",
+                          },
                         }}
                       >
                         <MenuItem value={0}>

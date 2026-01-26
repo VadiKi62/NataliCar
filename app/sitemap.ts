@@ -1,9 +1,29 @@
 import { MetadataRoute } from "next";
 import { getSeoConfig } from "@config/seo";
 
+/**
+ * Get production base URL for sitemap.
+ * Sitemap MUST only contain production URLs, never preview/staging URLs.
+ */
+function getProductionBaseUrl(): string {
+  // Always use NEXT_PUBLIC_SITE_URL if set (should be production domain)
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  }
+  
+  // If VERCEL_ENV is production, VERCEL_URL is the production domain
+  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  // For preview/staging deployments, always use production domain
+  // This ensures sitemap.xml never contains preview URLs
+  return "https://www.natali-cars.com";
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const seoConfig = getSeoConfig();
-  const baseUrl = seoConfig.baseUrl;
+  // Use production URL only (never preview URLs)
+  const baseUrl = getProductionBaseUrl();
   const currentDate = new Date().toISOString();
 
   // Static pages

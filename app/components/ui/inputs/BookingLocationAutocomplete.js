@@ -38,7 +38,11 @@ const BookingLocationAutocomplete = ({
           backgroundColor: theme.palette.background.paper,
         }),
       }}
-      PopperProps={{ style: { zIndex: 1400 } }}
+      slotProps={{
+        popper: {
+          style: { zIndex: 1400 },
+        },
+      }}
       renderInput={(params) => (
         <TextField
           {...params}

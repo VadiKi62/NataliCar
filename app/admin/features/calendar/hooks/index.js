@@ -7,3 +7,4 @@ export {
   buildOrderDateRange,
 } from "./calendarDays";
 export { useCalendarMoveMode } from "./useCalendarMoveMode";
+export { useCalendarCellGesture } from "./useCalendarCellGesture";

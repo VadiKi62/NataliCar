@@ -20,6 +20,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { useTranslation } from "react-i18next";
 import { formatTimeHHMM, createAthensDateTime } from "@/domain/time/athensTime";
 import { keyframes } from "@mui/material/styles";
+import { BufferSettingsLinkifiedText } from "@/app/components/ui";
 
 // Необходимо для dayjs("18:00", "HH:mm")
 dayjs.extend(customParseFormat);
@@ -58,6 +59,7 @@ export default function TimePicker({
   returnDisabled = false,
   pickupSummary = null,
   returnSummary = null,
+  onOpenBufferSettings,
 }) {
   const { t } = useTranslation();
 
@@ -193,7 +195,10 @@ export default function TimePicker({
       {showPickupWarning && (
         <Alert severity="warning" sx={{ mb: 1, py: 0 }}>
           <Typography variant="body2" sx={{ fontSize: 12 }}>
-            {pickupSummary.message}
+            <BufferSettingsLinkifiedText
+              text={pickupSummary.message}
+              onOpen={onOpenBufferSettings}
+            />
           </Typography>
         </Alert>
       )}
@@ -201,7 +206,10 @@ export default function TimePicker({
       {showReturnWarning && returnSummary?.message !== pickupSummary?.message && (
         <Alert severity="warning" sx={{ mb: 1, py: 0 }}>
           <Typography variant="body2" sx={{ fontSize: 12 }}>
-            {returnSummary.message}
+            <BufferSettingsLinkifiedText
+              text={returnSummary.message}
+              onOpen={onOpenBufferSettings}
+            />
           </Typography>
         </Alert>
       )}

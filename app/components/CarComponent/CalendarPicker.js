@@ -233,17 +233,6 @@ const CalendarPicker = ({
     setConfirmedDates(confirmed);
     setStartEndDates(startEnd);
 
-    // Базовая сводка для быстрой проверки (только в development)
-    if (process.env.NODE_ENV === "development" && (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)) {
-      console.log("[CalendarPicker] Dates prepared:", {
-        carId,
-        confirmedCount: confirmed?.length || 0,
-        unavailableCount: unavailable?.length || 0,
-        startEndCount: startEnd?.length || 0,
-        overlapCount: transformedStartEndOverlap?.length || 0,
-      });
-    }
-
     // Точечная диагностика для конкретной даты (если указана DEBUG_DATE)
     if (process.env.NODE_ENV === "development" && DEBUG_DATE && (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)) {
       const isConf = confirmed?.includes(DEBUG_DATE);

@@ -109,8 +109,7 @@ export async function POST(request) {
       timeOut
     );
 
-    console.log("!! - > result1", status);
-    console.log("!! - > result1", data);
+    // Debug logs removed - checkConflicts returns undefined status/data when no conflicts
     if (status) {
       switch (status) {
         case 409:
@@ -152,9 +151,10 @@ export async function POST(request) {
       ChildSeats
     );
 
-    // Используем totalPrice из клиента, если он есть, иначе считаем на бэкенде
+    // Используем totalPrice из клиента ТОЛЬКО если он > 0, иначе используем рассчитанный на бэкенде
+    // Это защищает от случаев когда фронтенд отправляет 0 (до завершения расчёта)
     const totalPriceToSave =
-      typeof totalPriceFromClient === "number" && !isNaN(totalPriceFromClient)
+      typeof totalPriceFromClient === "number" && totalPriceFromClient > 0
         ? totalPriceFromClient
         : total;
 

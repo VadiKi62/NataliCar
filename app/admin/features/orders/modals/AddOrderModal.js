@@ -232,6 +232,17 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   const handleBookingComplete = async () => {
     setLoadingState(true);
     setStatusMessage({ type: null, message: "" });
+    
+    // Валидация: цена должна быть рассчитана
+    if (calcLoading) {
+      setStatusMessage({
+        type: "error",
+        message: "Дождитесь расчёта стоимости",
+      });
+      setLoadingState(false);
+      return;
+    }
+    
     // Валидация: начало не раньше сегодняшнего дня
     if (bookDates.start && dayjs(bookDates.start).isBefore(dayjs(), "day")) {
       setStatusMessage({
@@ -257,6 +268,11 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     const timeInUTC = toServerUTC(timeInAthens);
     const timeOutUTC = toServerUTC(timeOutAthens);
 
+    // Используем daysAndTotal.totalPrice если orderDetails.totalPrice ещё не обновился (race condition)
+    const finalTotalPrice = orderDetails.totalPrice > 0 
+      ? orderDetails.totalPrice 
+      : daysAndTotal.totalPrice;
+    
     const data = {
       carNumber: car?.carNumber,
       customerName: orderDetails.customerName,
@@ -274,7 +290,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       insurance: orderDetails.insurance,
       franchiseOrder: orderDetails.franchiseOrder,
       orderNumber: orderDetails.orderNumber,
-      totalPrice: orderDetails.totalPrice,
+      totalPrice: finalTotalPrice,
       flightNumber: orderDetails.flightNumber,
     };
 

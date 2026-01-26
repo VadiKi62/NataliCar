@@ -11,7 +11,6 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 import { useMainContext } from "@app/Context";
-import { returnOverlapOrders } from "@utils/functions";
 import { formatDate, isPast, BUSINESS_TZ } from "@utils/businessTime";
 import PropTypes from "prop-types";
 import { useSnackbar } from "notistack";
@@ -36,9 +35,80 @@ import {
   // Move mode
   getMoveDayFlags,
 } from "@/app/admin/features/calendar/helpers";
-import { useCalendarOrders } from "@/app/admin/features/calendar/hooks";
+import { useCalendarCellGesture, useCalendarOrders } from "@/app/admin/features/calendar/hooks";
 // ⚠️ ЗАФИКСИРОВАНО: Цвета для режима перемещения из централизованного конфига
 import { MOVE_MODE_COLORS } from "@/config/orderColors";
+
+// ============================================
+// Pure helper: cell state flags (no JSX, no side effects)
+// ============================================
+export function getCalendarCellState({
+  date,
+  dateStr,
+  ordersForDate,
+  confirmedDates,
+  unavailableDates,
+  overlapDates,
+  startEndDates,
+  startEndOverlapDates,
+  selectedOrderDates,
+  moveMode,
+  isCarCompatibleForMove,
+  carOrders,
+}) {
+  const isPastDay = date.isBefore(dayjs(), "day");
+  const isConfirmed = confirmedDates.includes(dateStr);
+  const isUnavailable = unavailableDates.includes(dateStr);
+
+  const startEndInfoResult = getStartEndInfo(startEndDates, dateStr);
+  const isStartDate = startEndInfoResult.isStartDate;
+  const isEndDate = startEndInfoResult.isEndDate;
+
+  const startEndOverlapResult = getStartEndOverlapInfo(startEndOverlapDates, dateStr);
+  const isStartEndOverlap = startEndOverlapResult.isOverlap;
+
+  const overlapResult = getOverlapInfo(overlapDates, dateStr);
+  const isOverlapDate = overlapResult.isOverlap;
+
+  const isCompletedCell = isDateInCompletedOrder(carOrders, dateStr);
+
+  const isCellEmpty =
+    !isConfirmed &&
+    !isUnavailable &&
+    !isOverlapDate &&
+    !isStartEndOverlap &&
+    !isStartDate &&
+    !isEndDate;
+
+  const moveDayFlags = getMoveDayFlags(selectedOrderDates, dateStr);
+  const isFirstMoveDay = moveDayFlags.isFirstMoveDay;
+  const isLastMoveDay = moveDayFlags.isLastMoveDay;
+
+  const isInMoveModeDateRange =
+    moveMode &&
+    selectedOrderDates &&
+    selectedOrderDates.includes(dateStr) &&
+    isCarCompatibleForMove;
+
+  return {
+    isPastDay,
+    isConfirmed,
+    isUnavailable,
+    isStartDate,
+    isEndDate,
+    isOverlapDate,
+    isStartEndOverlap,
+    isCompletedCell,
+    isCellEmpty,
+    isFirstMoveDay,
+    isLastMoveDay,
+    isInMoveModeDateRange,
+    // Also expose raw info objects for cases that need them
+    startEndInfo: startEndInfoResult.info,
+    startEndOverlapInfo: startEndOverlapResult.info,
+    overlapInfo: overlapResult.info,
+  };
+}
 
 CarTableRow.propTypes = {
   car: PropTypes.object.isRequired,
@@ -75,13 +145,8 @@ export default function CarTableRow({
   isCarCompatibleForMove,
 }) {
   const theme = useTheme();
-  const [pressTimer, setPressTimer] = useState(null);
-  const pressTimerRef = useRef(null);
-  const [isPressing, setIsPressing] = useState(false);
-  const [longPressOrder, setLongPressOrder] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [clickBlocked, setClickBlocked] = useState(false);
-  const wasLongPressRef = useRef(false);
+  const { beginPress, endPress } = useCalendarCellGesture({ onFinalize: undefined });
 
   // Цвета из единого источника правды (getOrderColor)
 
@@ -97,8 +162,6 @@ export default function CarTableRow({
 
   // ordersByCarId нужен для проверки конфликтов при перемещении на другую машину
   const { ordersByCarId, pendingConfirmBlockById } = useMainContext();
-
-  const [wasLongPress, setWasLongPress] = useState(false);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -163,18 +226,6 @@ export default function CarTableRow({
     }
   }, [selectedMoveOrder]);
 
-  // Функция для получения заказа по дате
-  const getOrderByDate = useCallback(
-    (dateStr) => {
-      return carOrders.find((order) => {
-        const rentalStart = formatDate(order.rentalStartDate, "YYYY-MM-DD");
-        const rentalEnd = formatDate(order.rentalEndDate, "YYYY-MM-DD");
-        return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
-      });
-    },
-    [carOrders]
-  );
-
   // Функция для проверки, является ли дата частью выбранного заказа (для синей подсветки)
   const isPartOfSelectedOrder = useCallback(
     (dateStr) => {
@@ -190,20 +241,16 @@ export default function CarTableRow({
   );
 
   // Функция для проверки, является ли дата последней для заказа
+  // O(1) lookup вместо O(n) filter
   const isLastDateForOrder = useCallback(
     (dateStr) => {
-      const relevantOrders = carOrders.filter((order) => {
-        const rentalStart = formatDate(order.rentalStartDate, "YYYY-MM-DD");
-        const rentalEnd = formatDate(order.rentalEndDate, "YYYY-MM-DD");
-        return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
-      });
-
+      const relevantOrders = ordersByDateMap.get(dateStr) || [];
       return relevantOrders.some((order) => {
         const rentalEnd = formatDate(order.rentalEndDate, "YYYY-MM-DD");
         return rentalEnd === dateStr;
       });
     },
-    [carOrders]
+    [ordersByDateMap]
   );
 
   // Функция для проверки, содержит ли ячейка заказ
@@ -247,10 +294,7 @@ export default function CarTableRow({
     if (moveMode) {
       return;
     }
-    
-    setClickBlocked(false);
-    setWasLongPress(false);
-    
+
     // Определяем типы даты (старт / конец) и совмещённость
     const startEndInfo = startEndDates.find((d) => d.date === dateStr);
     const isStartDate = startEndInfo?.type === "start";
@@ -259,12 +303,8 @@ export default function CarTableRow({
       startEndOverlapDates?.find((dateObj) => dateObj.date === dateStr)
     );
 
-    // Собираем все заказы, покрывающие эту дату
-    const relevantOrders = carOrders.filter((order) => {
-      const rentalStart = formatDate(order.rentalStartDate, "YYYY-MM-DD");
-      const rentalEnd = formatDate(order.rentalEndDate, "YYYY-MM-DD");
-      return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
-    });
+    // Собираем все заказы, покрывающие эту дату (O(1) lookup вместо O(n) filter)
+    const relevantOrders = ordersByDateMap.get(dateStr) || [];
     // Проверяем: все заказы завершены (дата окончания раньше сегодняшнего дня)
     const allCompleted =
       relevantOrders.length > 0 &&
@@ -289,28 +329,21 @@ export default function CarTableRow({
         isStartEndOverlap ||
         (isStartDate && isEndDate));
 
-    if (allowLongPress) {
-      const timer = setTimeout(() => {
-        // Очищаем ref сразу после срабатывания таймера
-        pressTimerRef.current = null;
-        setPressTimer(null);
-
+    beginPress({
+      enableLongPress: allowLongPress,
+      delayMs: 300,
+      onLongPress: () => {
         // Предпочитаем заказ, который НАЧИНАЕТСЯ в эту дату (требование: на совмещённой дате выбирать начинающийся заказ)
         const startingOrder = relevantOrders.find(
-          (order) =>
-            formatDate(order.rentalStartDate, "YYYY-MM-DD") === dateStr
+          (order) => formatDate(order.rentalStartDate, "YYYY-MM-DD") === dateStr
         );
-        // Если нет стартующего, пробуем заканчивающийся (на случай редких ситуаций), иначе fallback к первой найденной логике
+        // Если нет стартующего, пробуем заканчивающийся (на случай редких ситуаций), иначе fallback к первому заказу
         const endingOrder = relevantOrders.find(
           (order) => formatDate(order.rentalEndDate, "YYYY-MM-DD") === dateStr
         );
-        const fallbackOrder = getOrderByDate(dateStr);
-        const order = startingOrder || endingOrder || fallbackOrder;
+        const order = startingOrder || endingOrder || relevantOrders[0];
 
         if (order) {
-          wasLongPressRef.current = true;
-          setWasLongPress(true);
-          setClickBlocked(true);
           // 🔧 PERF FIX: Gate console.log behind dev check to reduce production overhead
           if (process.env.NODE_ENV !== "production") {
             console.log("Long press detected on order:", {
@@ -330,40 +363,9 @@ export default function CarTableRow({
             onLongPress(order);
           }
         }
-      }, 300); // Уменьшено до 300ms для более быстрой реакции
-
-      setPressTimer(timer);
-      pressTimerRef.current = timer;
-    }
-  }, [moveMode, startEndDates, startEndOverlapDates, carOrders, hasOrder, isLastDateForOrder, getOrderByDate, onLongPress]);
-
-  // Отмена таймера (вызывается только при mouseup ДО срабатывания long press)
-  const cancelLongPressTimer = useCallback(() => {
-    const timer = pressTimerRef.current;
-    if (timer) {
-      clearTimeout(timer);
-      pressTimerRef.current = null;
-      setPressTimer(null);
-    }
-  }, []);
-
-  // Document-level mouseup listener для отлова отпускания мыши вне ячейки
-  useEffect(() => {
-    const handleDocumentMouseUp = () => {
-      // Если таймер ещё активен (long press не сработал), отменяем его
-      if (pressTimerRef.current) {
-        cancelLongPressTimer();
-        setClickBlocked(false);
-      }
-      // Если long press уже сработал (wasLongPressRef.current = true), ничего не делаем
-      // moveMode уже включен
-    };
-
-    document.addEventListener("mouseup", handleDocumentMouseUp);
-    return () => {
-      document.removeEventListener("mouseup", handleDocumentMouseUp);
-    };
-  }, [cancelLongPressTimer]);
+      },
+    });
+  }, [moveMode, startEndDates, startEndOverlapDates, ordersByDateMap, hasOrder, isLastDateForOrder, onLongPress, beginPress]);
 
   // Старый handleLongPressEnd теперь не отменяет таймер при mouseLeave
   const handleLongPressEnd = () => {
@@ -377,8 +379,27 @@ export default function CarTableRow({
       // Date context
       // =======================
       const dateStr = date.format("YYYY-MM-DD");
-      const isPastDay = date.isBefore(dayjs(), "day");
-      const isCompletedCell = isDateInCompletedOrder(carOrders, dateStr);
+      // O(1) lookup вместо O(n) filter — перенесено сюда для использования в cellState
+      const ordersForDate = ordersByDateMap.get(dateStr) || [];
+
+      // Вычисляем все флаги через pure helper
+      const cellState = getCalendarCellState({
+        date,
+        dateStr,
+        ordersForDate,
+        confirmedDates,
+        unavailableDates,
+        overlapDates,
+        startEndDates,
+        startEndOverlapDates,
+        selectedOrderDates,
+        moveMode,
+        isCarCompatibleForMove,
+        carOrders,
+      });
+
+      // Destructure info objects that are needed for specific rendering logic
+      const { startEndInfo, startEndOverlapInfo: isStartAndEndDateOverlapInfo, overlapInfo: isOverlapDateInfo } = cellState;
 
       if (isPartOfSelectedOrder(dateStr) && selectedOrderId) {
         const selectedOrder = carOrders.find((o) => o._id === selectedOrderId);
@@ -575,39 +596,13 @@ export default function CarTableRow({
       };
 
       // =======================
-      // Base state flags
-      // =======================
-      const isConfirmed = confirmedDates.includes(dateStr);
-      const isUnavailable = unavailableDates.includes(dateStr);
-
-      // Start/End info
-      const startEndInfoResult = getStartEndInfo(startEndDates, dateStr);
-      const isStartDate = startEndInfoResult.isStartDate;
-      const isEndDate = startEndInfoResult.isEndDate;
-      const startEndInfo = startEndInfoResult.info;
-
-      // Start+End overlap info
-      const startEndOverlapResult = getStartEndOverlapInfo(startEndOverlapDates, dateStr);
-      const isStartEndOverlap = startEndOverlapResult.isOverlap;
-      const isStartAndEndDateOverlapInfo = startEndOverlapResult.info;
-
-      // Overlap info
-      const overlapResult = getOverlapInfo(overlapDates, dateStr);
-      const isOverlapDate = overlapResult.isOverlap;
-      const isOverlapDateInfo = overlapResult.info;
-
-      const overlapOrders = returnOverlapOrders(carOrders, dateStr);
-
-      // =======================
       // Base cell styling
       // =======================
-      const ordersForDate = returnOverlapOrders(carOrders, dateStr);
-      
       // Определяем цвет ячейки на основе заказов используя getOrderColor
       let backgroundColor = "transparent";
       let color = "inherit";
       
-      if (isConfirmed) {
+      if (cellState.isConfirmed) {
         // Для confirmed ячеек берем первый confirmed заказ
         const confirmedOrder = ordersForDate?.find((order) => order.confirmed);
         if (confirmedOrder) {
@@ -615,7 +610,7 @@ export default function CarTableRow({
           backgroundColor = orderColor.main;
           color = "white";
         }
-      } else if (isUnavailable) {
+      } else if (cellState.isUnavailable) {
         // Для pending ячеек берем первый pending заказ
         const pendingOrder = ordersForDate?.find((order) => !order.confirmed);
         if (pendingOrder) {
@@ -629,30 +624,22 @@ export default function CarTableRow({
       let width;
 
       // =======================
-      // Move mode flags
+      // Move mode flags (styling logic — uses cellState flags)
       // =======================
-      const moveDayFlags = getMoveDayFlags(selectedOrderDates, dateStr);
-      let isFirstMoveDay = moveDayFlags.isFirstMoveDay;
-      let isLastMoveDay = moveDayFlags.isLastMoveDay;
+      // isInMoveModeDateRange is a LOCAL variable that gets set based on additional conditions
       let isInMoveModeDateRange = false;
       let gradientBackground = null;
       let shouldShowYellowOverlay = false;
 
-      if (
-        moveMode &&
-        selectedOrderDates &&
-        selectedOrderDates.includes(dateStr) &&
-        isCarCompatibleForMove
-      ) {
-
+      if (cellState.isInMoveModeDateRange) {
         // Применяем желтый фон для пустых ячеек и совместимых автомобилей
         // ⚠️ ЗАФИКСИРОВАНО: Используем централизованную константу из config/orderColors.js
         const yellowColor = MOVE_MODE_COLORS.YELLOW_SOLID; // Сплошной желтый для фона
         if (backgroundColor === "transparent") {
-          if (isFirstMoveDay) {
+          if (cellState.isFirstMoveDay) {
             // Желтый фон в правой половине первого дня
             gradientBackground = `linear-gradient(to right, transparent 50%, ${yellowColor} 50%)`;
-          } else if (isLastMoveDay) {
+          } else if (cellState.isLastMoveDay) {
             // Желтый фон в левой половине последнего дня
             gradientBackground = `linear-gradient(to right, ${yellowColor} 50%, transparent 50%)`;
           } else {
@@ -662,7 +649,7 @@ export default function CarTableRow({
           isInMoveModeDateRange = true;
         } else {
           // Для занятых ячеек в первый и последний дни показываем желтый overlay
-          if (isFirstMoveDay || isLastMoveDay) {
+          if (cellState.isFirstMoveDay || cellState.isLastMoveDay) {
             shouldShowYellowOverlay = true;
             isInMoveModeDateRange = true;
           }
@@ -693,7 +680,7 @@ export default function CarTableRow({
         }
       }
 
-      if (isStartDate && !isEndDate) {
+      if (cellState.isStartDate && !cellState.isEndDate) {
         borderRadius = "50% 0 0 50%";
         width = "50%";
         if (!isPartOfSelectedOrder(dateStr) && !isInMoveModeDateRange) {
@@ -706,7 +693,7 @@ export default function CarTableRow({
           }
         }
       }
-      if (!isStartDate && isEndDate) {
+      if (!cellState.isStartDate && cellState.isEndDate) {
         borderRadius = "0 50% 50% 0";
         width = "50%";
 
@@ -732,24 +719,11 @@ export default function CarTableRow({
       // =======================
       // Обработчик для обычного клика (onMouseUp для более быстрой реакции)
       const handleMouseUp = (e) => {
-        const timer = pressTimerRef.current;
-        // Если таймер еще активен (быстрый клик), отменяем его и обрабатываем как обычный клик
-        if (timer) {
-          clearTimeout(timer);
-          pressTimerRef.current = null;
-          setPressTimer(null);
-          setClickBlocked(false);
-          wasLongPressRef.current = false;
-          // Обрабатываем как обычный клик
-          handleDateClickLogic(e);
-        } else if (!wasLongPressRef.current && !clickBlocked) {
-          // Обычный клик без long press
-          handleDateClickLogic(e);
-        }
-        // Сбрасываем флаги
-        wasLongPressRef.current = false;
-        setWasLongPress(false);
-        setClickBlocked(false);
+        endPress({
+          onClick: () => {
+            handleDateClickLogic(e);
+          },
+        });
       };
       
       const handleDateClickLogic = (e) => {
@@ -759,19 +733,8 @@ export default function CarTableRow({
         if (moveMode) {
           // Проверяем, кликнули ли мы по выбранному для перемещения заказу (синяя ячейка)
           if (selectedMoveOrder) {
-            const relevantOrders = carOrders.filter((order) => {
-              const rentalStart = formatDate(order.rentalStartDate, "YYYY-MM-DD");
-              const rentalEnd = formatDate(order.rentalEndDate, "YYYY-MM-DD");
-              return dayjs(dateStr).isBetween(
-                rentalStart,
-                rentalEnd,
-                "day",
-                "[]"
-              );
-            });
-
             // Если среди заказов на этой дате есть выбранный для перемещения заказ
-            const isClickOnSelectedOrder = relevantOrders.some(
+            const isClickOnSelectedOrder = ordersForDate.some(
               (order) => order._id === selectedMoveOrder._id
             );
 
@@ -787,31 +750,25 @@ export default function CarTableRow({
           return;
         }
 
-        const relevantOrders = carOrders.filter((order) => {
-          const rentalStart = formatDate(order.rentalStartDate, "YYYY-MM-DD");
-          const rentalEnd = formatDate(order.rentalEndDate, "YYYY-MM-DD");
-          return dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]");
-        });
-
         // Блокируем клик по ячейке, в которой последний день заказа, если дата в прошлом
-        // НО не блокируем если это одновременно первый день другого заказа (isStartDate)
-        if (isPastDay && isEndDate && !isStartDate) {
+        // НО не блокируем если это одновременно первый день другого заказа (cellState.isStartDate)
+        if (cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate) {
           return;
         }
 
         // 1. Если одновременно последний и первый день заказа
-        if (isEndDate && isStartDate) {
-          setSelectedOrders(relevantOrders);
+        if (cellState.isEndDate && cellState.isStartDate) {
+          setSelectedOrders(ordersForDate);
           setOpen(true);
           return;
         }
 
         // 2. Если последний день заказа и НЕ первый день нового заказа
-        if (isEndDate && !isStartDate) {
+        if (cellState.isEndDate && !cellState.isStartDate) {
           // Проверка на конфликтные заказы
-          if (relevantOrders.length > 1) {
+          if (ordersForDate.length > 1) {
             // Конфликт: открываем окно редактирования заказов
-            setSelectedOrders(relevantOrders);
+            setSelectedOrders(ordersForDate);
             setOpen(true);
             return;
           }
@@ -823,19 +780,11 @@ export default function CarTableRow({
         }
 
         // 3. Обычная логика для остальных случаев
-        if (relevantOrders.length > 0) {
-          setSelectedOrders(relevantOrders);
+        if (ordersForDate.length > 0) {
+          setSelectedOrders(ordersForDate);
           setOpen(true);
         }
       };
-
-      const isCellEmpty =
-        !isConfirmed &&
-        !isUnavailable &&
-        !isOverlapDate &&
-        !isStartEndOverlap &&
-        !isStartDate &&
-        !isEndDate;
 
       // Обработчик клика для overlap дат (CASE 2)
       // Использует ordersForDate напрямую для согласованности с визуальным определением overlap
@@ -861,24 +810,11 @@ export default function CarTableRow({
 
       // Обёртка для handleMouseUp для overlap дат
       const handleOverlapMouseUp = (e) => {
-        const timer = pressTimerRef.current;
-        // Если таймер еще активен (быстрый клик), отменяем его и обрабатываем как обычный клик
-        if (timer) {
-          clearTimeout(timer);
-          pressTimerRef.current = null;
-          setPressTimer(null);
-          setClickBlocked(false);
-          wasLongPressRef.current = false;
-          // Используем специальный обработчик для overlap дат
-          handleOverlapCellClick(e);
-        } else if (!wasLongPressRef.current && !clickBlocked) {
-          // Обычный клик без long press
-          handleOverlapCellClick(e);
-        }
-        // Сбрасываем флаги
-        wasLongPressRef.current = false;
-        setWasLongPress(false);
-        setClickBlocked(false);
+        endPress({
+          onClick: () => {
+            handleOverlapCellClick(e);
+          },
+        });
       };
 
       // ИСПРАВЛЕННАЯ функция обработки клика по пустой ячейке
@@ -889,7 +825,7 @@ export default function CarTableRow({
         }
 
         // Блокируем клик по пустой ячейке, если дата в прошлом
-        if (isPastDay) {
+        if (cellState.isPastDay) {
           return;
         }
 
@@ -987,9 +923,9 @@ export default function CarTableRow({
       // ─────────────────────────────────────────────
       // CASE 1: Empty cell (нет заказов на эту дату)
       // ─────────────────────────────────────────────
-      if (isCellEmpty) {
+      if (cellState.isCellEmpty) {
         // Первый день диапазона перемещения - правый желтый полукруг
-        if (isFirstMoveDay && isCarCompatibleForMove) {
+        if (cellState.isFirstMoveDay && isCarCompatibleForMove) {
           return (
             <Box
               onClick={handleEmptyCellClick}
@@ -1023,7 +959,7 @@ export default function CarTableRow({
         }
 
         // Если это последний день диапазона перемещения - левый желтый полукруг только для совместимых автомобилей
-        if (isLastMoveDay && isCarCompatibleForMove) {
+        if (cellState.isLastMoveDay && isCarCompatibleForMove) {
           return (
             <Box
               onClick={handleEmptyCellClick}
@@ -1067,7 +1003,7 @@ export default function CarTableRow({
               moveMode && isInMoveModeDateRange
                 ? "Нажмите для перемещения заказа"
                 : !moveMode
-                ? isPastDay
+                ? cellState.isPastDay
                   ? "Дата в прошлом — клик недоступен"
                   : "Нажмите для создания нового заказа"
                 : undefined
@@ -1089,7 +1025,7 @@ export default function CarTableRow({
               cursor:
                 moveMode && !isInMoveModeDateRange
                   ? "not-allowed"
-                  : isPastDay
+                  : cellState.isPastDay
                   ? "not-allowed"
                   : "pointer",
               border: border,
@@ -1102,7 +1038,7 @@ export default function CarTableRow({
       // ─────────────────────────────────────────────
       // CASE 2: Overlap date (несколько заказов на одну дату)
       // ─────────────────────────────────────────────
-      if (isOverlapDate && !isStartEndOverlap) {
+      if (cellState.isOverlapDate && !cellState.isStartEndOverlap) {
         const circlesPending = isOverlapDateInfo.pending || 0;
         const circlesConfirmed = isOverlapDateInfo.confirmed || 0;
 
@@ -1140,9 +1076,9 @@ export default function CarTableRow({
                 ? isPartOfSelectedOrder(dateStr)
                   ? "Нажмите для выхода из режима перемещения"
                   : undefined
-                : isCompletedCell
+                : cellState.isCompletedCell
                 ? "Нажмите для просмотра заказа"
-                : isPastDay && isEndDate && !isStartDate
+                : cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
                 ? "Дата в прошлом — клик недоступен"
                 : "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра всех заказов"
             }
@@ -1166,14 +1102,14 @@ export default function CarTableRow({
                 ? MOVE_MODE_COLORS.BLUE_SELECTED
                 : overlapBackgroundColor,
               cursor:
-                isPastDay && isEndDate && !isStartDate
+                cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
                   ? "not-allowed"
                   : "pointer",
               width: "100%",
             }}
           >
             {/* Желтый overlay для первого/последнего дня перемещения */}
-            {createYellowOverlay(isFirstMoveDay, isLastMoveDay)}
+            {createYellowOverlay(cellState.isFirstMoveDay, cellState.isLastMoveDay)}
 
             <Box
               sx={{
@@ -1238,21 +1174,14 @@ export default function CarTableRow({
       // ─────────────────────────────────────────────
       // CASE 3: Start+End overlap (конец одного + начало другого заказа)
       // ─────────────────────────────────────────────
-      if (isStartEndOverlap) {
+      if (cellState.isStartEndOverlap) {
         // Проверяем edge-case для overlap случая
         let shouldHighlightLeft = false;
         let shouldHighlightRight = false;
 
-        // Проверяем, является ли это первым или последним днем диапазона перемещения
-        const isFirstMoveDay =
-          moveMode && selectedOrderDates && selectedOrderDates[0] === dateStr;
-        const isLastMoveDay =
-          moveMode &&
-          selectedOrderDates &&
-          selectedOrderDates[selectedOrderDates.length - 1] === dateStr;
         // Для первого и последнего дня показываем желтый полукруг только для совместимых автомобилей
-        const shouldShowFirstMoveDay = isFirstMoveDay && isCarCompatibleForMove;
-        const shouldShowLastMoveDay = isLastMoveDay && isCarCompatibleForMove;
+        const shouldShowFirstMoveDay = cellState.isFirstMoveDay && isCarCompatibleForMove;
+        const shouldShowLastMoveDay = cellState.isLastMoveDay && isCarCompatibleForMove;
 
         if (selectedOrderId) {
           const selectedOrder = carOrders.find(
@@ -1314,9 +1243,9 @@ export default function CarTableRow({
                   : isPartOfSelectedOrder(dateStr)
                   ? "Нажмите для выхода из режима перемещения"
                   : undefined
-                : isCompletedCell
+                : cellState.isCompletedCell
                 ? "Нажмите для просмотра заказа"
-                : isPastDay && isEndDate && !isStartDate
+                : cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
                 ? "Дата в прошлом — клик недоступен"
                 : "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра и редактирования заказов"
             }
@@ -1328,13 +1257,13 @@ export default function CarTableRow({
               display: "flex",
               flexDirection: "row",
               cursor:
-                isPastDay && isEndDate && !isStartDate
+                cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
                   ? "not-allowed"
                   : "pointer",
             }}
           >
             {/* Желтый overlay для первого/последнего дня перемещения */}
-            {createYellowOverlay(isFirstMoveDay, isLastMoveDay)}
+            {createYellowOverlay(cellState.isFirstMoveDay, cellState.isLastMoveDay)}
 
             <Box
               sx={{
@@ -1420,15 +1349,12 @@ export default function CarTableRow({
       // ─────────────────────────────────────────────
       // CASE 4: Start date only (первый день заказа)
       // ─────────────────────────────────────────────
-      if (isStartDate && !isEndDate && !isOverlapDate) {
+      if (cellState.isStartDate && !cellState.isEndDate && !cellState.isOverlapDate) {
         // Проверяем edge-case для первого дня заказа
         let shouldHighlightRight = false;
 
-        // Проверяем, является ли это первым днем диапазона перемещения
-        const isFirstMoveDay =
-          moveMode && selectedOrderDates && selectedOrderDates[0] === dateStr;
         // Для первого дня показываем желтый полукруг только для совместимых автомобилей
-        const shouldShowFirstMoveDay = isFirstMoveDay && isCarCompatibleForMove;
+        const shouldShowFirstMoveDay = cellState.isFirstMoveDay && isCarCompatibleForMove;
 
         if (selectedOrderId) {
           const selectedOrder = carOrders.find(
@@ -1483,7 +1409,7 @@ export default function CarTableRow({
                   : shouldHighlightRight
                   ? "Нажмите для выхода из режима перемещения"
                   : undefined
-                : isCompletedCell
+                : cellState.isCompletedCell
                 ? "Нажмите для просмотра заказа"
                 : "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
             }
@@ -1499,7 +1425,7 @@ export default function CarTableRow({
             }}
           >
             {/* Желтый overlay для первого/последнего дня перемещения */}
-            {createYellowOverlay(isFirstMoveDay, isLastMoveDay)}
+            {createYellowOverlay(cellState.isFirstMoveDay, cellState.isLastMoveDay)}
 
             <Box
               sx={{
@@ -1551,18 +1477,13 @@ export default function CarTableRow({
       // ─────────────────────────────────────────────
       // CASE 5: End date only (последний день заказа)
       // ─────────────────────────────────────────────
-      if (!isStartDate && isEndDate) {
+      if (!cellState.isStartDate && cellState.isEndDate) {
         // Проверяем edge-case: если выбранный заказ начинается или заканчивается в этот день
         let shouldHighlightLeft = false;
         let shouldHighlightRight = false;
 
-        // Проверяем, является ли это последним днем диапазона перемещения
-        const isLastMoveDay =
-          moveMode &&
-          selectedOrderDates &&
-          selectedOrderDates[selectedOrderDates.length - 1] === dateStr;
         // Для последнего дня показываем желтый полукруг только для совместимых автомобилей
-        const shouldShowLastMoveDay = isLastMoveDay && isCarCompatibleForMove;
+        const shouldShowLastMoveDay = cellState.isLastMoveDay && isCarCompatibleForMove;
 
         if (selectedOrderId) {
           const selectedOrder = carOrders.find(
@@ -1621,9 +1542,9 @@ export default function CarTableRow({
                   : shouldHighlightLeft || shouldHighlightRight
                   ? "Нажмите для выхода из режима перемещения"
                   : undefined
-                : isCompletedCell
+                : cellState.isCompletedCell
                 ? "Нажмите для просмотра заказа"
-                : isPastDay
+                : cellState.isPastDay
                 ? "Дата в прошлом — клик недоступен"
                 : "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
             }
@@ -1634,7 +1555,7 @@ export default function CarTableRow({
               height: "100%",
               display: "flex",
               flexDirection: "row",
-              cursor: isPastDay
+              cursor: cellState.isPastDay
                 ? "not-allowed"
                 : moveMode && !isActiveInMoveMode
                 ? "not-allowed"
@@ -1644,7 +1565,7 @@ export default function CarTableRow({
             }}
           >
             {/* Желтый overlay для первого/последнего дня перемещения */}
-            {createYellowOverlay(isFirstMoveDay, isLastMoveDay)}
+            {createYellowOverlay(cellState.isFirstMoveDay, cellState.isLastMoveDay)}
 
             <Box
               sx={{
@@ -1703,18 +1624,13 @@ export default function CarTableRow({
         moveMode &&
         selectedOrderDates &&
         isCarCompatibleForMove &&
-        (selectedOrderDates[0] === dateStr ||
-          selectedOrderDates[selectedOrderDates.length - 1] === dateStr)
+        (cellState.isFirstMoveDay || cellState.isLastMoveDay)
       ) {
-        const isFirstMoveDay = selectedOrderDates[0] === dateStr;
-        const isLastMoveDay =
-          selectedOrderDates[selectedOrderDates.length - 1] === dateStr;
-
         // 🔧 PERF FIX: Gate console.log behind dev check
         if (process.env.NODE_ENV !== "production") {
           console.log(
             `[BigCalendar][MOVE] Желтый overlay: ${
-              isFirstMoveDay ? "первый день" : "последний день"
+              cellState.isFirstMoveDay ? "первый день" : "последний день"
             } для авто ${car.model} (${car.regNumber}), дата: ${dateStr}`
           );
         }
@@ -1738,7 +1654,7 @@ export default function CarTableRow({
               overflow: "hidden",
             }}
           >
-            {isLastMoveDay && (
+            {cellState.isLastMoveDay && (
               <Box
                 sx={{
                   width: "50%",
@@ -1753,7 +1669,7 @@ export default function CarTableRow({
                 }}
               />
             )}
-            {isFirstMoveDay && (
+            {cellState.isFirstMoveDay && (
               <Box
                 sx={{
                   width: "50%",
@@ -1790,7 +1706,7 @@ export default function CarTableRow({
               ? isPartOfSelectedOrder(dateStr)
                 ? "Нажмите для выхода из режима перемещения"
                 : undefined
-              : isCompletedCell
+              : cellState.isCompletedCell
               ? "Нажмите для просмотра заказа"
               : "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
           }
@@ -1817,7 +1733,7 @@ export default function CarTableRow({
           }}
         >
           {/* Желтый overlay для первого/последнего дня перемещения */}
-          {createYellowOverlay(isFirstMoveDay, isLastMoveDay)}
+          {createYellowOverlay(cellState.isFirstMoveDay, cellState.isLastMoveDay)}
         </Box>
       );
     },
@@ -1828,6 +1744,7 @@ export default function CarTableRow({
       startEndDates,
       startEndOverlapDates,
       carOrders,
+      ordersByDateMap,
       setOpen,
       setSelectedOrders,
       onAddOrderClick,
@@ -1840,7 +1757,6 @@ export default function CarTableRow({
       onExitMoveMode,
       selectedOrderDates,
       isCarCompatibleForMove,
-      clickBlocked,
       enqueueSnackbar,
       handleLongPressStart,
       ordersByCarId,

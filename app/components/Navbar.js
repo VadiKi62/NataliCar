@@ -404,10 +404,11 @@ export default function NavBar({
         ref={headerRef}
         scrolled={scrolled}
         sx={{
+          display: "flex",
           // Явно показываем Navbar на landscape телефоне
-          display: {
-            xs: "flex",
-            "@media (max-width:900px) and (orientation: landscape)": "flex",
+          // Используем правильный синтаксис MUI для кастомных media queries
+          "@media (max-width:900px) and (orientation: landscape)": {
+            display: "flex",
           },
         }}
       >
@@ -666,7 +667,7 @@ export default function NavBar({
               <Link href="/">
                 <Logo
                   sx={{
-                    fontSize: "clamp(12px, calc(0.99rem + 1vw), 32px)",
+                    fontSize: "clamp(12px, calc(0.79rem + 1vw), 32px)", lineHeight: 1,
                   }}
                 >
                   {companyData.name}
@@ -735,10 +736,11 @@ export default function NavBar({
             scrolled={scrolled ? "true" : undefined}
             $isCarInfo={isCarInfo}
             sx={{
+              display: { xs: "flex" },
               // Явно показываем StyledBox на landscape телефоне
-              display: {
-                xs: "flex",
-                "@media (max-width:900px) and (orientation: landscape)": "flex",
+              // Используем правильный синтаксис MUI для кастомных media queries
+              "@media (max-width:900px) and (orientation: landscape)": {
+                display: "flex",
               },
             }}
           >
@@ -752,11 +754,11 @@ export default function NavBar({
                 width: "100%",
                 "& > *": { minWidth: 0 },
                 // apply only for small landscape touch devices (phones/tablets)
-                "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)":
-                  {
-                    gap: 1,
-                    px: 1,
-                  },
+                // Используем правильный синтаксис MUI для кастомных media queries
+                "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)": {
+                  gap: 1,
+                  px: 1,
+                },
               }}
             >
               {/* Legend: occupy only intrinsic space - loaded via AdminRoot */}
@@ -782,12 +784,12 @@ export default function NavBar({
                 <Box
                   sx={{
                     // only override widths for small landscape touch devices; let SelectedFieldClass control desktop sizes
-                    "& .MuiFormControl-root": {
-                      "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)":
-                        {
-                          minWidth: 190,
-                          maxWidth: 210,
-                        },
+                    // Используем правильный синтаксис MUI для кастомных media queries
+                    "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)": {
+                      "& .MuiFormControl-root": {
+                        minWidth: 190,
+                        maxWidth: 210,
+                      },
                     },
                   }}
                 >
@@ -802,12 +804,12 @@ export default function NavBar({
 
                 <Box
                   sx={{
-                    "& .MuiFormControl-root": {
-                      "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)":
-                        {
-                          minWidth: 190,
-                          maxWidth: 210,
-                        },
+                    // Используем правильный синтаксис MUI для кастомных media queries
+                    "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)": {
+                      "& .MuiFormControl-root": {
+                        minWidth: 190,
+                        maxWidth: 210,
+                      },
                     },
                   }}
                 >

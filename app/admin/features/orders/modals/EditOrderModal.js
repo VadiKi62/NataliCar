@@ -25,6 +25,7 @@ import timezone from "dayjs/plugin/timezone";
 import Snackbar from "@/app/components/ui/feedback/Snackbar";
 import { useMainContext } from "@app/Context";
 import TimePicker from "@/app/components/calendar-ui/MuiTimePicker";
+import { BufferSettingsLinkifiedText } from "@/app/components/ui";
 import { companyData } from "@utils/companyData";
 import { useEditOrderConflicts } from "../hooks/useEditOrderConflicts";
 import { useEditOrderPermissions } from "../hooks/useEditOrderPermissions";
@@ -589,23 +590,10 @@ const EditOrderModal = ({
                     component="div"
                     sx={{ color: "error.dark", fontSize: 12, mt: 0.5 }}
                   >
-                    {confirmationCheck.message.split(/⚙️/).map((part, index, arr) => (
-                      index < arr.length - 1 ? (
-                        <span key={index}>
-                          {part}
-                          <span 
-                            onClick={() => setBufferModalOpen(true)}
-                            style={{ 
-                              cursor: "pointer", 
-                              textDecoration: "underline",
-                              color: "#1976d2"
-                            }}
-                          >
-                            ⚙️ Настройки буфера
-                          </span>
-                        </span>
-                      ) : part
-                    ))}
+                    <BufferSettingsLinkifiedText
+                      text={confirmationCheck.message}
+                      onOpen={() => setBufferModalOpen(true)}
+                    />
                 </Typography>
                 </Box>
               )}
@@ -673,6 +661,7 @@ const EditOrderModal = ({
                 returnDisabled={permissions.viewOnly || !permissions.fieldPermissions.timeOut}
                 pickupSummary={finalPickupSummary}
                 returnSummary={finalReturnSummary}
+                onOpenBufferSettings={() => setBufferModalOpen(true)}
               />
 
               {/* 🔴 Block-сообщение — ТОЛЬКО после попытки сохранения */}
@@ -695,26 +684,14 @@ const EditOrderModal = ({
                     component="div"
                     sx={{ color: "error.dark", fontSize: 12, mt: 0.5 }}
                   >
-                    {(pickupSummary?.level === "block"
-                      ? pickupSummary.message
-                      : returnSummary?.message
-                    )?.split(/⚙️/).map((part, index, arr) => (
-                      index < arr.length - 1 ? (
-                        <span key={index}>
-                          {part}
-                          <span 
-                            onClick={() => setBufferModalOpen(true)}
-                            style={{ 
-                              cursor: "pointer", 
-                              textDecoration: "underline",
-                              color: "#1976d2"
-                            }}
-                          >
-                            ⚙️ Настройки буфера
-                          </span>
-                        </span>
-                      ) : part
-                    ))}
+                    <BufferSettingsLinkifiedText
+                      text={
+                        pickupSummary?.level === "block"
+                          ? pickupSummary.message
+                          : returnSummary?.message
+                      }
+                      onOpen={() => setBufferModalOpen(true)}
+                    />
                   </Typography>
                 </Box>
               )}
@@ -746,7 +723,11 @@ const EditOrderModal = ({
                       backgroundColor: "background.paper",
                     },
                   }}
-                  PopperProps={{ style: { zIndex: 1400 } }}
+                  slotProps={{
+                    popper: {
+                      style: { zIndex: 1400 },
+                    },
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -798,7 +779,11 @@ const EditOrderModal = ({
                       backgroundColor: "background.paper",
                     },
                   }}
-                  PopperProps={{ style: { zIndex: 1400 } }}
+                  slotProps={{
+                    popper: {
+                      style: { zIndex: 1400 },
+                    },
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
