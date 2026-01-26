@@ -22,7 +22,7 @@ export const API_URL = RAW_API_URL
 // Fetch a single car by ID using fetch
 export const fetchCar = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/api/car/${id}`, {
+    const response = await fetch(`/api/car/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -45,8 +45,7 @@ export const fetchCar = async (id) => {
 // Fetch all cars using fetch
 export const fetchAll = async () => {
   try {
-    const apiUrl = API_URL ? `${API_URL}/api/car/all` : `/api/car/all`;
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/car/all`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -76,8 +75,7 @@ export const fetchAll = async () => {
 // Используем кеширование для статических данных (revalidate: 600 секунд = 10 минут)
 export const fetchAllCars = async () => {
   try {
-    const apiUrl = API_URL ? `${API_URL}/api/car/all` : `/api/car/all`;
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/car/all`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -110,8 +108,7 @@ export const fetchAllCars = async () => {
 // ============================================================
 export const reFetchActiveOrders = async () => {
   try {
-    const apiUrl = `${API_URL}/api/order/refetch-active`;
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/order/refetch-active`, {
       method: "POST",
       next: { cache: "no-store" },
     });
@@ -132,8 +129,7 @@ export const reFetchActiveOrders = async () => {
 // ============================================================
 export const reFetchAllOrders = async () => {
   try {
-    const apiUrl = `${API_URL}/api/order/refetch`;
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/order/refetch`, {
       next: { cache: "no-store" },
       method: "POST",
     });
@@ -151,7 +147,7 @@ export const reFetchAllOrders = async () => {
 //Adding new order using new order api
 export const addOrderNew = async (orderData) => {
   try {
-    const response = await fetch(`${API_URL}/api/order/add`, {
+    const response = await fetch(`/api/order/add`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -203,7 +199,7 @@ export const addOrderNew = async (orderData) => {
 // Fetch orders by car ID using fetch
 export const fetchOrdersByCar = async (carId) => {
   try {
-    const response = await fetch(`${API_URL}/api/order/${carId}`, {
+    const response = await fetch(`/api/order/${carId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -854,10 +850,7 @@ export async function getConfirmedOrders(orderIds) {
 // Fetch company with caching (revalidate: 3600 секунд = 1 час)
 export async function fetchCompany(companyId) {
   try {
-    const apiUrl = API_URL 
-      ? `${API_URL}/api/company/${companyId}` 
-      : `/api/company/${companyId}`;
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/company/${companyId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -897,11 +890,7 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
       return { success: false, error: "bufferTime must be a number between 0 and 24 hours" };
     }
 
-    const apiUrl = API_URL 
-      ? `${API_URL}/api/company/buffer/${companyId}` 
-      : `/api/company/buffer/${companyId}`;
-    
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/company/buffer/${companyId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -936,8 +925,7 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
  */
 export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko = "TPL", childSeats = 0) {
   try {
-    const apiUrl = API_URL ? `${API_URL}/api/order/calcTotalPrice` : `/api/order/calcTotalPrice`;
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/order/calcTotalPrice`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1256,15 +1244,8 @@ async function sendTelegramMessage(message) {
     return false;
   }
 
-  // Use API_URL if available, otherwise construct from env
-  const baseUrl = API_URL || 
-    process.env.NEXT_PUBLIC_BASE_URL || 
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-  
-  const apiUrl = `${baseUrl}/api/telegram/send`;
-
   try {
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`/api/telegram/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

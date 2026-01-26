@@ -9,19 +9,20 @@ import { getSeoConfig } from "@config/seo";
  * Preview/staging deployments should still generate sitemaps pointing to production.
  */
 function getProductionBaseUrl(): string {
-  const PRODUCTION_URL = "https://www.natali-cars.com";
+  // Canonical production URL (без www - все редиректы идут сюда)
+  const PRODUCTION_URL = "https://natali-cars.com";
   
   // Only use NEXT_PUBLIC_SITE_URL if it's explicitly the production domain
   // This prevents preview URLs from being used even if env var is set
   if (process.env.NEXT_PUBLIC_SITE_URL) {
-    const url = process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+    const url = process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "").replace("www.", "");
     // Check if it's actually the production domain (not a preview URL)
     if (url === PRODUCTION_URL || url.includes("natali-cars.com")) {
-      return url;
+      return PRODUCTION_URL; // Always return canonical URL (без www)
     }
   }
   
-  // Always return production URL for sitemap
+  // Always return production URL for sitemap (canonical, без www)
   // Sitemap must always point to production, even when generated in preview/staging
   return PRODUCTION_URL;
 }

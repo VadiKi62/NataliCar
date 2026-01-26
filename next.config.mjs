@@ -13,6 +13,17 @@ const nextConfig = {
     NEXT_LOCAL_API_BASE_URL: "http://localhost:3000",
     NEXT_PUBLIC_API_BASE_URL: "https://natali-cars.com/",
   },
+  // Canonical domain redirect: www → non-www (SEO + CORS fix)
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.natali-cars.com" }],
+        destination: "https://natali-cars.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     if (!config.resolve.alias) {
       config.resolve.alias = {};
