@@ -54,7 +54,7 @@ import {
   canEditOrderField,
   isClientOrder,
 } from "@/domain/orders/admin-rbac";
-import { updateOrderInline, updateOrderConfirmation } from "@/utils/action";
+import { updateOrderInline, updateOrderConfirmation, fetchAdminOrders, calculateTotalPrice } from "@/utils/action";
 import { useSession } from "next-auth/react";
 import { palette } from "@/theme";
 import { useSnackbar } from "notistack";
@@ -159,17 +159,7 @@ export default function OrdersTableSection() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/orders", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch orders: ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await fetchAdminOrders();
       
       if (data.success) {
         setOrders(data.data || []);
@@ -610,25 +600,12 @@ export default function OrdersTableSection() {
       const kacko = order.insurance || "TPL";
       const childSeats = order.ChildSeats || 0;
       
-      // Call calcTotalPrice API
-      const response = await fetch("/api/order/calcTotalPrice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          carNumber,
-          rentalStartDate,
-          rentalEndDate,
-          kacko,
-          childSeats,
-        }),
-      });
+      // Call calcTotalPrice via centralized action
+      const data = await calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko, childSeats);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Ошибка пересчета цены");
+      if (!data.ok) {
+        throw new Error(data.error || "Ошибка пересчета цены");
       }
-      
-      const data = await response.json();
       
       // 🔧 PRICE ARCHITECTURE: Recalculate updates totalPrice only (not OverridePrice)
       // This preserves manual overrides when recalculating

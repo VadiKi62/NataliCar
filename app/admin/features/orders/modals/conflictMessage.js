@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Grid, Box, Typography, Button } from "@mui/material";
 import dayjs from "dayjs";
 import { useMainContext } from "@app/Context";
+import { deleteOrder } from "@/utils/action";
 
 const mappingTypes = {
   1: "Изменение дат создало конфликт бронирования с даныи датами",
@@ -25,22 +26,20 @@ export default function ConflictMessage({
   const handleDeleteOrder = async (orderId) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/order/deleteOne/${orderId}`, {
-        method: "DELETE",
-      });
+      const result = await deleteOrder(orderId);
 
-      if (!response.ok) {
-        setUpdateMessage(response.statusText);
-        throw new Error(`Error: ${response.statusText}`);
+      if (!result.success) {
+        setUpdateMessage(result.message || "Failed to delete order");
+        throw new Error(result.message || "Failed to delete order");
       }
       await fetchAndUpdateOrders();
       setConflicts((prevConflicts) =>
         prevConflicts.filter((o) => o._id !== orderId)
       );
-      setUpdateMessage(response.message);
+      setUpdateMessage("Order deleted successfully");
     } catch (error) {
       console.error("Failed to delete order:", error);
-      setUpdateMessage(`Failed to delete order: ${error}`);
+      setUpdateMessage(`Failed to delete order: ${error.message}`);
     } finally {
       setLoading(false);
     }

@@ -19,10 +19,36 @@ export const API_URL = RAW_API_URL
   ? String(RAW_API_URL).trim().replace(/\/$/, "")
   : "";
 
+/**
+ * Get API URL that works both on server and client
+ * - Client-side: returns relative path (avoids CORS issues)
+ * - Server-side: returns absolute URL (required for Server Components)
+ * 
+ * @param {string} path - API path starting with /api/...
+ * @returns {string} Full URL for server, relative path for client
+ */
+function getApiUrl(path) {
+  // Client-side: use relative path to avoid CORS
+  if (typeof window !== "undefined") {
+    return path;
+  }
+  
+  // Server-side: need absolute URL
+  // API_URL comes from NEXT_PUBLIC_API_BASE_URL (set in next.config.mjs)
+  // In development: http://localhost:3000
+  // In production: https://natali-cars.com
+  if (!API_URL) {
+    console.warn("[getApiUrl] API_URL is not set, using localhost fallback");
+  }
+  const baseUrl = API_URL || "http://localhost:3000";
+  
+  return `${baseUrl}${path}`;
+}
+
 // Fetch a single car by ID using fetch
 export const fetchCar = async (id) => {
   try {
-    const response = await fetch(`/api/car/${id}`, {
+    const response = await fetch(getApiUrl(`/api/car/${id}`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -45,7 +71,7 @@ export const fetchCar = async (id) => {
 // Fetch all cars using fetch
 export const fetchAll = async () => {
   try {
-    const response = await fetch(`/api/car/all`, {
+    const response = await fetch(getApiUrl(`/api/car/all`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -75,7 +101,7 @@ export const fetchAll = async () => {
 // Используем кеширование для статических данных (revalidate: 600 секунд = 10 минут)
 export const fetchAllCars = async () => {
   try {
-    const response = await fetch(`/api/car/all`, {
+    const response = await fetch(getApiUrl(`/api/car/all`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -108,7 +134,7 @@ export const fetchAllCars = async () => {
 // ============================================================
 export const reFetchActiveOrders = async () => {
   try {
-    const response = await fetch(`/api/order/refetch-active`, {
+    const response = await fetch(getApiUrl(`/api/order/refetch-active`), {
       method: "POST",
       next: { cache: "no-store" },
     });
@@ -129,7 +155,7 @@ export const reFetchActiveOrders = async () => {
 // ============================================================
 export const reFetchAllOrders = async () => {
   try {
-    const response = await fetch(`/api/order/refetch`, {
+    const response = await fetch(getApiUrl(`/api/order/refetch`), {
       next: { cache: "no-store" },
       method: "POST",
     });
@@ -147,7 +173,7 @@ export const reFetchAllOrders = async () => {
 //Adding new order using new order api
 export const addOrderNew = async (orderData) => {
   try {
-    const response = await fetch(`/api/order/add`, {
+    const response = await fetch(getApiUrl(`/api/order/add`), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -199,7 +225,7 @@ export const addOrderNew = async (orderData) => {
 // Fetch orders by car ID using fetch
 export const fetchOrdersByCar = async (carId) => {
   try {
-    const response = await fetch(`/api/order/${carId}`, {
+    const response = await fetch(getApiUrl(`/api/order/${carId}`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -394,7 +420,7 @@ export const changeRentalDates = async (
 export const toggleConfirmedStatus = async (orderId) => {
   console.log("toggleConfirmedStatus orderId:", orderId);
   try {
-    const response = await fetch(`/api/order/update/switchConfirm/${orderId}`, {
+    const response = await fetch(getApiUrl(`/api/order/update/switchConfirm/${orderId}`), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -501,7 +527,7 @@ export const updateCustomerInfo = async (orderId, updateData) => {
  */
 export const updateOrder = async (orderId, payload) => {
   try {
-    const response = await fetch(`/api/order/update/${orderId}`, {
+    const response = await fetch(getApiUrl(`/api/order/update/${orderId}`), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -602,7 +628,7 @@ export const updateOrderInline = async (orderId, fields) => {
     });
   }
   
-  const response = await fetch(`/api/order/update/${orderId}`, {
+  const response = await fetch(getApiUrl(`/api/order/update/${orderId}`), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -683,7 +709,7 @@ export const updateOrderInline = async (orderId, fields) => {
  * @throws {Error} if request fails (network error, 500, etc.)
  */
 export const updateOrderConfirmation = async (orderId) => {
-  const response = await fetch(`/api/order/update/switchConfirm/${orderId}`, {
+  const response = await fetch(getApiUrl(`/api/order/update/switchConfirm/${orderId}`), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -792,7 +818,7 @@ export const deleteCar = async (carId) => {
 export const updateCar = async (updatedCar) => {
   console.log("updatedCar passing to backend from action", updatedCar);
   try {
-    const response = await fetch(`/api/car/update`, {
+    const response = await fetch(getApiUrl(`/api/car/update`), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -813,7 +839,7 @@ export const updateCar = async (updatedCar) => {
 
 export async function getOrderById(orderId) {
   try {
-    const response = await fetch(`/api/order/refetch/${orderId}`, {
+    const response = await fetch(getApiUrl(`/api/order/refetch/${orderId}`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -850,7 +876,7 @@ export async function getConfirmedOrders(orderIds) {
 // Fetch company with caching (revalidate: 3600 секунд = 1 час)
 export async function fetchCompany(companyId) {
   try {
-    const response = await fetch(`/api/company/${companyId}`, {
+    const response = await fetch(getApiUrl(`/api/company/${companyId}`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -890,7 +916,7 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
       return { success: false, error: "bufferTime must be a number between 0 and 24 hours" };
     }
 
-    const response = await fetch(`/api/company/buffer/${companyId}`, {
+    const response = await fetch(getApiUrl(`/api/company/buffer/${companyId}`), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -921,11 +947,13 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
  * @param {Date|string} rentalEndDate - End date
  * @param {string} kacko - Insurance type (default: "TPL")
  * @param {number} childSeats - Number of child seats (default: 0)
- * @returns {Promise<{totalPrice: number, days: number}>}
+ * @param {Object} options - Optional settings
+ * @param {AbortSignal} options.signal - AbortController signal for cancellation
+ * @returns {Promise<{totalPrice: number, days: number, ok: boolean}>}
  */
-export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko = "TPL", childSeats = 0) {
+export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko = "TPL", childSeats = 0, options = {}) {
   try {
-    const response = await fetch(`/api/order/calcTotalPrice`, {
+    const fetchOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -938,17 +966,78 @@ export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndD
         childSeats,
       }),
       cache: "no-store",
-    });
+    };
+
+    // Add AbortSignal if provided
+    if (options.signal) {
+      fetchOptions.signal = options.signal;
+    }
+
+    const response = await fetch(getApiUrl(`/api/order/calcTotalPrice`), fetchOptions);
 
     if (!response.ok) {
-      throw new Error("Failed to calculate total price");
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to calculate total price");
     }
 
     const data = await response.json();
-    return { totalPrice: data.totalPrice || 0, days: data.days || 0 };
+    return { totalPrice: data.totalPrice || 0, days: data.days || 0, ok: true };
   } catch (error) {
-    console.error("Error calculating total price:", error);
-    return { totalPrice: 0, days: 0 };
+    // Don't log abort errors (expected behavior)
+    if (error.name !== "AbortError") {
+      console.error("Error calculating total price:", error);
+    }
+    return { totalPrice: 0, days: 0, ok: false, error: error.message };
+  }
+}
+
+/**
+ * Fetch orders for admin panel (requires authentication)
+ * @returns {Promise<{success: boolean, data: Array, message?: string}>}
+ */
+export async function fetchAdminOrders() {
+  try {
+    const response = await fetch(getApiUrl(`/api/admin/orders`), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch orders: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching admin orders:", error);
+    return { success: false, data: [], message: error.message };
+  }
+}
+
+/**
+ * Delete an order by ID
+ * @param {string} orderId - Order ID to delete
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+export async function deleteOrder(orderId) {
+  try {
+    const response = await fetch(getApiUrl(`/api/order/deleteOne/${orderId}`), {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error ${response.status}: Failed to delete order`);
+    }
+
+    const data = await response.json().catch(() => ({ success: true }));
+    return { success: true, ...data };
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    return { success: false, message: error.message };
   }
 }
 
@@ -1245,7 +1334,7 @@ async function sendTelegramMessage(message) {
   }
 
   try {
-    const response = await fetch(`/api/telegram/send`, {
+    const response = await fetch(getApiUrl(`/api/telegram/send`), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

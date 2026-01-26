@@ -44,7 +44,7 @@ import {
   athensStartOfDay,
   athensNow,
 } from "@/domain/time/athensTime";
-import { updateOrder } from "@utils/action";
+import { updateOrder, calculateTotalPrice, deleteOrder } from "@utils/action";
 
 /**
  * Hook for managing order edit state and price calculation
@@ -235,22 +235,16 @@ export function useEditOrderState({
           });
         }
 
-        const res = await fetch("/api/order/calcTotalPrice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: abortController.signal,
-          body: JSON.stringify({
-            carNumber: selectedCar.carNumber,
-            rentalStartDate: startDateStr,
-            rentalEndDate: endDateStr,
-            kacko: normalizedInsurance, // API expects "kacko", not "insurance"
-            childSeats: normalizedChildSeats, // API expects "childSeats
-            // " (lowercase), normalized value
-          }),
-        });
+        const data = await calculateTotalPrice(
+          selectedCar.carNumber,
+          startDateStr,
+          endDateStr,
+          normalizedInsurance, // API expects "kacko"
+          normalizedChildSeats, // API expects "childSeats" (lowercase)
+          { signal: abortController.signal }
+        );
 
-        if (res.ok) {
-          const data = await res.json();
+        if (data.ok) {
           
           // Race condition check: only update if this is the latest request
           if (requestId === priceCalcRequestId.current && !abortController.signal.aborted) {
@@ -856,12 +850,10 @@ export function useEditOrderState({
     setUpdateMessage(null);
 
     try {
-      const response = await fetch(`/api/order/deleteOne/${editedOrder._id}`, {
-        method: "DELETE",
-      });
+      const result = await deleteOrder(editedOrder._id);
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: Failed to delete order`);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to delete order");
       }
 
       if (setCarOrders) {
