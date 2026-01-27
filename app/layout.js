@@ -1,8 +1,8 @@
 import "@styles/globals.css";
 import "antd/dist/reset.css";
 import Providers from "./providers";
-import { Suspense } from "react";
 import LoaderWrapper from "./components/Loader/LoaderWrapper";
+import Script from "next/script";
 import { getSeoConfig } from "@config/seo";
 import { getPrimaryKeywords } from "@config/seoKeywords";
 
@@ -12,6 +12,30 @@ const seoConfig = getSeoConfig();
 // SEO: Multilingual keywords for better indexing in target markets
 // EN (international), RU (CIS tourists), DE (DACH region), SR (Balkans), EL (local)
 const multilangKeywords = getPrimaryKeywords(8);
+const languageAlternates = seoConfig.supportedLocales?.reduce(
+  (acc, lang) => ({ ...acc, [lang]: seoConfig.baseUrl }),
+  { "x-default": seoConfig.baseUrl }
+);
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: seoConfig.siteName,
+  url: seoConfig.baseUrl,
+  logo: `${seoConfig.baseUrl}/favicon.png`,
+  sameAs: [
+    seoConfig.social.facebook,
+    seoConfig.social.instagram,
+    seoConfig.social.linkedin,
+  ].filter(Boolean),
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: seoConfig.contact.phone,
+    contactType: "customer support",
+    email: seoConfig.contact.email,
+    areaServed: "GR",
+    availableLanguage: ["en", "el", "ru", "de", "sr", "ro", "bg"],
+  },
+};
 
 export const metadata = {
   metadataBase: new URL(seoConfig.baseUrl),
@@ -24,6 +48,10 @@ export const metadata = {
   authors: [{ name: seoConfig.siteName }],
   creator: seoConfig.siteName,
   publisher: seoConfig.siteName,
+  alternates: {
+    canonical: seoConfig.baseUrl,
+    languages: languageAlternates,
+  },
   openGraph: {
     type: "website",
     locale: seoConfig.defaultLocale,
@@ -58,8 +86,7 @@ export const metadata = {
     },
   },
   verification: {
-    // Add Google Search Console verification if available
-    // google: "your-verification-code",
+    google: "google637fd0fc04836d73.html",
   },
   icons: {
     icon: [
@@ -86,6 +113,12 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         {/* <meta name="color-scheme" content="light" /> */}
         <meta name="color-scheme" content="only light" />
+        <Script
+          id="organization-schema"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
       </head>
       <body>
         <Providers>

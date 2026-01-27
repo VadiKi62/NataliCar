@@ -15,17 +15,27 @@
 
 import { companyData as fallbackCompanyData } from "@config/company";
 
+// Normalize to canonical domain (non-www) when the project domain is used
+const normalizeBaseUrl = (url) => {
+  const trimmed = url.replace(/\/$/, "");
+  // Force canonical domain for production to avoid duplicate hosts in SEO signals
+  if (trimmed.includes("natali-cars.com")) {
+    return trimmed.replace("www.", "");
+  }
+  return trimmed;
+};
+
 // Base URL - prioritize env var, fallback to Vercel preview/production URLs
 const getBaseUrl = () => {
   if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+    return normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL);
   }
   // Fallback for Vercel deployments
   if (typeof process !== "undefined" && process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+    return normalizeBaseUrl(`https://${process.env.VERCEL_URL}`);
   }
   // Development fallback
-  return "https://www.natali-cars.com";
+  return "https://natali-cars.com";
 };
 
 /**

@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { getSeoConfig } from "@config/seo";
+import { fetchAllCars } from "@utils/action";
 
 /**
  * Get production base URL for sitemap.
@@ -72,5 +72,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  return staticPages;
+  // Dynamic car detail pages (built against production domain only)
+  let carPages: MetadataRoute.Sitemap = [];
+  try {
+    const cars = await fetchAllCars();
+    carPages = (cars || [])
+      .filter((car: any) => car?._id)
+      .map((car: any) => ({
+        url: `${baseUrl}/car/${car._id}`,
+        lastModified:
+          car.dateLastModified ||
+          car.dateAddCar ||
+          currentDate,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      }));
+  } catch (error) {
+    console.error("[sitemap] Failed to fetch cars", error);
+  }
+
+  return [...staticPages, ...carPages];
 }

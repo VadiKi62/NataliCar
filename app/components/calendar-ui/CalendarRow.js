@@ -1762,6 +1762,7 @@ export default function CarTableRow({
       ordersByCarId,
       theme.palette.divider,
       theme.palette.neutral?.black,
+      endPress,
       MOVE_MODE_COLORS.BLUE_SELECTED,
     ]
   );
