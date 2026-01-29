@@ -18,7 +18,9 @@ import {
   DialogContent,
   Typography,
   Box,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
@@ -84,6 +86,9 @@ const BookingModal = ({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [viber, setViber] = useState(false);
+  const [whatsapp, setWhatsapp] = useState(false);
+  const [telegram, setTelegram] = useState(false);
   const [childSeats, setChildSeats] = useState(0);
   const [insurance, setInsurance] = useState("");
   const [franchiseOrder, setFranchiseOrder] = useState(0);
@@ -447,6 +452,9 @@ const BookingModal = ({
         customerName: name || "",
         phone: phone || "",
         email: email ? email : "",
+        Viber: viber,
+        Whatsapp: whatsapp,
+        Telegram: telegram,
         timeIn: timeInUTC,
         timeOut: timeOutUTC,
         // Привязываем даты аренды к тем же суткам, что и timeIn/timeOut
@@ -557,6 +565,9 @@ const BookingModal = ({
     setName("");
     setEmail("");
     setPhone("");
+    setViber(false);
+    setWhatsapp(false);
+    setTelegram(false);
     setErrors({});
     setIsSubmitted(false);
     setIsSubmitting(false);
@@ -1103,6 +1114,49 @@ const BookingModal = ({
                       type="email"
                       error={!!errors.email}
                       helperText={errors.email}
+                    />
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      mt: 0.5,
+                      mb: 0.5,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={viber}
+                          onChange={(e) => setViber(e.target.checked)}
+                        />
+                      }
+                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      label="Viber"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={whatsapp}
+                          onChange={(e) => setWhatsapp(e.target.checked)}
+                        />
+                      }
+                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      label="WhatsApp"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={telegram}
+                          onChange={(e) => setTelegram(e.target.checked)}
+                        />
+                      }
+                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      label="Telegram"
                     />
                   </Box>
                 </Box>

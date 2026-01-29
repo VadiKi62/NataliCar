@@ -674,6 +674,15 @@ export function useEditOrderState({
         // Use ?? to handle null/undefined as empty string
         payload.email = editedOrder.email ?? "";
       }
+      if (fieldPermissions.Viber !== false) {
+        payload.Viber = Boolean(editedOrder.Viber);
+      }
+      if (fieldPermissions.Whatsapp !== false) {
+        payload.Whatsapp = Boolean(editedOrder.Whatsapp);
+      }
+      if (fieldPermissions.Telegram !== false) {
+        payload.Telegram = Boolean(editedOrder.Telegram);
+      }
       if (fieldPermissions.flightNumber !== false) {
         // Always include flightNumber if permission allows (optional field)
         payload.flightNumber = editedOrder.flightNumber ?? "";
@@ -735,6 +744,9 @@ export function useEditOrderState({
           customerName: payload.customerName,
           phone: payload.phone,
           email: payload.email,
+          Viber: payload.Viber,
+          Whatsapp: payload.Whatsapp,
+          Telegram: payload.Telegram,
           flightNumber: payload.flightNumber,
           totalPrice: payload.totalPrice,
           numberOfDays: payload.numberOfDays,
@@ -743,18 +755,27 @@ export function useEditOrderState({
             customerName: "customerName" in payload,
             phone: "phone" in payload,
             email: "email" in payload,
+            Viber: "Viber" in payload,
+            Whatsapp: "Whatsapp" in payload,
+            Telegram: "Telegram" in payload,
             flightNumber: "flightNumber" in payload,
           },
           fieldPermissions: {
             customerName: fieldPermissions.customerName,
             phone: fieldPermissions.phone,
             email: fieldPermissions.email,
+            Viber: fieldPermissions.Viber,
+            Whatsapp: fieldPermissions.Whatsapp,
+            Telegram: fieldPermissions.Telegram,
             flightNumber: fieldPermissions.flightNumber,
           },
           editedOrderValues: {
             customerName: editedOrder.customerName,
             phone: editedOrder.phone,
             email: editedOrder.email,
+            Viber: editedOrder.Viber,
+            Whatsapp: editedOrder.Whatsapp,
+            Telegram: editedOrder.Telegram,
             flightNumber: editedOrder.flightNumber,
           },
         });
@@ -789,6 +810,9 @@ export function useEditOrderState({
               customerName: updatedOrder.customerName,
               phone: updatedOrder.phone,
               email: updatedOrder.email,
+              Viber: updatedOrder.Viber,
+              Whatsapp: updatedOrder.Whatsapp,
+              Telegram: updatedOrder.Telegram,
               flightNumber: updatedOrder.flightNumber,
               totalPrice: updatedOrder.totalPrice,
               numberOfDays: updatedOrder.numberOfDays,
@@ -796,6 +820,9 @@ export function useEditOrderState({
                 customerName: updatedOrder.customerName === (payload.customerName ?? order.customerName),
                 phone: updatedOrder.phone === (payload.phone ?? order.phone),
                 email: updatedOrder.email === (payload.email ?? order.email),
+                Viber: updatedOrder.Viber === (payload.Viber ?? order.Viber),
+                Whatsapp: updatedOrder.Whatsapp === (payload.Whatsapp ?? order.Whatsapp),
+                Telegram: updatedOrder.Telegram === (payload.Telegram ?? order.Telegram),
                 flightNumber: updatedOrder.flightNumber === (payload.flightNumber ?? order.flightNumber),
               },
             });

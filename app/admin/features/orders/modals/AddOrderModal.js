@@ -18,7 +18,9 @@ import {
   Box,
   TextField,
   CircularProgress,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
@@ -75,6 +77,9 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     customerName: "",
     phone: "",
     email: "",
+    Viber: false,
+    Whatsapp: false,
+    Telegram: false,
     totalPrice: 0,
     numberOfDays: 0,
     confirmed: false,
@@ -278,6 +283,9 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       customerName: orderDetails.customerName,
       phone: orderDetails.phone,
       email: orderDetails.email,
+      Viber: orderDetails.Viber,
+      Whatsapp: orderDetails.Whatsapp,
+      Telegram: orderDetails.Telegram,
       timeIn: timeInUTC,
       timeOut: timeOutUTC,
       rentalStartDate: dayjs(bookDates.start).toDate(), // Дата без времени
@@ -604,12 +612,12 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           required
           sx={{ mb: 1 }}
         />
-          <Box sx={{ 
-                display: "flex", 
-                flexDirection: { xs: "column", sm: "row" },
-                gap: { xs: 0.5, sm: 2 }, 
-                mb: 0 
-              }}>
+        <Box sx={{ 
+              display: "flex", 
+              flexDirection: { xs: "column", sm: "row" },
+              gap: { xs: 0.5, sm: 2 }, 
+              mb: 0 
+            }}>
         <BookingTextField
           label={t("order.phone")}
           value={orderDetails.phone || ""}
@@ -625,6 +633,41 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           type="email"
           sx={{ mb: 1, flex: 1, minHeight: 36}}
         />
+        </Box>
+        <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5, flexWrap: "wrap" }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={Boolean(orderDetails.Viber)}
+                onChange={(e) => handleFieldChange("Viber", e.target.checked)}
+              />
+            }
+            sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+            label="Viber"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={Boolean(orderDetails.Whatsapp)}
+                onChange={(e) => handleFieldChange("Whatsapp", e.target.checked)}
+              />
+            }
+            sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+            label="WhatsApp"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={Boolean(orderDetails.Telegram)}
+                onChange={(e) => handleFieldChange("Telegram", e.target.checked)}
+              />
+            }
+            sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+            label="Telegram"
+          />
         </Box>
         </Box>
       </Box>

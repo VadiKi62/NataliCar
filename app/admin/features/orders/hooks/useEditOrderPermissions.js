@@ -61,6 +61,9 @@ export function useEditOrderPermissions(order, currentUser, isViewOnly = false) 
       customerName: canEditField("customerName"),
       phone: canEditField("phone"),
       email: canEditField("email"),
+      Viber: canEditField("Viber"),
+      Whatsapp: canEditField("Whatsapp"),
+      Telegram: canEditField("Telegram"),
       flightNumber: canEditField("flightNumber"),
     }),
     [canEditField]

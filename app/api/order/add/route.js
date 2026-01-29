@@ -45,6 +45,9 @@ export async function POST(request) {
       insurance,
       franchiseOrder,
       orderNumber,
+      Viber,
+      Whatsapp,
+      Telegram,
       totalPrice: totalPriceFromClient,
     } = await request.json();
 
@@ -182,6 +185,9 @@ export async function POST(request) {
       franchiseOrder,
       orderNumber,
       flightNumber,
+      Viber: Boolean(Viber),
+      Whatsapp: Boolean(Whatsapp),
+      Telegram: Boolean(Telegram),
       // Permission tracking: store who created this order
       createdByRole,
       createdByAdminId,
