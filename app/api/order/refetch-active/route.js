@@ -62,7 +62,7 @@ export async function POST(request) {
       rentalStartDate: { $gte: todayStartUTC },
     })
       .select(
-        "rentalStartDate rentalEndDate timeIn timeOut car carNumber confirmed customerName phone email numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber"
+        "rentalStartDate rentalEndDate timeIn timeOut car carNumber confirmed customerName phone email Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber"
       )
       .lean(); // lean() for performance - returns plain JS objects
 

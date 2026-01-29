@@ -73,6 +73,18 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     required: false, // исправлено на false, чтобы email был необязательным
   },
+  Viber: {
+    type: Boolean,
+    default: false,
+  },
+  Whatsapp: {
+    type: Boolean,
+    default: false,
+  },
+  Telegram: {
+    type: Boolean,
+    default: false,
+  },
   numberOfDays: {
     type: Number,
   },

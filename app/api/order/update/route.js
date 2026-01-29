@@ -11,7 +11,7 @@ export const PUT = async (req) => {
     const { session, errorResponse } = await requireAdmin(req);
     if (errorResponse) return errorResponse;
 
-    const { _id, phone, email, customerName, my_order, flightNumber } =
+    const { _id, phone, email, customerName, my_order, flightNumber, Viber, Whatsapp, Telegram } =
       await req.json(); // Destructure only the allowed fields
     
     // Find the order first to check permissions
@@ -46,6 +46,9 @@ export const PUT = async (req) => {
     if (typeof my_order === "boolean") updateFields.my_order = my_order;
     // Allow updating flightNumber (accept empty string as a valid value)
     if (flightNumber !== undefined) updateFields.flightNumber = flightNumber;
+    if (typeof Viber === "boolean") updateFields.Viber = Viber;
+    if (typeof Whatsapp === "boolean") updateFields.Whatsapp = Whatsapp;
+    if (typeof Telegram === "boolean") updateFields.Telegram = Telegram;
 
     // Update the order with only the allowed fields
     const updatedOrder = await Order.findByIdAndUpdate(_id, updateFields, {

@@ -363,7 +363,7 @@ export function canEditPricing(order, user) {
 
 const DATE_FIELDS = ["rentalStartDate", "rentalEndDate"];
 const TIME_FIELDS = ["timeIn", "timeOut"];
-const CONTACT_FIELDS = ["customerName", "phone", "email"];
+const CONTACT_FIELDS = ["customerName", "phone", "email", "Viber", "Whatsapp", "Telegram"];
 const PRICE_FIELDS = ["totalPrice", "price", "sum"];
 const EXTRAS_FIELDS = ["placeIn", "placeOut", "insurance", "ChildSeats", "franchiseOrder", "flightNumber", "car", "childSeats"];
 const NEVER_INLINE_EDIT_FIELDS = [ "carNumber", "carModel", "numberOfDays"];

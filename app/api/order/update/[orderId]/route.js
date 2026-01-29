@@ -185,6 +185,9 @@ export const PATCH = async (request, { params }) => {
       payload.customerName !== undefined ||
       payload.phone !== undefined ||
       payload.email !== undefined ||
+      payload.Viber !== undefined ||
+      payload.Whatsapp !== undefined ||
+      payload.Telegram !== undefined ||
       payload.flightNumber !== undefined;
 
     const hasConfirmationChange = payload.confirmed !== undefined;
@@ -573,6 +576,9 @@ export const PATCH = async (request, { params }) => {
                 order.customerName = payload.customerName;
               if (payload.phone !== undefined) order.phone = payload.phone;
               if (payload.email !== undefined) order.email = payload.email;
+              if (payload.Viber !== undefined) order.Viber = payload.Viber;
+              if (payload.Whatsapp !== undefined) order.Whatsapp = payload.Whatsapp;
+              if (payload.Telegram !== undefined) order.Telegram = payload.Telegram;
               if (payload.flightNumber !== undefined)
                 order.flightNumber = payload.flightNumber;
             }
@@ -677,6 +683,9 @@ export const PATCH = async (request, { params }) => {
           order.customerName = payload.customerName;
         if (payload.phone !== undefined) order.phone = payload.phone;
         if (payload.email !== undefined) order.email = payload.email;
+        if (payload.Viber !== undefined) order.Viber = payload.Viber;
+        if (payload.Whatsapp !== undefined) order.Whatsapp = payload.Whatsapp;
+        if (payload.Telegram !== undefined) order.Telegram = payload.Telegram;
         if (payload.flightNumber !== undefined)
           order.flightNumber = payload.flightNumber;
       }
@@ -737,6 +746,9 @@ export const PATCH = async (request, { params }) => {
         order.customerName = payload.customerName;
       if (payload.phone !== undefined) order.phone = payload.phone;
       if (payload.email !== undefined) order.email = payload.email;
+      if (payload.Viber !== undefined) order.Viber = payload.Viber;
+      if (payload.Whatsapp !== undefined) order.Whatsapp = payload.Whatsapp;
+      if (payload.Telegram !== undefined) order.Telegram = payload.Telegram;
       if (payload.flightNumber !== undefined)
         order.flightNumber = payload.flightNumber;
 

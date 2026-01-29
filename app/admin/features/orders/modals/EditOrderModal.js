@@ -914,29 +914,81 @@ const EditOrderModal = ({
                 gap: { xs: 0.5, sm: 2 }, 
                 mb: 0 
               }}>
-                <FormControl
-                  fullWidth
-                  margin="dense"
-                  sx={{ flex: 1, minHeight: 36 }}
-                >
-                  <TextField
+                <Box sx={{ flex: 1 }}>
+                  <FormControl
                     fullWidth
                     margin="dense"
-                    size="small"
-                    label={
-                      <>
-                        <span>{t("order.phone")}</span>
-                        <Box component="span" sx={{ color: "primary.dark" }}>*</Box>
-                      </>
-                    }
-                    value={editedOrder.phone || ""}
-                    onChange={(e) =>
-                      !permissions.viewOnly &&
-                      updateField("phone", e.target.value)
-                    }
-                    disabled={permissions.viewOnly || !permissions.fieldPermissions.phone}
-                  />
-                </FormControl>
+                    sx={{ minHeight: 36 }}
+                  >
+                    <TextField
+                      fullWidth
+                      margin="dense"
+                      size="small"
+                      label={
+                        <>
+                          <span>{t("order.phone")}</span>
+                          <Box component="span" sx={{ color: "primary.dark" }}>*</Box>
+                        </>
+                      }
+                      value={editedOrder.phone || ""}
+                      onChange={(e) =>
+                        !permissions.viewOnly &&
+                        updateField("phone", e.target.value)
+                      }
+                      disabled={permissions.viewOnly || !permissions.fieldPermissions.phone}
+                    />
+                  </FormControl>
+                  <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5, flexWrap: "wrap" }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={Boolean(editedOrder.Viber)}
+                          onChange={(e) =>
+                            !permissions.viewOnly &&
+                            permissions.fieldPermissions.Viber &&
+                            updateField("Viber", e.target.checked)
+                          }
+                          disabled={permissions.viewOnly || !permissions.fieldPermissions.Viber}
+                        />
+                      }
+                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      label="Viber"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={Boolean(editedOrder.Whatsapp)}
+                          onChange={(e) =>
+                            !permissions.viewOnly &&
+                            permissions.fieldPermissions.Whatsapp &&
+                            updateField("Whatsapp", e.target.checked)
+                          }
+                          disabled={permissions.viewOnly || !permissions.fieldPermissions.Whatsapp}
+                        />
+                      }
+                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      label="WhatsApp"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={Boolean(editedOrder.Telegram)}
+                          onChange={(e) =>
+                            !permissions.viewOnly &&
+                            permissions.fieldPermissions.Telegram &&
+                            updateField("Telegram", e.target.checked)
+                          }
+                          disabled={permissions.viewOnly || !permissions.fieldPermissions.Telegram}
+                        />
+                      }
+                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      label="Telegram"
+                    />
+                  </Box>
+                </Box>
                 <FormControl
                   fullWidth
                   margin="dense"
