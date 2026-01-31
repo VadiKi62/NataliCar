@@ -14,7 +14,6 @@ import { useSnackbar } from "notistack";
 import { useMainContext } from "@app/Context";
 import { ActionButton } from "@app/components/ui/buttons";
 import sendEmail from "@utils/sendEmail";
-import { companyData } from "@utils/companyData";
 import { DEVELOPER_EMAIL } from "@config/email";
 
 function Contacts() {

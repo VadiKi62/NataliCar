@@ -82,8 +82,13 @@ const OrdersByDateModal = ({
                   ? formatDateRange(order.rentalStartDate, order.rentalEndDate)
                   : ""}
               </TableCell>
-              <TableCell sx={cellSx}>{order.customerName}</TableCell>
-              <TableCell sx={cellSx}>{order.phone}</TableCell>
+              {/* Скрываем PII если _visibility.hideClientContacts === true */}
+              <TableCell sx={cellSx}>
+                {order._visibility?.hideClientContacts ? "—" : order.customerName}
+              </TableCell>
+              <TableCell sx={cellSx}>
+                {order._visibility?.hideClientContacts ? "—" : order.phone}
+              </TableCell>
               {isStartingOrders ? (
                 <>
                   <TableCell sx={cellSx}>{order.placeIn || "-"}</TableCell>

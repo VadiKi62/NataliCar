@@ -4,14 +4,13 @@ import Script from "next/script";
 import { unstable_noStore } from "next/cache";
 import { fetchAllCars, reFetchActiveOrders, fetchCompany } from "@utils/action";
 import CarGrid from "./components/CarGrid";
-import { companyData as companyDataConfig } from "@config/company";
+import { COMPANY_ID } from "@config/company";
 import { getSeoConfig } from "@config/seo";
 
 // Metadata is generated dynamically in the component using DB data
 // SEO: Multilingual descriptions for better indexing
 export async function generateMetadata() {
-  const { companyId } = companyDataConfig;
-  const companyData = await fetchCompany(companyId).catch(() => null);
+  const companyData = await fetchCompany(COMPANY_ID).catch(() => null);
   const seoConfig = getSeoConfig(companyData);
 
   // Multilingual SEO description with keywords in multiple languages

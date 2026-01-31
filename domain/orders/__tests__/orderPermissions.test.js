@@ -140,41 +140,49 @@ describe("orderPermissions RBAC", () => {
   // ─────────────────────────────────────────────────────────────
   
   describe("Admin delete permissions", () => {
-    test("ADMIN_CAN_DELETE_OTHERS_ORDERS = false: admin cannot delete client orders", () => {
+    // UPDATED: Per orderAccessPolicy.js:
+    // - ADMIN can delete UNCONFIRMED client orders (spam removal)
+    // - ADMIN cannot delete CONFIRMED client orders
+    test("ADMIN can delete UNCONFIRMED client orders (spam removal)", () => {
+      // clientOrder is unconfirmed
       const result = canDeleteOrder(clientOrder, admin);
-      expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("client orders");
+      expect(result.allowed).toBe(true);
     });
     
-    test("ADMIN_CAN_DELETE_OTHERS_ORDERS = false: admin cannot delete other admin's orders (including superadmin-created)", () => {
-      // Note: RBAC no longer distinguishes superadmin orders - all admin-created orders (my_order=false) are treated the same
-      // Admin can only delete their own orders
+    test("ADMIN cannot delete CONFIRMED client orders", () => {
+      const confirmedClientOrder = { ...clientOrder, confirmed: true };
+      const result = canDeleteOrder(confirmedClientOrder, admin);
+      expect(result.allowed).toBe(false);
+    });
+    
+    // UPDATED: Per orderAccessPolicy.js, ownership is NOT checked for delete
+    // Any ADMIN can delete any FUTURE internal order
+    test("ADMIN can delete any FUTURE internal order (no ownership check)", () => {
       const result = canDeleteOrder(superadminOrder, admin);
-      expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("other admins' orders");
+      // Internal + future = allowed
+      expect(result.allowed).toBe(true);
     });
     
-    test("admin cannot delete other admin's future order", () => {
+    test("ADMIN can delete other admin's FUTURE internal order", () => {
       const result = canDeleteOrder(otherAdminOrder, admin);
-      expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("other admins' orders");
+      expect(result.allowed).toBe(true);
     });
     
-    test("admin can delete own future admin order", () => {
+    test("ADMIN can delete own FUTURE internal order", () => {
       const result = canDeleteOrder(adminOrder, admin);
       expect(result.allowed).toBe(true);
     });
     
-    test("ADMIN_CAN_DELETE_PAST_CONFIRMED_ORDERS = false: admin cannot delete own past confirmed orders", () => {
+    test("ADMIN cannot delete past confirmed orders", () => {
       const result = canDeleteOrder(pastConfirmedOrder, admin);
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("past confirmed orders");
+      expect(result.reason).toContain("past");
     });
     
-    test("ADMIN_CAN_DELETE_PAST_PENDING_ORDERS = false: admin cannot delete own past pending orders", () => {
+    test("ADMIN cannot delete past pending orders", () => {
       const result = canDeleteOrder(pastPendingOrder, admin);
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("past pending orders");
+      expect(result.reason).toContain("past");
     });
   });
   
@@ -228,47 +236,56 @@ describe("orderPermissions RBAC", () => {
   // ─────────────────────────────────────────────────────────────
   
   describe("Admin edit field permissions (client orders)", () => {
-    // Note: ADMIN_CAN_EDIT_CLIENT_CUSTOMER_CONTACT is currently true in ADMIN_POLICY
-    // These tests verify the current behavior (admin CAN edit contact fields)
-    test("ADMIN_CAN_EDIT_CLIENT_CUSTOMER_CONTACT = true: admin can edit customerName", () => {
+    // UPDATED: Per orderAccessPolicy.js:
+    // - UNCONFIRMED client orders: ADMIN cannot see/edit PII
+    // - CONFIRMED client orders: ADMIN can see PII but cannot edit core fields
+    
+    test("ADMIN cannot edit customerName of UNCONFIRMED client order", () => {
       const result = canEditOrderField(clientOrder, admin, "customerName");
-      expect(result.allowed).toBe(true);
+      expect(result.allowed).toBe(false);
     });
     
-    test("ADMIN_CAN_EDIT_CLIENT_CUSTOMER_CONTACT = true: admin can edit phone", () => {
+    test("ADMIN cannot edit phone of UNCONFIRMED client order", () => {
       const result = canEditOrderField(clientOrder, admin, "phone");
-      expect(result.allowed).toBe(true);
+      expect(result.allowed).toBe(false);
     });
     
-    test("ADMIN_CAN_EDIT_CLIENT_CUSTOMER_CONTACT = true: admin can edit email", () => {
+    test("ADMIN cannot edit email of UNCONFIRMED client order", () => {
       const result = canEditOrderField(clientOrder, admin, "email");
-      expect(result.allowed).toBe(true);
+      expect(result.allowed).toBe(false);
     });
     
-    test("ADMIN_CAN_EDIT_CLIENT_ORDER_DATES = false: admin cannot edit rentalStartDate", () => {
+    test("ADMIN cannot edit rentalStartDate of client orders", () => {
       const result = canEditOrderField(clientOrder, admin, "rentalStartDate");
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("dates");
     });
     
-    test("ADMIN_CAN_EDIT_CLIENT_ORDER_DATES = false: admin cannot edit rentalEndDate", () => {
+    test("ADMIN cannot edit rentalEndDate of client orders", () => {
       const result = canEditOrderField(clientOrder, admin, "rentalEndDate");
       expect(result.allowed).toBe(false);
     });
     
-    // Note: ADMIN_CAN_EDIT_CLIENT_ORDER_TIMES is currently true in ADMIN_POLICY
-    // These tests verify the current behavior (admin CAN edit times)
-    test("ADMIN_CAN_EDIT_CLIENT_ORDER_TIMES = true: admin can edit timeIn", () => {
+    // UPDATED: Per orderAccessPolicy.js:
+    // - UNCONFIRMED client orders: ADMIN cannot edit ANY fields
+    // - CONFIRMED client orders: ADMIN can edit return (placeOut, timeOut) and insurance
+    
+    test("ADMIN cannot edit timeIn of UNCONFIRMED client order", () => {
       const result = canEditOrderField(clientOrder, admin, "timeIn");
-      expect(result.allowed).toBe(true);
+      expect(result.allowed).toBe(false);
     });
     
-    test("ADMIN_CAN_EDIT_CLIENT_ORDER_TIMES = true: admin can edit timeOut", () => {
+    test("ADMIN cannot edit timeOut of UNCONFIRMED client order", () => {
       const result = canEditOrderField(clientOrder, admin, "timeOut");
+      expect(result.allowed).toBe(false);
+    });
+    
+    test("ADMIN can edit timeOut of CONFIRMED client order", () => {
+      const confirmedClientOrder = { ...clientOrder, confirmed: true };
+      const result = canEditOrderField(confirmedClientOrder, admin, "timeOut");
       expect(result.allowed).toBe(true);
     });
     
-    test("ADMIN_CAN_EDIT_CLIENT_ORDER_TOTAL_PRICE = false: admin cannot edit totalPrice", () => {
+    test("ADMIN cannot edit totalPrice of client orders", () => {
       const result = canEditOrderField(clientOrder, admin, "totalPrice");
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain("price");
@@ -287,10 +304,17 @@ describe("orderPermissions RBAC", () => {
   // ─────────────────────────────────────────────────────────────
   
   describe("Admin confirmation permissions", () => {
-    test("ADMIN_CAN_TOGGLE_CONFIRMATION_ALWAYS = true: admin can always toggle confirmation", () => {
-      expect(canConfirmOrder(clientOrder, admin).allowed).toBe(true);
-      expect(canConfirmOrder(adminOrder, admin).allowed).toBe(true);
-      expect(canConfirmOrder(superadminOrder, admin).allowed).toBe(true);
+    // UPDATED: Per orderAccessPolicy.js, ADMIN can NEVER confirm orders
+    // Only SUPERADMIN can confirm/unconfirm
+    test("ADMIN cannot confirm any orders (per orderAccessPolicy)", () => {
+      expect(canConfirmOrder(clientOrder, admin).allowed).toBe(false);
+      expect(canConfirmOrder(adminOrder, admin).allowed).toBe(false);
+      expect(canConfirmOrder(superadminOrder, admin).allowed).toBe(false);
+    });
+    
+    test("SUPERADMIN can confirm any orders", () => {
+      expect(canConfirmOrder(clientOrder, superadmin).allowed).toBe(true);
+      expect(canConfirmOrder(adminOrder, superadmin).allowed).toBe(true);
     });
   });
 

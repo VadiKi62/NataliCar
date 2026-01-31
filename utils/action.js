@@ -3,7 +3,6 @@ import sendEmail from "./sendEmail";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { companyData } from "./companyData";
 
 dayjs.extend(utc);
 // dayjs.extend(timezone);

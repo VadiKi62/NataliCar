@@ -918,6 +918,7 @@ export function useEditOrderState({
   return {
     // State
     editedOrder,
+    setEditedOrder, // ⬅️ Экспортируем для полной замены после refetch
     startTime,
     endTime,
     loading,

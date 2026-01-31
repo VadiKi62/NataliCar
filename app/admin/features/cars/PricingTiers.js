@@ -2,11 +2,12 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Grid, Typography, CircularProgress, Box } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import debounce from "lodash/debounce";
-import { seasons } from "@utils/companyData";
+import { seasons as fallbackSeasons } from "@utils/companyData";
 import { updateCar } from "@utils/action";
 import { useTranslation } from "react-i18next";
+import { useMainContext } from "@app/Context";
 
-const getSeasonDates = (season) => {
+const getSeasonDates = (season, seasons) => {
   const dates = seasons[season];
   return dates
     ? `${dates.start} - ${dates.end}`
@@ -42,7 +43,7 @@ const PricingTiersTable = ({
       }));
       setRows(data);
     }
-  }, [isAddcar, prices]);
+  }, [isAddcar, prices, seasons]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedUpdate = useCallback(

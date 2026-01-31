@@ -1,7 +1,7 @@
 import { unstable_noStore } from "next/cache";
 import AdminView from "./AdminView";
 import { fetchAllCars, reFetchAllOrders, fetchCompany } from "@utils/action";
-import { companyData } from "@/config/company";
+import { COMPANY_ID } from "@/config/company";
 /**
  * DataLoader — Server Component для загрузки данных админки
  * 
@@ -13,12 +13,10 @@ import { companyData } from "@/config/company";
 export default async function DataLoader({ viewType }) {
   unstable_noStore(); // Отключаем кеширование для админки
   
-  const companyId = companyData.companyId;
-
   // ⚡ Запускаем ВСЕ загрузки параллельно с Promise.all
   // Это выполняется только один раз при загрузке страницы
   const [company, cars, orders] = await Promise.all([
-    fetchCompany(companyId),
+    fetchCompany(COMPANY_ID),
     fetchAllCars(),
     reFetchAllOrders(),
   ]);

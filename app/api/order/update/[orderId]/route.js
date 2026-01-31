@@ -3,12 +3,9 @@ import { Car } from "@models/car";
 import Company from "@models/company";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
-import {
-  canEditOrder,
-  canEditPricing,
-  canConfirmOrder,
-  canEditOrderField,
-} from "@/domain/orders/orderPermissions";
+import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
+import { checkFieldAccess } from "@/middleware/withOrderAccess";
+import { ROLE } from "@/domain/orders/admin-rbac";
 import { analyzeConfirmationConflicts } from "@/domain/booking/analyzeConfirmationConflicts";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -192,58 +189,40 @@ export const PATCH = async (request, { params }) => {
 
     const hasConfirmationChange = payload.confirmed !== undefined;
 
-    // Check permissions for each field being updated (field-level granularity)
-    if (hasDateTimeChanges) {
-      // Check each field individually using canEditOrderField
-      const fieldsToCheck = [
-        { field: "rentalStartDate", inPayload: payload.rentalStartDate !== undefined },
-        { field: "rentalEndDate", inPayload: payload.rentalEndDate !== undefined },
-        { field: "timeIn", inPayload: payload.timeIn !== undefined },
-        { field: "timeOut", inPayload: payload.timeOut !== undefined },
-        { field: "car", inPayload: payload.car !== undefined },
-        { field: "placeIn", inPayload: payload.placeIn !== undefined },
-        { field: "placeOut", inPayload: payload.placeOut !== undefined },
-        { field: "insurance", inPayload: payload.insurance !== undefined },
-        { field: "ChildSeats", inPayload: payload.ChildSeats !== undefined },
-        { field: "franchiseOrder", inPayload: payload.franchiseOrder !== undefined },
-        { field: "totalPrice", inPayload: payload.totalPrice !== undefined },
-      ];
+    // ════════════════════════════════════════════════════════════════
+    // ЕДИНАЯ ЛОГИКА ПРАВ: используем orderAccessPolicy напрямую
+    // ════════════════════════════════════════════════════════════════
+    const isSuperAdmin = session.user.role === ROLE.SUPERADMIN;
+    const isPast = order.rentalEndDate 
+      ? dayjs(order.rentalEndDate).tz("Europe/Athens").isBefore(dayjs().tz("Europe/Athens"), "day")
+      : false;
+    
+    const access = getOrderAccess({
+      role: isSuperAdmin ? "SUPERADMIN" : "ADMIN",
+      isClientOrder: order.my_order === true,
+      confirmed: order.confirmed === true,
+      isPast,
+    });
 
-      for (const { field, inPayload } of fieldsToCheck) {
-        if (inPayload) {
-          const permission = canEditOrderField(order, session.user, field);
-          if (!permission.allowed) {
-            return new Response(
-              JSON.stringify({
-                success: false,
-                message: permission.reason,
-                code: "PERMISSION_DENIED",
-                field: field,
-              }),
-              { status: 403, headers: { "Content-Type": "application/json" } }
-            );
-          }
-        }
-      }
+    // Проверяем все поля из payload через единую логику
+    const fieldsToUpdate = Object.keys(payload).filter(key => payload[key] !== undefined);
+    const fieldCheck = checkFieldAccess(access, fieldsToUpdate);
+    
+    if (!fieldCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Cannot edit fields: ${fieldCheck.deniedFields.join(", ")}`,
+          code: "PERMISSION_DENIED",
+          deniedFields: fieldCheck.deniedFields,
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    if (hasCustomerChanges) {
-      const permission = canEditOrder(order, session.user);
-      if (!permission.allowed) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: permission.reason,
-            code: "PERMISSION_DENIED",
-          }),
-          { status: 403, headers: { "Content-Type": "application/json" } }
-        );
-      }
-    }
-
+    // Дополнительная проверка для подтверждения (требует конфликт-анализа)
     if (hasConfirmationChange) {
-      const permission = canConfirmOrder(order, session.user);
-      if (!permission.allowed) {
+      if (!access.canConfirm) {
         // Get company for bufferHours normalization
         const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: make dynamic
         const company = await Company.findById(companyId);
@@ -253,7 +232,7 @@ export const PATCH = async (request, { params }) => {
           JSON.stringify({
             success: false,
             data: null,
-            message: permission.reason,
+            message: "Only superadmin can confirm or unconfirm orders",
             level: "block",
             conflicts: [],
             affectedOrders: [],

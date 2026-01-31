@@ -25,7 +25,32 @@ export {
 } from "./orderPriceHelpers";
 
 // ============================================
-// RBAC (Single Source of Truth)
+// ACCESS POLICY (Single Source of Truth for UI)
+// ============================================
+
+export {
+  getOrderAccess,
+  createOrderContext,
+} from "./orderAccessPolicy";
+
+// ============================================
+// NOTIFICATION DISPATCHER (единая точка входа)
+// ============================================
+// 
+// 🔑 ТОЛЬКО notifyOrderAction экспортируется наружу.
+// Внутренние функции (getOrderNotifications, dispatchOrderNotifications)
+// НЕ экспортируются — они internal.
+//
+// Для тестов используй прямой импорт из orderNotificationPolicy.js
+//
+
+export { notifyOrderAction } from "./orderNotificationDispatcher";
+
+// Helpers для определения action из изменённых полей
+export { getActionFromChangedFields } from "./orderNotificationPolicy";
+
+// ============================================
+// RBAC (Backend enforcement)
 // ============================================
 
 export {
@@ -41,8 +66,10 @@ export {
   isAdminCreatedOrder,
   
   // Time helpers
+  getOrderTimeBucket,
   isPastOrder,
   isFutureOrder,
+  isCurrentOrder,
   
   // Ownership helpers
   getOrderCreatorId,

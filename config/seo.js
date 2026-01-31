@@ -13,7 +13,14 @@
  * - EL: Greek local market
  */
 
-import { companyData as fallbackCompanyData } from "@config/company";
+// Hardcoded fallback values for SSG/SSR when DB is unavailable
+const fallbackCompanyData = {
+  name: "NATALI CARS",
+  tel: "+30 6970 034 707",
+  email: "natali2015makarova@gmail.com",
+  address: "Antonioy Kelesi 12, Nea Kallikratia 630 80",
+  coords: { lat: "40.311273589340836", lon: "23.06426516796098" },
+};
 
 // Normalize to canonical domain (non-www) when the project domain is used
 const normalizeBaseUrl = (url) => {

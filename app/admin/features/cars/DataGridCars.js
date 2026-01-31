@@ -19,18 +19,23 @@ function DataGridCars({ session, cars, orders }) {
   );
 
   const [orderData, setOrderData] = useState(
-    orders.map((order, index) => ({
-      id: index + 1, // unique identifier for DataGrid
-      customerName: order.customerName,
-      phone: order.phone,
-      email: order.email,
-      rentalStartDate: new Date(order.rentalStartDate).toLocaleDateString(), // Format date
-      rentalEndDate: new Date(order.rentalEndDate).toLocaleDateString(), // Format date
-      numberOfDays: order.numberOfDays,
-      totalPrice: order.totalPrice,
-      carModel: order.carModel,
-      confirmed: order.confirmed,
-    }))
+    orders.map((order, index) => {
+      // Скрываем PII если _visibility.hideClientContacts === true
+      const hideContacts = order._visibility?.hideClientContacts === true;
+      
+      return {
+        id: index + 1, // unique identifier for DataGrid
+        customerName: hideContacts ? "—" : order.customerName,
+        phone: hideContacts ? "—" : order.phone,
+        email: hideContacts ? "—" : order.email,
+        rentalStartDate: new Date(order.rentalStartDate).toLocaleDateString(), // Format date
+        rentalEndDate: new Date(order.rentalEndDate).toLocaleDateString(), // Format date
+        numberOfDays: order.numberOfDays,
+        totalPrice: order.totalPrice,
+        carModel: order.carModel,
+        confirmed: order.confirmed,
+      };
+    })
   );
 
   const [selectionModel, setSelectionModel] = useState(() => {

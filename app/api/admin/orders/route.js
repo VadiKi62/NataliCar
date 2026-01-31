@@ -2,31 +2,17 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@lib/authOptions";
 import { Order } from "@models/order";
 import { connectToDB } from "@utils/database";
+import { withOrderVisibility } from "@/middleware/withOrderVisibility";
 
 /**
  * GET /api/admin/orders
  * 
  * Returns all orders for admin table view.
  * Requires admin authentication.
- * 
- * Response fields:
- * - _id, orderNumber
- * - car (id, model, regNumber, carNumber)
- * - customerName, phone, email
- * - rentalStartDate, rentalEndDate, timeIn, timeOut
- * - confirmed, my_order, createdByRole
- * - totalPrice, numberOfDays
- * - placeIn, placeOut
- * - createdAt, updatedAt
- * 
- * Also returns:
- * - adminRole: current admin's role (0 or 1) for UI permission checks
- * 
- * Sorted by createdAt descending (newest first)
+ * Visibility filtering applied via middleware.
  */
-export async function GET(request) {
+async function handler(request) {
   try {
-    // Check admin authentication
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user?.isAdmin) {
@@ -44,28 +30,16 @@ export async function GET(request) {
 
     await connectToDB();
     
-    // Get admin's role for permission checks in UI
-    // Users are hardcoded in api/auth, not stored in DB, so use session.user.role directly
     const adminRole = session.user?.role ?? 0;
-    
-    console.log("[GET /api/admin/orders] Admin role from session:", {
-      sessionUserId: session.user.id,
-      sessionUserEmail: session.user.email,
-      sessionUserName: session.user.name,
-      sessionUserRole: session.user.role,
-      finalAdminRole: adminRole,
-    });
 
-    // Fetch all orders with car details populated
     const orders = await Order.find({})
       .populate({
         path: "car",
         select: "_id model regNumber carNumber",
       })
-      .sort({ createdAt: -1 }) // Newest first
-      .lean(); // Convert to plain JS objects for performance
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // Map orders to include only needed fields
     const formattedOrders = orders.map((order) => ({
       _id: order._id,
       orderNumber: order.orderNumber,
@@ -77,8 +51,8 @@ export async function GET(request) {
             carNumber: order.car.carNumber,
           }
         : null,
-      carModel: order.carModel, // Fallback from order itself
-      carNumber: order.carNumber, // Fallback from order itself
+      carModel: order.carModel,
+      carNumber: order.carNumber,
       customerName: order.customerName,
       phone: order.phone,
       email: order.email || "",
@@ -91,8 +65,7 @@ export async function GET(request) {
       timeOut: order.timeOut,
       confirmed: order.confirmed,
       my_order: order.my_order,
-      // Permission-related fields
-      createdByRole: order.createdByRole ?? 0, // Default 0 for existing orders
+      createdByRole: order.createdByRole ?? 0,
       createdByAdminId: order.createdByAdminId || null,
       totalPrice: order.totalPrice,
       numberOfDays: order.numberOfDays,
@@ -100,7 +73,6 @@ export async function GET(request) {
       placeOut: order.placeOut,
       createdAt: order.createdAt || order.date,
       updatedAt: order.updatedAt,
-      // Additional fields for conflict display
       hasConflictDates: order.hasConflictDates || [],
     }));
 
@@ -109,7 +81,6 @@ export async function GET(request) {
         success: true,
         data: formattedOrders,
         count: formattedOrders.length,
-        // Include admin's role for UI permission checks
         adminRole,
       }),
       {
@@ -136,3 +107,4 @@ export async function GET(request) {
   }
 }
 
+export const GET = withOrderVisibility(handler);

@@ -292,6 +292,8 @@ export default function CarTableRow({
   const handleLongPressStart = useCallback((dateStr) => {
     // Запрещаем длинное нажатие, если уже активен режим перемещения
     if (moveMode) {
+      // ✅ FIX: Всё равно вызываем beginPress для работы кликов
+      beginPress({ enableLongPress: false, delayMs: 0, onLongPress: undefined });
       return;
     }
 
@@ -311,8 +313,13 @@ export default function CarTableRow({
       relevantOrders.every((o) =>
         dayjs(o.rentalEndDate).isBefore(dayjs(), "day")
       );
-    // Если все завершены — запрещаем переход в режим перемещения
+    
+    // ============================================
+    // ✅ FIX: Для completed заказов — вызываем beginPress с enableLongPress: false
+    // Это позволяет клику работать (activeRef = true), но запрещает long press
+    // ============================================
     if (allCompleted) {
+      beginPress({ enableLongPress: false, delayMs: 0, onLongPress: undefined });
       return;
     }
 
@@ -750,9 +757,15 @@ export default function CarTableRow({
           return;
         }
 
-        // Блокируем клик по ячейке, в которой последний день заказа, если дата в прошлом
-        // НО не блокируем если это одновременно первый день другого заказа (cellState.isStartDate)
-        if (cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate) {
+        // ============================================
+        // GLOBAL PAST RULE: любая прошлая дата с заказами → открываем для просмотра
+        // Если заказов нет → ничего не делаем (создавать в прошлом нельзя)
+        // ============================================
+        if (cellState.isPastDay) {
+          if (ordersForDate.length > 0) {
+            setSelectedOrders(ordersForDate);
+            setOpen(true);
+          }
           return;
         }
 
@@ -1076,10 +1089,8 @@ export default function CarTableRow({
                 ? isPartOfSelectedOrder(dateStr)
                   ? "Нажмите для выхода из режима перемещения"
                   : undefined
-                : cellState.isCompletedCell
+                : cellState.isCompletedCell || cellState.isPastDay
                 ? "Нажмите для просмотра заказа"
-                : cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
-                ? "Дата в прошлом — клик недоступен"
                 : "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра всех заказов"
             }
             sx={{
@@ -1101,10 +1112,7 @@ export default function CarTableRow({
               backgroundColor: isPartOfSelectedOrder(dateStr)
                 ? MOVE_MODE_COLORS.BLUE_SELECTED
                 : overlapBackgroundColor,
-              cursor:
-                cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
-                  ? "not-allowed"
-                  : "pointer",
+              cursor: "pointer",
               width: "100%",
             }}
           >
@@ -1243,10 +1251,8 @@ export default function CarTableRow({
                   : isPartOfSelectedOrder(dateStr)
                   ? "Нажмите для выхода из режима перемещения"
                   : undefined
-                : cellState.isCompletedCell
+                : cellState.isCompletedCell || cellState.isPastDay
                 ? "Нажмите для просмотра заказа"
-                : cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
-                ? "Дата в прошлом — клик недоступен"
                 : "Длинное нажатие для режима перемещения заказа, обычный клик для просмотра и редактирования заказов"
             }
             sx={{
@@ -1256,10 +1262,7 @@ export default function CarTableRow({
               height: "100%",
               display: "flex",
               flexDirection: "row",
-              cursor:
-                cellState.isPastDay && cellState.isEndDate && !cellState.isStartDate
-                  ? "not-allowed"
-                  : "pointer",
+              cursor: "pointer",
             }}
           >
             {/* Желтый overlay для первого/последнего дня перемещения */}
@@ -1542,10 +1545,8 @@ export default function CarTableRow({
                   : shouldHighlightLeft || shouldHighlightRight
                   ? "Нажмите для выхода из режима перемещения"
                   : undefined
-                : cellState.isCompletedCell
+                : cellState.isCompletedCell || cellState.isPastDay
                 ? "Нажмите для просмотра заказа"
-                : cellState.isPastDay
-                ? "Дата в прошлом — клик недоступен"
                 : "Длинное нажатие для режима перемещения, обычный клик для просмотра и редактирования заказа"
             }
             sx={{
@@ -1555,9 +1556,7 @@ export default function CarTableRow({
               height: "100%",
               display: "flex",
               flexDirection: "row",
-              cursor: cellState.isPastDay
-                ? "not-allowed"
-                : moveMode && !isActiveInMoveMode
+              cursor: moveMode && !isActiveInMoveMode
                 ? "not-allowed"
                 : "pointer",
               alignItems: "center",

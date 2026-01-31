@@ -1,19 +1,21 @@
 import { connectToDB } from "@utils/database";
 import { Order } from "@models/order";
+import { withOrderVisibility } from "@/middleware/withOrderVisibility";
 
-export async function GET(request, { params }) {
+async function handler(request, { params }) {
   try {
     await connectToDB();
 
     const { orderId } = params;
-    // Проверка наличия orderId
     if (!orderId) {
       return new Response("Order ID is required", { status: 400 });
     }
 
-    console.log("orderId", orderId);
-    // Находим заказ по ID
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId).lean();
+
+    if (!order) {
+      return new Response("Order not found", { status: 404 });
+    }
 
     return new Response(JSON.stringify(order), {
       status: 200,
@@ -26,3 +28,5 @@ export async function GET(request, { params }) {
     });
   }
 }
+
+export const GET = withOrderVisibility(handler);

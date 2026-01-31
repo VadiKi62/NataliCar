@@ -1,27 +1,30 @@
 /**
  * bookingRules.js
  *
- * Единый источник правил бронирования.
+ * FALLBACK значения правил бронирования.
  * 
- * ⚠️ ВАЖНО: bufferHours теперь берётся из базы данных компании (company.bufferTime).
- * Значение здесь используется только как fallback, если bufferTime не задан в компании.
+ * ⚠️ ВАЖНО: Реальные значения берутся из базы данных компании (company.bufferTime, etc.).
+ * Эти константы используются ТОЛЬКО как fallback, если данные компании недоступны.
+ * 
+ * Источник правды: MongoDB → Company model
  */
 
 export const BOOKING_RULES = {
   /**
-   * Буферное время между заказами (в часах) - FALLBACK значение.
-   * Реальное значение берётся из company.bufferTime в базе данных.
-   * Используется только если bufferTime не задан в компании.
+   * Буферное время между заказами (в часах) - FALLBACK.
+   * Реальное значение: company.bufferTime
    */
   bufferHours: 2,
 
   /**
-   * Минимальная продолжительность аренды (в часах).
+   * Минимальная продолжительность аренды (в часах) - FALLBACK.
+   * Реальное значение: company.minRentalDuration
    */
   minRentalDuration: 1,
 
   /**
-   * Рабочие часы (для будущего использования).
+   * Рабочие часы - FALLBACK.
+   * Реальное значение: company.workingHours
    */
   workingHours: {
     start: "08:00",
@@ -30,4 +33,3 @@ export const BOOKING_RULES = {
 };
 
 export default BOOKING_RULES;
-

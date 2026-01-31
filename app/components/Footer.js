@@ -8,8 +8,8 @@ import DefaultButton from "@/app/components/ui/buttons/DefaultButton";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { companyData } from "@utils/companyData";
 import { useTranslation } from "react-i18next";
+import { useMainContext } from "@app/Context";
 
 // Lazy-load icons (Footer is below fold)
 const DirectionsIcon = dynamic(() => import("@mui/icons-material/Directions"), { ssr: false });
@@ -109,10 +109,19 @@ const CreditLink = styled(MuiLink)(({ theme }) => ({
 // ============================================================
 
 function Footer() {
-  const { name, slogan, tel, tel2, email, address, coords } = companyData;
+  const { company } = useMainContext();
   const currentYear = new Date().getFullYear();
   const { t } = useTranslation();
   const router = useRouter();
+
+  // Fallback для SSR или если company ещё не загружена
+  const name = company?.name || "NATALI CARS";
+  const slogan = company?.slogan || "best rent car online service in Chalkidiki";
+  const tel = company?.tel || "+30 6970 034 707";
+  const tel2 = company?.tel2 || "+30 6989 922 366";
+  const email = company?.email || "natali2015makarova@gmail.com";
+  const address = company?.address || "Antonioy Kelesi 12, Nea Kallikratia 630 80";
+  const coords = company?.coords || { lat: "40.311273589340836", lon: "23.06426516796098" };
 
   const handleClick = () => {
     const destinationURL = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lon}`;

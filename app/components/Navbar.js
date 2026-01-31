@@ -27,7 +27,6 @@ import { useSession, signOut } from "next-auth/react";
 import { ROLE } from "@/domain/orders/admin-rbac";
 
 import LanguageIcon from "@mui/icons-material/Language";
-import { companyData } from "@utils/companyData";
 import { useMainContext } from "@app/Context";
 import { CAR_CLASSES } from "@models/enums";
 import SelectedFieldClass from "@/app/components/ui/inputs/SelectedFieldClass";
@@ -222,7 +221,11 @@ export default function NavBar({
     lang,
     setLang,
     changeLanguage, // Добавляем функцию смены языка
+    company,
   } = useMainContext();
+
+  // Получаем название компании из Context с fallback
+  const companyName = company?.name || "NATALI CARS";
 
   const handleCarClassChange = (event) => {
     const selectedValue = event.target.value;
@@ -670,7 +673,7 @@ export default function NavBar({
                     fontSize: "clamp(12px, calc(0.79rem + 1vw), 32px)", lineHeight: 1,
                   }}
                 >
-                  {companyData.name}
+                  {companyName}
                   {isAdmin && " ADMIN"}
                 </Logo>
               </Link>
@@ -840,7 +843,7 @@ export default function NavBar({
           >
             <Link href="/">
               <Logo>
-                {companyData.name}
+                {companyName}
                 {isAdmin && " ADMIN"}
               </Logo>
             </Link>

@@ -32,13 +32,16 @@ function DataGridOrders({ cars, orders }) {
       // Найти автомобиль по carNumber
       const car = cars.find((c) => c.carNumber === order.carNumber);
 
+      // Скрываем PII если _visibility.hideClientContacts === true
+      const hideContacts = order._visibility?.hideClientContacts === true;
+      
       return {
         id: index + 1,
-        customerName: order.customerName,
-        phone: order.phone,
+        customerName: hideContacts ? "—" : order.customerName,
+        phone: hideContacts ? "—" : order.phone,
         carNumber: order.carNumber,
         regNumber: car ? car.regNumber : "", // <-- регистрационный номер из cars
-        email: order.email,
+        email: hideContacts ? "—" : order.email,
         rentalStartDate: startDate.toLocaleDateString(),
         rentalEndDate: endDate.toLocaleDateString(),
         originalStartDate: startDate,

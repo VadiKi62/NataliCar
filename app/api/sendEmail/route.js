@@ -1,5 +1,5 @@
 // app/api/sendEmail/route.js
-// 
+//
 // SMTP Configuration (.env):
 //   SMTP_HOST - SMTP server host
 //   SMTP_PORT - SMTP port (default: 465)
@@ -51,36 +51,40 @@ Email: support@bbqr.site`;
 function createEmailHTML(title, message) {
   // Theme colors
   const colors = {
-    primary: "#890000",      // Тёмно-красный
-    secondary: "#008989",    // Бирюзовый
-    background: "#ffffff",    // Белый фон
-    text: "#1a1a1a",         // Тёмный текст
+    primary: "#0d8d8d", // Тёмно-красный
+    secondary: "#008989", // Бирюзовый
+    background: "#ffffff", // Белый фон
+    text: "#1a1a1a", // Тёмный текст
     textSecondary: "#616161", // Серый текст
-    border: "#e0e0e0",       // Светлая граница
-    accent: "#894500",       // Коричнево-оранжевый
+    border: "#e0e0e0", // Светлая граница
+    accent: "#894500", // Коричнево-оранжевый
   };
 
   // Format message - preserve line breaks and structure
   const formattedMessage = message
-    .split('\n')
+    .split("\n")
     .map((line) => {
       const trimmed = line.trim();
       if (!trimmed) return '<div style="height: 8px;"></div>'; // Spacing for empty lines
-      
+
       // Check if line is a label (ends with :)
-      if (trimmed.endsWith(':')) {
+      if (trimmed.endsWith(":")) {
         return `<div style="margin: 16px 0 8px 0;"><strong style="color: ${colors.primary}; font-size: 15px;">${trimmed}</strong></div>`;
       }
-      
+
       // Check if line contains key information (dates, prices, etc.)
-      if (trimmed.includes('Бронь') || trimmed.includes('Сумма') || trimmed.includes('дней')) {
+      if (
+        trimmed.includes("Бронь") ||
+        trimmed.includes("Сумма") ||
+        trimmed.includes("дней")
+      ) {
         return `<div style="margin: 8px 0; padding: 8px 12px; background-color: #f5f5f5; border-left: 3px solid ${colors.secondary}; border-radius: 4px;"><span style="color: ${colors.text}; line-height: 1.6;">${trimmed}</span></div>`;
       }
-      
+
       // Regular text
       return `<div style="margin: 8px 0; color: ${colors.text}; line-height: 1.6;">${trimmed}</div>`;
     })
-    .join('');
+    .join("");
 
   return `
 <!DOCTYPE html>
@@ -96,11 +100,17 @@ function createEmailHTML(title, message) {
     <tr>
       <td align="center">
         <!-- Main Content Card -->
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: ${colors.background}; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: ${
+          colors.background
+        }; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%); padding: 30px 40px; text-align: center;">
+            <td style="background: linear-gradient(135deg, ${
+              colors.primary
+            } 0%, ${
+    colors.secondary
+  } 100%); padding: 30px 40px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">
                 ${title}
               </h1>
@@ -128,7 +138,9 @@ function createEmailHTML(title, message) {
         <!-- Footer -->
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; margin-top: 20px;">
           <tr>
-            <td style="text-align: center; padding: 20px; color: ${colors.textSecondary}; font-size: 12px;">
+            <td style="text-align: center; padding: 20px; color: ${
+              colors.textSecondary
+            }; font-size: 12px;">
               <p style="margin: 0;">© ${new Date().getFullYear()} Natali Cars. All rights reserved.</p>
             </td>
           </tr>
@@ -192,15 +204,17 @@ export async function POST(request) {
 
     const body = await request.json();
     const { email, emailCompany, title, message } = body;
-    
+
     // Main recipient is ALWAYS DEVELOPER_EMAIL (cars@bbqr.site)
     // In testing mode: only company email, customer email is ignored
     // In production: company email + customer email (if provided)
     const actualCustomerEmail = isTestingMode ? null : email;
-    
+
     console.log("Email request:", {
       companyEmail: COMPANY_EMAIL,
-      customerEmail: isTestingMode ? "DISABLED (testing mode)" : (email || "not provided"),
+      customerEmail: isTestingMode
+        ? "DISABLED (testing mode)"
+        : email || "not provided",
       subject: title,
       messageLength: message?.length || 0,
       testingMode: isTestingMode,
@@ -215,11 +229,11 @@ export async function POST(request) {
 
     // Prepare text message with signature
     const messageWithSignature = `${message}\n\n${EMAIL_SIGNATURE_TEXT}`;
-    
+
     // Prepare beautiful HTML email with theme colors and centered layout
     const htmlEmail = createEmailHTML(title, message);
 
-    // Determine recipients: 
+    // Determine recipients:
     // - ALWAYS send to DEVELOPER_EMAIL (cars@bbqr.site)
     // - In testing mode: only company email
     // - In production: company email + customer email (if provided)
@@ -227,9 +241,10 @@ export async function POST(request) {
     if (isTestingMode) {
       recipients = [COMPANY_EMAIL];
     } else {
-      recipients = actualCustomerEmail && actualCustomerEmail.trim() 
-        ? [COMPANY_EMAIL, actualCustomerEmail.trim()] 
-        : [COMPANY_EMAIL];
+      recipients =
+        actualCustomerEmail && actualCustomerEmail.trim()
+          ? [COMPANY_EMAIL, actualCustomerEmail.trim()]
+          : [COMPANY_EMAIL];
     }
 
     // In testing mode, prefix subject with [TEST]
@@ -259,8 +274,8 @@ export async function POST(request) {
     });
 
     return NextResponse.json(
-      { 
-        status: "Email sent", 
+      {
+        status: "Email sent",
         messageId: info.messageId,
         accepted: info.accepted,
       },
@@ -270,10 +285,11 @@ export async function POST(request) {
     console.error("Error sending email:", error.message);
     console.error("Full error:", error);
     return NextResponse.json(
-      { 
+      {
         error: error.message,
-        details: process.env.NODE_ENV === "development" ? error.stack : undefined,
-      }, 
+        details:
+          process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
       { status: 500 }
     );
   }

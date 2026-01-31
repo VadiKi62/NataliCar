@@ -1188,7 +1188,11 @@ export default function OrdersTableSection() {
                       </TableCell>
 
                       {/* Customer - Inline Editing */}
+                      {/* Скрываем контактные данные если _visibility.hideClientContacts === true */}
                       <TableCell>
+                        {order._visibility?.hideClientContacts ? (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
+                        ) : (
                         <Stack spacing={0.5}>
                           <InlineEditCell
                             value={order.customerName || ""}
@@ -1219,6 +1223,7 @@ export default function OrdersTableSection() {
                             onCommit={(val) => handleFieldUpdate(order._id, "email", val)}
                           />
                         </Stack>
+                        )}
                       </TableCell>
 
                       {/* Price - Inline Editing with Recalculate Button */}

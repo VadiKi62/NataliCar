@@ -24,8 +24,10 @@ export {
   canEditOrderField,
   
   // Time helpers
+  getOrderTimeBucket,
   isPastOrder,
   isFutureOrder,
+  isCurrentOrder,
   
   // Ownership helpers
   getOrderCreatorId,

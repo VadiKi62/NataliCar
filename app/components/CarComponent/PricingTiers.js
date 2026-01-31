@@ -5,8 +5,9 @@ import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
-import { seasons } from "@utils/companyData";
+import { seasons as fallbackSeasons } from "@utils/companyData";
 import { useTranslation } from "react-i18next";
+import { useMainContext } from "@app/Context";
 
 // Function to get the current season (same as above)
 // const getCurrentSeason = (date = dayjs()) => {
@@ -23,7 +24,7 @@ import { useTranslation } from "react-i18next";
 
 //   return "NoSeason";
 // };
-const getCurrentSeason = (date = dayjs()) => {
+const getCurrentSeason = (date = dayjs(), seasons) => {
   // Если date не задана (или это текущий месяц), используем первый день месяца
   // Если date — это выбранная дата бронирования, используем её
   let targetDate;
@@ -109,7 +110,7 @@ const PricingDisplay = ({
     }
   }
   const { t } = useTranslation();
-  const currentSeason = getCurrentSeason(seasonDate);
+  const currentSeason = getCurrentSeason(seasonDate, seasons);
   const pricingData = prices[currentSeason]?.days || {};
 
   // Helper function для формирования шапки таблицы цен при аренде авто

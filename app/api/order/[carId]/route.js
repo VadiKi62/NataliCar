@@ -1,18 +1,18 @@
 import { Order } from "@models/order";
 import { connectToDB } from "@utils/database";
+import { withOrderVisibility } from "@/middleware/withOrderVisibility";
 
-export const GET = async (request, { params }) => {
-  console.log("params", params);
+async function handler(request, { params }) {
   try {
     await connectToDB();
     const { carId } = params;
 
-    console.log("carId:", carId);
-
-    const orders = await Order.find({ car: carId });
-    if (orders.length == 0) {
-      return new Response("No Orders for this car");
+    const orders = await Order.find({ car: carId }).lean();
+    
+    if (orders.length === 0) {
+      return new Response("No Orders for this car", { status: 200 });
     }
+    
     return new Response(JSON.stringify(orders), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -20,4 +20,6 @@ export const GET = async (request, { params }) => {
   } catch (error) {
     return new Response("Failed to fetch orders", { status: 500 });
   }
-};
+}
+
+export const GET = withOrderVisibility(handler);

@@ -26,10 +26,10 @@ import Snackbar from "@/app/components/ui/feedback/Snackbar";
 import { useMainContext } from "@app/Context";
 import TimePicker from "@/app/components/calendar-ui/MuiTimePicker";
 import { BufferSettingsLinkifiedText } from "@/app/components/ui";
-import { companyData } from "@utils/companyData";
 import { useEditOrderConflicts } from "../hooks/useEditOrderConflicts";
 import { useEditOrderPermissions } from "../hooks/useEditOrderPermissions";
 import { useEditOrderState } from "../hooks/useEditOrderState";
+import { useOrderAccess } from "../hooks/useOrderAccess";
 import { useSession } from "next-auth/react";
 import { isSuperAdmin } from "@/domain/orders/admin-rbac";
 // 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
@@ -112,6 +112,7 @@ const EditOrderModal = ({
   // 🎯 LAYER 2: State & Data Orchestration Layer
   const {
     editedOrder,
+    setEditedOrder, // ⬅️ Для полной замены после refetch
     startTime,
     endTime,
     loading,
@@ -141,6 +142,10 @@ const EditOrderModal = ({
     setCarOrders,
   });
   
+  // 🎯 LAYER 1.5: Access Policy (Single Source of Truth)
+  // ⚠️ Используем editedOrder (актуальные данные после refetch)
+  const access = useOrderAccess(editedOrder || order, { forceViewOnly: isViewOnly });
+  
   // UI state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   
@@ -161,6 +166,58 @@ const EditOrderModal = ({
       checkConflicts();
     }
   }, [order, setIsConflictOrder]);
+
+  // ============================================================
+  // ✅ MANDATORY DETAIL REFETCH: Client orders always need fresh data
+  // ============================================================
+  // Список/календарь может содержать stale данные:
+  // - заказ был загружен как unconfirmed → PII удалены
+  // - позже SUPERADMIN его подтвердил → но список stale
+  // - order.confirmed всё ещё false в stale данных
+  // 
+  // Решение: ВСЕГДА refetch для client orders при открытии.
+  // Это гарантирует актуальные данные и правильный _visibility флаг.
+  useEffect(() => {
+    if (!open || !order?._id) return;
+    
+    // Только client orders (my_order === true) требуют refetch
+    // Internal orders (my_order === false) всегда имеют полные данные
+    if (order.my_order !== true) return;
+    
+    const refetchOrderDetails = async () => {
+      try {
+        const res = await fetch(`/api/order/refetch/${order._id}`);
+        if (!res.ok) return;
+        
+        const freshOrder = await res.json();
+        if (!freshOrder?._id) return;
+        
+        // Трансформируем даты как в useEditOrderState
+        const { fromServerUTC, athensStartOfDay, formatDateYYYYMMDD } = await import("@/domain/time/athensTime");
+        
+        const rentalStartDateAthens = fromServerUTC(freshOrder.rentalStartDate);
+        const rentalEndDateAthens = fromServerUTC(freshOrder.rentalEndDate);
+        const startDateAthens = athensStartOfDay(formatDateYYYYMMDD(rentalStartDateAthens));
+        const endDateAthens = athensStartOfDay(formatDateYYYYMMDD(rentalEndDateAthens));
+        
+        const transformedOrder = {
+          ...freshOrder,
+          rentalStartDate: startDateAthens,
+          rentalEndDate: endDateAthens,
+          timeIn: fromServerUTC(freshOrder.timeIn),
+          timeOut: fromServerUTC(freshOrder.timeOut),
+          OverridePrice: freshOrder.OverridePrice !== undefined ? freshOrder.OverridePrice : null,
+        };
+        
+        // Обновляем editedOrder свежими данными
+        setEditedOrder(transformedOrder);
+      } catch (err) {
+        console.warn("Failed to refetch order details:", err);
+      }
+    };
+    
+    refetchOrderDetails();
+  }, [open, order?._id, order?.my_order, setEditedOrder]);
 
   // handleDelete is now provided by useEditOrderState hook
 
@@ -219,13 +276,39 @@ const EditOrderModal = ({
         return;
       }
 
-      // Update local state
-      updateField("confirmed", result.updatedOrder?.confirmed);
+      // ============================================
+      // BUG FIX: После подтверждения нужно перезагрузить заказ,
+      // чтобы получить данные клиента (visibility применяется на сервере)
+      // ============================================
+      let freshOrder = result.updatedOrder;
+      try {
+        const refetchRes = await fetch(`/api/order/refetch/${editedOrder._id}`);
+        if (refetchRes.ok) {
+          freshOrder = await refetchRes.json();
+        }
+      } catch (refetchError) {
+        console.warn("Failed to refetch order after confirmation:", refetchError);
+        // Fallback to result.updatedOrder if refetch fails
+      }
+
+      // ✅ ПРАВИЛЬНЫЙ ФИКС: Полностью заменяем editedOrder свежими данными
+      // Трансформируем даты в Athens timezone как это делает useEditOrderState
+      if (freshOrder) {
+        const transformedOrder = {
+          ...freshOrder,
+          rentalStartDate: fromServerUTC(freshOrder.rentalStartDate),
+          rentalEndDate: fromServerUTC(freshOrder.rentalEndDate),
+          timeIn: fromServerUTC(freshOrder.timeIn),
+          timeOut: fromServerUTC(freshOrder.timeOut),
+          OverridePrice: freshOrder.OverridePrice !== undefined ? freshOrder.OverridePrice : null,
+        };
+        setEditedOrder(transformedOrder);
+      }
 
       // Show message
       const isWarning = result.level === "warning";
       setUpdateMessage(result.message);
-      onSave(result.updatedOrder);
+      onSave(freshOrder);
 
       // Close modal
       setTimeout(() => {
@@ -888,6 +971,9 @@ const EditOrderModal = ({
             </Box>
 
             {/* Блок данных клиента: имя на отдельной строке, телефон и email — ниже в одну строку */}
+            {/* ✅ ARCHITECTURE: Используем access.canSeeClientPII из orderAccessPolicy */}
+            {/* Это единый источник истины для visibility правил */}
+            {access.canSeeClientPII && (
             <Box sx={{ mb: 0 }}>
               <FormControl fullWidth margin="dense" sx={{ mt: 0, mb: 0 }}>
                 <TextField
@@ -1023,6 +1109,7 @@ const EditOrderModal = ({
                 </FormControl>
               </Box>
             </Box>
+            )}
 
             {/* Кнопки действий — адаптивное расположение */}
             <Box

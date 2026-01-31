@@ -1,15 +1,14 @@
 import { connectToDB } from "@utils/database";
-import { Car } from "@models/car";
 import { Order } from "@models/order";
+import { withOrderVisibility } from "@/middleware/withOrderVisibility";
 
-export async function POST(request) {
+async function handler(request) {
   try {
     await connectToDB();
 
-    // Оптимизация: выбираем только нужные поля для ускорения запроса
     const orders = await Order.find()
       .select("rentalStartDate rentalEndDate timeIn timeOut car carNumber confirmed customerName phone email Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber")
-      .lean(); // Используем lean() для ускорения - возвращает plain JS объекты вместо Mongoose документов
+      .lean();
 
     return new Response(JSON.stringify(orders), {
       status: 200,
@@ -22,3 +21,5 @@ export async function POST(request) {
     });
   }
 }
+
+export const POST = withOrderVisibility(handler);
