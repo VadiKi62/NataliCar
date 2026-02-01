@@ -65,7 +65,7 @@ export function formatConfirmedConflictMessage({
     `Пересечение с подтверждённым заказом «${conflictingOrderName}».\n` +
     `${sourceLabelCapitalized} в ${sourceTime} конфликтует с ${targetLabel}ом в ${targetTime}.\n` +
     `Реальная разница (буфер): ${gapText}, при требуемом буфере ${requiredBufferHours} ч.\n` +
-    `Измените ${actionLabel} или буфер — ⚙️ Настройки буфера.`
+    `Изменить буфер — ⚙️`
   );
 }
 
@@ -82,7 +82,6 @@ export function formatConfirmedConflictMessage({
  * @param {string} [params.nextReturnTime] - Время возврата следующим клиентом "HH:mm" (если конфликт по забору)
  * @param {number} params.actualGapMinutes - Фактический интервал в минутах
  * @param {number} params.requiredBufferHours - Требуемый буфер в часах
- * @param {string} [params.bufferSettingsLink] - Ссылка/текст для настройки буфера (опционально)
  * @returns {string}
  */
 export function formatPendingConflictMessage({
@@ -95,7 +94,6 @@ export function formatPendingConflictMessage({
   nextReturnTime,
   actualGapMinutes,
   requiredBufferHours,
-  bufferSettingsLink,
 }) {
   // Определяем направление конфликта на основе переданных параметров
   // Если есть currentReturnTime и nextPickupTime → конфликт по возврату
@@ -130,14 +128,12 @@ export function formatPendingConflictMessage({
     ? `${conflictingOrderName} (${conflictingOrderEmail})`
     : conflictingOrderName;
 
-  const bufferLinkText = bufferSettingsLink || "⚙️ Настройки буфера";
-
   return (
     `Пересечение с неподтверждённым заказом: «${fullName}» —\n` +
     `${conflictingOrderDates}.\n` +
     `${sourceLabelCapitalized} в ${sourceTime} конфликтует с ${targetLabel}ом в ${targetTime}.\n` +
     `Реальная разница (буфер): ${gapText}, при требуемом буфере ${requiredBufferHours} ч.\n` +
-    `Изменить буфер — ${bufferLinkText}.`
+    `Изменить буфер — ⚙️`
   );
 }
 

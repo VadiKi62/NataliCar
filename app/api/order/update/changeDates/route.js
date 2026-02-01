@@ -2,7 +2,10 @@ import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
-import { canEditOrderField } from "@/domain/orders/orderPermissions";
+// 🔧 FIXED: Use orderAccessPolicy directly (no legacy shims)
+import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
+import { getTimeBucket } from "@/domain/time/athensTime";
+import { ROLE } from "@/domain/orders/admin-rbac";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -115,6 +118,29 @@ export const PUT = async (req) => {
       });
     }
     
+    // 🔧 FIXED: Check permissions using orderAccessPolicy (SSOT)
+    const timeBucket = getTimeBucket(order);
+    const isPast = timeBucket === "PAST";
+    const access = getOrderAccess({
+      role: session.user.role === ROLE.SUPERADMIN ? "SUPERADMIN" : "ADMIN",
+      isClientOrder: order.my_order === true,
+      confirmed: order.confirmed === true,
+      isPast,
+      timeBucket,
+    });
+    
+    // Check if user can edit at all
+    if (access.isViewOnly) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          message: "У вас нет прав на редактирование этого заказа",
+          code: "PERMISSION_DENIED",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    
     // Check permissions for each field being updated (field-level granularity)
     const fieldsToCheck = [
       { field: "rentalStartDate", inPayload: rentalStartDate !== undefined },
@@ -132,12 +158,13 @@ export const PUT = async (req) => {
 
     for (const { field, inPayload } of fieldsToCheck) {
       if (inPayload) {
-        const permission = canEditOrderField(order, session.user, field);
-        if (!permission.allowed) {
+        // Check if field is in disabledFields
+        const isFieldDisabled = access.disabledFields?.includes(field);
+        if (isFieldDisabled) {
           return new Response(
             JSON.stringify({ 
               success: false,
-              message: permission.reason,
+              message: `Нельзя изменить поле ${field} для этого заказа`,
               code: "PERMISSION_DENIED",
               field: field,
             }),

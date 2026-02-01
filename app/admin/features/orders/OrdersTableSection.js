@@ -47,13 +47,12 @@ import timezone from "dayjs/plugin/timezone";
 
 import { useMainContext } from "@app/Context";
 import { getOrderColor } from "@/domain/orders/getOrderColor";
-import { 
+import {
   ROLE,
-  canEditOrder, 
-  canDeleteOrder,
-  canEditOrderField,
   isClientOrder,
-} from "@/domain/orders/admin-rbac";
+} from "@/domain/orders";
+import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
+import { getTimeBucket } from "@/domain/time/athensTime";
 import { updateOrderInline, updateOrderConfirmation, fetchAdminOrders, calculateTotalPrice } from "@/utils/action";
 import { useSession } from "next-auth/react";
 import { palette } from "@/theme";
@@ -181,41 +180,57 @@ export default function OrdersTableSection() {
     fetchOrders();
   }, [fetchOrders]);
   
-  // Permission check helpers
-  const canEdit = useCallback((order) => {
-    if (!currentUser) return false;
-    const permission = canEditOrder(order, currentUser);
-    return permission.allowed;
+  // 🔧 FIXED: Use orderAccessPolicy directly (no legacy shims)
+  // Permission check helpers using SSOT: getOrderAccess + getTimeBucket
+  const getAccessForOrder = useCallback((order) => {
+    if (!currentUser || !order) return null;
+    const timeBucket = getTimeBucket(order);
+    const isPast = timeBucket === "PAST";
+    return getOrderAccess({
+      role: currentUser.role === ROLE.SUPERADMIN ? "SUPERADMIN" : "ADMIN",
+      isClientOrder: order.my_order === true,
+      confirmed: order.confirmed === true,
+      isPast,
+      timeBucket,
+    });
   }, [currentUser]);
   
+  const canEdit = useCallback((order) => {
+    const access = getAccessForOrder(order);
+    if (!access) return false;
+    return !access.isViewOnly;
+  }, [getAccessForOrder]);
+  
   const canDelete = useCallback((order) => {
-    if (!currentUser) return false;
-    const permission = canDeleteOrder(order, currentUser);
-    return permission.allowed;
-  }, [currentUser]);
+    const access = getAccessForOrder(order);
+    if (!access) return false;
+    return access.canDelete;
+  }, [getAccessForOrder]);
   
   /**
    * Get field-level permission for an order
-   * Returns { allowed: boolean, reason: string|null }
+   * Uses orderAccessPolicy.disabledFields (SSOT)
    * 
    * @param {Object} order
    * @param {string} fieldName
-   * @param {Object} user - currentUser from session
    * @returns {{ allowed: boolean, reason: string|null }}
    */
-  const getFieldPermission = useCallback((order, fieldName, user) => {
-    if (!user) {
+  const getFieldPermission = useCallback((order, fieldName) => {
+    const access = getAccessForOrder(order);
+    if (!access) {
       return { allowed: false, reason: "Not authenticated" };
     }
-    return canEditOrderField(order, user, fieldName);
-  }, []);
+    // Check if field is in disabledFields
+    const isDisabled = access.disabledFields?.includes(fieldName);
+    return { allowed: !isDisabled, reason: isDisabled ? "Field is disabled by policy" : null };
+  }, [getAccessForOrder]);
   
   const canEditField = useCallback((order, fieldName) => {
     if (!currentUser) {
       console.warn("[canEditField] currentUser is null", { orderId: order._id, fieldName });
       return false;
     }
-    const permission = getFieldPermission(order, fieldName, currentUser);
+    const permission = getFieldPermission(order, fieldName);
     if (!permission.allowed && process.env.NODE_ENV !== "production") {
       console.log("[canEditField] Permission denied", {
         orderId: order._id,
@@ -993,7 +1008,7 @@ export default function OrdersTableSection() {
                   const canEditTotalPrice = canEditField(order, "totalPrice");
                   
                   // Legacy aliases for backward compatibility
-                  const canEditDates = canEditStartDate; // Used for both start and end dates
+                  const canEditDates = canEditStartDate || canEditEndDate; // Any date editable
                   const canEditTimes = canEditTimeIn; // Used for both times
                   
                   // Dev-only: Permission audit log for first 1-2 orders (not spammy)
@@ -1131,7 +1146,7 @@ export default function OrdersTableSection() {
                             value={order.rentalStartDate ? dayjs(order.rentalStartDate).tz(ATHENS_TZ).format("YYYY-MM-DD") : ""}
                             disabled={!canEditStartDate || isSaving[`${order._id}_rentalStartDate`]}
                             onDenied={() => {
-                              const permission = getFieldPermission(order, "rentalStartDate", currentUser);
+                              const permission = getFieldPermission(order, "rentalStartDate");
                               enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать дату начала", { variant: "warning" });
                             }}
                             onCommit={(val) => handleFieldUpdate(order._id, "rentalStartDate", val)}
@@ -1146,7 +1161,7 @@ export default function OrdersTableSection() {
                             value={order.timeIn ? formatTime(order.timeIn) : ""}
                             disabled={!canEditTimeIn || isSaving[`${order._id}_timeIn`]}
                             onDenied={() => {
-                              const permission = getFieldPermission(order, "timeIn", currentUser);
+                              const permission = getFieldPermission(order, "timeIn");
                               enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать время начала", { variant: "warning" });
                             }}
                             onCommit={(val) => handleFieldUpdate(order._id, "timeIn", val)}
@@ -1178,7 +1193,7 @@ export default function OrdersTableSection() {
                             value={order.timeOut ? formatTime(order.timeOut) : ""}
                             disabled={!canEditTimeOut || isSaving[`${order._id}_timeOut`]}
                             onDenied={() => {
-                              const permission = getFieldPermission(order, "timeOut", currentUser);
+                              const permission = getFieldPermission(order, "timeOut");
                               enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать время окончания", { variant: "warning" });
                             }}
                             onCommit={(val) => handleFieldUpdate(order._id, "timeOut", val)}
@@ -1198,7 +1213,7 @@ export default function OrdersTableSection() {
                             value={order.customerName || ""}
                             disabled={!canEditCustomerName || isSaving[`${order._id}_customerName`]}
                             onDenied={() => {
-                              const permission = getFieldPermission(order, "customerName", currentUser);
+                              const permission = getFieldPermission(order, "customerName");
                               enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать имя клиента", { variant: "warning" });
                             }}
                             onCommit={(val) => handleFieldUpdate(order._id, "customerName", val)}
@@ -1207,7 +1222,7 @@ export default function OrdersTableSection() {
                             value={order.phone || ""}
                             disabled={!canEditPhone || isSaving[`${order._id}_phone`]}
                             onDenied={() => {
-                              const permission = getFieldPermission(order, "phone", currentUser);
+                              const permission = getFieldPermission(order, "phone");
                               enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать телефон", { variant: "warning" });
                             }}
                             onCommit={(val) => handleFieldUpdate(order._id, "phone", val)}
@@ -1261,7 +1276,7 @@ export default function OrdersTableSection() {
                                     value={effectivePrice?.toString() || "0"}
                                     disabled={!canEditTotalPrice || isSaving[`${order._id}_totalPrice`]}
                                     onDenied={() => {
-                                      const permission = getFieldPermission(order, "totalPrice", currentUser);
+                                      const permission = getFieldPermission(order, "totalPrice");
                                       enqueueSnackbar(permission.reason || "⛔ Нельзя редактировать сумму", { variant: "warning" });
                                     }}
                                     onCommit={(val) => {

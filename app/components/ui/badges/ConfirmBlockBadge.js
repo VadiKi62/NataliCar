@@ -59,9 +59,10 @@ export default function ConfirmBlockBadge({
 }
 
 /**
- * Хелпер для проверки нужно ли показывать бейдж для заказа
+ * Хелпер для проверки нужно ли показывать бейдж для заказа.
+ * Кеш хранит данные (conflictData), не строки — полный текст формируется в EditOrderModal.
  * @param {Object} order
- * @param {Record<string, string>} pendingConfirmBlockById
+ * @param {Record<string, string | object>} pendingConfirmBlockById - orderId -> string (legacy) или conflictData
  * @returns {{ show: boolean, message: string | null }}
  */
 export function shouldShowConfirmBlockBadge(order, pendingConfirmBlockById) {
@@ -70,11 +71,11 @@ export function shouldShowConfirmBlockBadge(order, pendingConfirmBlockById) {
   }
 
   const orderId = order._id?.toString();
-  const message = pendingConfirmBlockById?.[orderId];
+  const entry = pendingConfirmBlockById?.[orderId];
 
   return {
-    show: !!message,
-    message: message || null,
+    show: !!entry,
+    message: !entry ? null : typeof entry === "string" ? entry : "Конфликт с подтверждённым заказом",
   };
 }
 

@@ -225,6 +225,6 @@ OrderSchema.post("init", function () {
   }
 });
 
-const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);
+const Order = mongoose.models?.Order || mongoose.model("Order", OrderSchema);
 
 export { OrderSchema, Order };

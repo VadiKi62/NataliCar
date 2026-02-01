@@ -222,7 +222,6 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
         nextPickupTime: c.otherTimeIn,
         actualGapMinutes: actualGapMinutes,
         requiredBufferHours: effectiveBufferHours,
-        bufferSettingsLink: "⚙️ Настройки буфера",
       });
     } else {
       result.message =
@@ -281,34 +280,43 @@ export function canPendingOrderBeConfirmed({ pendingOrder, allOrders, bufferHour
     );
 
     if (hasOverlap) {
-      // 🔴 BLOCK: спокойное объяснение
-      // Вычисляем разницу между возвратом pending заказа и забором confirmed заказа
-      const gapMinutes = Math.round(otherStart.diff(pendingEnd, "minute", true));
-      const actualGapMinutes = Math.max(0, gapMinutes);
+      // 🔴 BLOCK: определяем направление конфликта и времена для сообщения
+      // "Возврат в X конфликтует с забором в Y" — X предшествует Y
+      const gapReturnVsPickup = otherStart.diff(pendingEnd, "minute", true); // Возврат pending → забор confirmed
+      const gapPickupVsReturn = pendingStart.diff(otherEnd, "minute", true); // Возврат confirmed → забор pending
       
-      // Определяем направление конфликта для подсветки времени
-      // Проверяем оба возможных направления конфликта
-      const gapReturnVsPickup = otherStart.diff(pendingEnd, "minute", true); // Возврат pending vs забор confirmed
-      const gapPickupVsReturn = pendingStart.diff(otherEnd, "minute", true); // Забор pending vs возврат confirmed
-      
-      // Конфликт по возврату: если возврат pending слишком близко к забору confirmed
       const isReturnConflict = gapReturnVsPickup >= 0 && gapReturnVsPickup < effectiveBufferHours * 60;
-      // Конфликт по забору: если забор pending слишком близко к возврату confirmed
       const isPickupConflict = gapPickupVsReturn >= 0 && gapPickupVsReturn < effectiveBufferHours * 60;
       
-      // Определяем какое время конфликтует (приоритет возврату, если оба конфликтуют)
       const conflictTime = isReturnConflict ? "return" : (isPickupConflict ? "pickup" : "return");
+
+      // В зависимости от направления подставляем правильные времена:
+      // — isPickupConflict: возврат CONFIRMED конфликтует с забором PENDING → currentReturnTime=otherEnd, nextPickupTime=pendingStart
+      // — иначе: возврат PENDING конфликтует с забором CONFIRMED → currentReturnTime=pendingEnd, nextPickupTime=otherStart
+      const conflictReturnTime = isPickupConflict ? formatTimeHHMM(otherEnd) : formatTimeHHMM(pendingEnd);
+      const conflictPickupTime = isPickupConflict ? formatTimeHHMM(pendingStart) : formatTimeHHMM(otherStart);
+      const actualGapMinutes = Math.max(0, Math.round(isPickupConflict ? gapPickupVsReturn : gapReturnVsPickup));
 
       return {
         canConfirm: false,
         blockingOrder: order,
-        conflictTime, // "return" или "pickup" - какое время конфликтует
-        conflictReturnTime: formatTimeHHMM(pendingEnd), // Время возврата pending заказа
-        conflictPickupTime: formatTimeHHMM(otherStart), // Время забора confirmed заказа
+        conflictTime,
+        conflictReturnTime,
+        conflictPickupTime,
+        actualGapMinutes,
+        requiredBufferHours: effectiveBufferHours,
+        conflictData: {
+          blockingOrder: order,
+          conflictTime,
+          conflictReturnTime,
+          conflictPickupTime,
+          actualGapMinutes,
+          requiredBufferHours: effectiveBufferHours,
+        },
         message: formatConfirmedConflictMessage({
           conflictingOrderName: order.customerName || "Неизвестный",
-          currentReturnTime: formatTimeHHMM(pendingEnd),
-          nextPickupTime: formatTimeHHMM(otherStart),
+          currentReturnTime: conflictReturnTime,
+          nextPickupTime: conflictPickupTime,
           actualGapMinutes: actualGapMinutes,
           requiredBufferHours: effectiveBufferHours,
         }),

@@ -1,7 +1,10 @@
 import { Order } from "@models/order";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
-import { canEditOrder } from "@/domain/orders/orderPermissions";
+// 🔧 FIXED: Use orderAccessPolicy directly (no legacy shims)
+import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
+import { getTimeBucket } from "@/domain/time/athensTime";
+import { ROLE } from "@/domain/orders/admin-rbac";
 
 export const PUT = async (req) => {
   try {
@@ -24,14 +27,22 @@ export const PUT = async (req) => {
       );
     }
     
-    // Check if admin has permission to edit this order
-    const permission = canEditOrder(existingOrder, session.user);
+    // 🔧 FIXED: Check permissions using orderAccessPolicy (SSOT)
+    const timeBucket = getTimeBucket(existingOrder);
+    const isPast = timeBucket === "PAST";
+    const access = getOrderAccess({
+      role: session.user.role === ROLE.SUPERADMIN ? "SUPERADMIN" : "ADMIN",
+      isClientOrder: existingOrder.my_order === true,
+      confirmed: existingOrder.confirmed === true,
+      isPast,
+      timeBucket,
+    });
     
-    if (!permission.allowed) {
+    if (access.isViewOnly) {
       return new Response(
         JSON.stringify({ 
           success: false,
-          message: permission.reason,
+          message: "У вас нет прав на редактирование этого заказа",
           code: "PERMISSION_DENIED",
         }),
         { status: 403, headers: { "Content-Type": "application/json" } }

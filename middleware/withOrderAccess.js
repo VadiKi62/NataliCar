@@ -20,13 +20,15 @@ import { authOptions } from "@lib/authOptions";
 import dayjs from "dayjs";
 import { getOrderAccess, ROLE } from "@/domain/orders/orderAccessPolicy";
 import { applyVisibilityToOrder } from "@/domain/orders/orderVisibility";
+import { getTimeBucket } from "@/domain/time/athensTime";
 
 // Athens timezone
 const ATHENS_TZ = "Europe/Athens";
 
 /**
  * Создаёт OrderContext из order и session.
- * 
+ * timeBucket обязателен для getOrderAccess (CURRENT vs FUTURE).
+ *
  * @param {Object} order - Order object
  * @param {Object} session - NextAuth session
  * @returns {import("@/domain/orders/orderAccessPolicy").OrderContext}
@@ -34,18 +36,20 @@ const ATHENS_TZ = "Europe/Athens";
 function createContext(order, session) {
   const user = session?.user;
   const isSuperAdmin = user?.role === ROLE.SUPERADMIN;
-  
-  const endDate = order?.rentalEndDate 
+
+  const endDate = order?.rentalEndDate
     ? dayjs(order.rentalEndDate).tz(ATHENS_TZ)
     : null;
   const today = dayjs().tz(ATHENS_TZ).startOf("day");
   const isPast = endDate ? endDate.isBefore(today, "day") : false;
-  
+  const timeBucket = getTimeBucket(order);
+
   return {
     role: isSuperAdmin ? "SUPERADMIN" : "ADMIN",
     isClientOrder: order?.my_order === true,
     confirmed: order?.confirmed === true,
     isPast,
+    timeBucket,
   };
 }
 
@@ -134,17 +138,26 @@ export function checkFieldAccess(access, fieldsToUpdate) {
   const deniedFields = [];
   
   for (const field of fieldsToUpdate) {
-    // Даты
-    if (["rentalStartDate", "rentalEndDate", "timeIn", "numberOfDays"].includes(field)) {
-      if (!access.canEditDates) deniedFields.push(field);
+    if (["rentalStartDate", "timeIn"].includes(field)) {
+      if (!access.canEditPickupDate) deniedFields.push(field);
+    } else if (["rentalEndDate", "numberOfDays"].includes(field)) {
+      if (!access.canEditReturnDate) deniedFields.push(field);
     }
-    // Возврат (timeOut и placeOut)
+    // Место получения (placeIn) — только canEditPickupPlace
+    else if (["placeIn", "flightNumber"].includes(field)) {
+      if (!access.canEditPickupPlace) deniedFields.push(field);
+    }
+    // Возврат (placeOut, timeOut) — canEditReturn
     else if (["placeOut", "timeOut"].includes(field)) {
       if (!access.canEditReturn) deniedFields.push(field);
     }
-    // Страховка
-    else if (["insurance"].includes(field)) {
+    // Страховка / детские кресла
+    else if (["insurance", "ChildSeats"].includes(field)) {
       if (!access.canEditInsurance) deniedFields.push(field);
+    }
+    // Франшиза — только canEditFranchise (client orders NEVER)
+    else if (["franchiseOrder"].includes(field)) {
+      if (!access.canEditFranchise) deniedFields.push(field);
     }
     // Цена
     else if (["totalPrice", "OverridePrice"].includes(field)) {
@@ -154,9 +167,9 @@ export function checkFieldAccess(access, fieldsToUpdate) {
     else if (["confirmed"].includes(field)) {
       if (!access.canConfirm) deniedFields.push(field);
     }
-    // PII
+    // PII — редактирование только при canEditClientPII
     else if (["customerName", "phone", "email", "Viber", "Whatsapp", "Telegram"].includes(field)) {
-      if (!access.canSeeClientPII) deniedFields.push(field);
+      if (!access.canEditClientPII) deniedFields.push(field);
     }
   }
   

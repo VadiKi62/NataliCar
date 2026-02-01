@@ -17,12 +17,13 @@
  * - Client order (my_order === true): заказ от клиента
  * - Internal order (my_order === false): внутренний заказ админа
  * 
- * TIME BUCKETS:
- * - Past (isPast): rentalEndDate < today → только просмотр
- * - Current/Future: активные заказы
+ * TIME BUCKETS (only policy computes these):
+ * - PAST: rentalEndDate < today → только просмотр
+ * - CURRENT: start < today && end >= today
+ * - FUTURE: start >= today
  */
 
-import { ROLE } from "./admin-rbac";
+import { ROLE } from "@models/user";
 
 // ════════════════════════════════════════════════════════════════
 // TYPES (JSDoc for JS, but structured like TS)
@@ -33,26 +34,37 @@ import { ROLE } from "./admin-rbac";
  */
 
 /**
+ * @typedef {"PAST" | "CURRENT" | "FUTURE"} TimeBucket
+ */
+
+/**
  * @typedef {Object} OrderContext
  * @property {PolicyRole} role - User role
  * @property {boolean} isClientOrder - my_order === true
  * @property {boolean} confirmed - Order confirmed by superadmin
  * @property {boolean} isPast - rentalEndDate < today (Athens TZ)
+ * @property {TimeBucket} timeBucket - Required; use getTimeBucket from @/domain/time/athensTime
  */
 
 /**
  * @typedef {Object} OrderAccess
  * @property {boolean} canView - Can open/view the order
- * @property {boolean} canEdit - Can edit any field
+ * @property {boolean} canEdit - Can edit any field (do NOT use for individual fields; use specific flags)
  * @property {boolean} canDelete - Can delete the order
- * @property {boolean} canEditDates - Can edit pickup/return dates
- * @property {boolean} canEditReturn - Can edit return place/time
+ * @property {boolean} canEditPickupDate - Can edit start (rentalStartDate, timeIn); do NOT use canEditDates
+ * @property {boolean} canEditReturnDate - Can edit end date only (rentalEndDate, numberOfDays); timeOut/placeOut = canEditReturn
+ * @property {boolean} canEditPickupPlace - Can edit placeIn (pickup location); NEVER derived from canEdit
+ * @property {boolean} canEditReturn - Can edit return place and time (placeOut, timeOut)
  * @property {boolean} canEditInsurance - Can edit insurance type
+ * @property {boolean} canEditFranchise - Can edit franchiseOrder; client orders NEVER
  * @property {boolean} canEditPricing - Can edit price fields
  * @property {boolean} canConfirm - Can confirm/unconfirm order
  * @property {boolean} canSeeClientPII - Can see client contact info
+ * @property {boolean} canEditClientPII - Can edit client contact data (SUPERADMIN only; ADMIN never)
  * @property {boolean} notifySuperadminOnEdit - Should notify superadmin on edit
  * @property {boolean} isViewOnly - Convenience flag: !canEdit
+ * @property {boolean} isPast - Order is past (rentalEndDate < today); only policy computes this
+ * @property {{ clientPII?: string }} reasons - Human-readable restriction reasons
  */
 
 // ════════════════════════════════════════════════════════════════
@@ -68,24 +80,38 @@ import { ROLE } from "./admin-rbac";
  * @returns {OrderAccess} - Access permissions
  */
 export function getOrderAccess(ctx) {
-  const { role, isClientOrder, confirmed, isPast } = ctx;
+  const { role, isClientOrder, confirmed, isPast, timeBucket } = ctx;
+  // WHY: timeBucket MUST be required. Fallback to FUTURE would misclassify CURRENT internal orders
+  // as FUTURE and wrongly allow insurance/pricing edits; fail fast so callers always pass getTimeBucket(order).
+  if (timeBucket === undefined || timeBucket === null) {
+    throw new Error("orderAccessPolicy: timeBucket is required (use getTimeBucket from @/domain/time/athensTime)");
+  }
+  const bucket = timeBucket;
 
   // ════════════════════════════════════════════════════════════════
   // 🟣 SUPERADMIN — полный доступ ко всему
   // ════════════════════════════════════════════════════════════════
+  const REASON_CLIENT_PII = "Client contact data can only be edited by Superadmin";
+
   if (role === "SUPERADMIN") {
     return {
       canView: true,
       canEdit: true,
       canDelete: true,
-      canEditDates: true,
+      canEditPickupDate: true,
+      canEditReturnDate: true,
+      canEditPickupPlace: true,
       canEditReturn: true,
       canEditInsurance: true,
+      canEditFranchise: true,
       canEditPricing: true,
       canConfirm: true,
       canSeeClientPII: true,
-      notifySuperadminOnEdit: false,
+      canEditClientPII: true,
+      notifySuperadminOnEdit: false, // superadmin doesn't notify themselves
       isViewOnly: false,
+      isPast,
+      reasons: { clientPII: REASON_CLIENT_PII },
     };
   }
 
@@ -101,15 +127,20 @@ export function getOrderAccess(ctx) {
       canView: true,
       canEdit: false,
       canDelete: false,
-      canEditDates: false,
+      canEditPickupDate: false,
+      canEditReturnDate: false,
+      canEditPickupPlace: false,
       canEditReturn: false,
       canEditInsurance: false,
+      canEditFranchise: false,
       canEditPricing: false,
       canConfirm: false,
-      // 🔥 PII видно только для confirmed client orders
       canSeeClientPII: !isClientOrder || confirmed,
+      canEditClientPII: false,
       notifySuperadminOnEdit: false,
       isViewOnly: true,
+      isPast: true,
+      reasons: { clientPII: REASON_CLIENT_PII },
     };
   }
 
@@ -118,53 +149,97 @@ export function getOrderAccess(ctx) {
   // ────────────────────────────────────────────────────────────────
   if (isClientOrder) {
     if (!confirmed) {
-      // UNCONFIRMED client order
+      // UNCONFIRMED client order — admin can delete (spam/erroneous orders)
       return {
         canView: true,
-        canEdit: false,           // ❌ нельзя редактировать
-        canDelete: true,           // ✅ можно удалить (спам, ошибочные заказы)
-        canEditDates: false,
+        canEdit: false,
+        canDelete: false,
+        canEditPickupDate: false,
+        canEditReturnDate: false,
+        canEditPickupPlace: false,
         canEditReturn: false,
         canEditInsurance: false,
+        canEditFranchise: false,
         canEditPricing: false,
-        canConfirm: false,        // ❌ только superadmin подтверждает
-        canSeeClientPII: false,   // 🔥 КЛЮЧЕВОЕ: PII скрыты
-        notifySuperadminOnEdit: false,
+        canConfirm: false,
+        canSeeClientPII: false,
+        canEditClientPII: false,
+        notifySuperadminOnEdit: true,
         isViewOnly: true,
+        isPast: false,
+        reasons: { clientPII: REASON_CLIENT_PII },
       };
     }
 
-    // CONFIRMED client order
+    // CONFIRMED client order — only return place/time editable. WHY: placeIn, insurance, franchise
+    // are explicit flags so UI never infers from canEdit; client orders NEVER allow franchise/insurance.
     return {
       canView: true,
-      canEdit: true,              // ✅ частичный edit
-      canDelete: false,           // ❌ нельзя удалить confirmed
-      canEditDates: false,        // ❌ даты нельзя
-      canEditReturn: true,        // ✅ место/время возврата
-      canEditInsurance: true,      // ✅ страховка можно
-      canEditPricing: false,      // ❌ цена нельзя
-      canConfirm: false,          // ❌ только superadmin отменяет
-      canSeeClientPII: true,      // 🔥 КЛЮЧЕВОЕ: PII видны
-      notifySuperadminOnEdit: true, // 🔔 уведомлять superadmin
+      canEdit: true,
+      canDelete: false,
+      canEditPickupDate: false,
+      canEditReturnDate: false,
+      canEditPickupPlace: false,   // placeIn NEVER for client (do not derive from canEdit)
+      canEditReturn: false,
+      canEditInsurance: false,   // client: never insurance
+      canEditFranchise: false,    // client: never franchise (do not tie to canEditInsurance)
+      canEditPricing: false,
+      canConfirm: false,
+      canSeeClientPII: true,
+      canEditClientPII: false,
+      notifySuperadminOnEdit: true,
       isViewOnly: false,
+      isPast: false,
+      reasons: { clientPII: REASON_CLIENT_PII },
     };
   }
 
   // ────────────────────────────────────────────────────────────────
-  // 🟢 INTERNAL ORDERS (my_order === false) — полный контроль
+  // 🟢 INTERNAL ORDERS (my_order === false) — past / current / future
+  // Insurance: ❌ NEVER for client; ❌ for internal if CURRENT; ✅ only internal + FUTURE
   // ────────────────────────────────────────────────────────────────
+  if (bucket === "CURRENT") {
+    // 🟡 INTERNAL CURRENT: block ONLY start (rentalStartDate, timeIn, placeIn); allow end + return.
+    return {
+      canView: true,
+      canEdit: true,
+      canDelete: false,
+      canEditPickupDate: false,   // ❌ start: rentalStartDate, timeIn
+      canEditReturnDate: true,   // ✅ end date only: rentalEndDate, numberOfDays
+      canEditPickupPlace: false, // ❌ placeIn
+      canEditReturn: true,       // ✅ return place + time: placeOut, timeOut
+      canEditInsurance: false,
+      canEditFranchise: false,
+      canEditPricing: false,
+      canConfirm: true,
+      canSeeClientPII: true,
+      canEditClientPII: true,
+      notifySuperadminOnEdit: true,
+      isViewOnly: false,
+      isPast: false,
+      reasons: { clientPII: REASON_CLIENT_PII },
+    };
+  }
+
+  // INTERNAL FUTURE: можно всё; admin can confirm/unconfirm internal orders
   return {
     canView: true,
     canEdit: true,
     canDelete: true,
-    canEditDates: true,
+    canEditPickupDate: true,
+    canEditReturnDate: true,
+    canEditPickupPlace: true,
     canEditReturn: true,
     canEditInsurance: true,
+    canEditFranchise: true,
     canEditPricing: true,
-    canConfirm: false,            // internal orders не требуют подтверждения
-    canSeeClientPII: true,        // internal = всегда видно
+    canConfirm: true,   // admin can unconfirm internal FUTURE
+    canSeeClientPII: true,
+    canEditClientPII: true,   // ADMIN never edits client PII
     notifySuperadminOnEdit: false,
     isViewOnly: false,
+    isPast: false,
+    reasons: { clientPII: REASON_CLIENT_PII },
   };
 }
 
@@ -174,30 +249,84 @@ export function getOrderAccess(ctx) {
 
 /**
  * Создаёт OrderContext из order и user объектов.
- * 
+ * timeBucket ОБЯЗАТЕЛЕН — иначе getOrderAccess выбросит. Вычисляйте через getTimeBucket(order) из @/domain/time/athensTime.
+ *
  * @param {Object} order - Order object
  * @param {Object} user - User object from session
  * @param {Function} isPastFn - Function to check if order is past
+ * @param {TimeBucket} timeBucket - PAST | CURRENT | FUTURE (required; use getTimeBucket from athensTime)
  * @returns {OrderContext}
  */
-export function createOrderContext(order, user, isPastFn) {
+export function createOrderContext(order, user, isPastFn, timeBucket) {
   if (!order || !user) {
     return {
       role: "ADMIN",
       isClientOrder: false,
       confirmed: false,
       isPast: false,
+      timeBucket: "FUTURE",
     };
   }
 
+  if (timeBucket === undefined || timeBucket === null) {
+    throw new Error("orderAccessPolicy: timeBucket is required (use getTimeBucket from @/domain/time/athensTime)");
+  }
+
   const isSuperAdmin = user.role === ROLE.SUPERADMIN;
-  
+  const isPast = isPastFn ? isPastFn(order) : false;
+
   return {
     role: isSuperAdmin ? "SUPERADMIN" : "ADMIN",
     isClientOrder: order.my_order === true,
     confirmed: order.confirmed === true,
-    isPast: isPastFn ? isPastFn(order) : false,
+    isPast,
+    timeBucket,
   };
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIELD-LEVEL: single source for "which fields are disabled"
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Returns field names that must not be edited given current access.
+ * Used by domain/orders index canEditOrderField shim and UI getDisabledFields.
+ *
+ * @param {OrderAccess} access
+ * @returns {string[]}
+ */
+export function getDisabledFields(access) {
+  if (!access) return [];
+
+  const disabled = [];
+  if (!access.canEditPickupDate) {
+    disabled.push("rentalStartDate", "timeIn");
+  }
+  if (!access.canEditReturnDate) {
+    disabled.push("rentalEndDate", "numberOfDays");
+  }
+  if (!access.canEditPickupPlace) {
+    disabled.push("placeIn");
+  }
+  if (!access.canEditReturn) {
+    disabled.push("placeOut", "timeOut");
+  }
+  if (!access.canEditInsurance) {
+    disabled.push("insurance");
+  }
+  if (!access.canEditFranchise) {
+    disabled.push("franchiseOrder");
+  }
+  if (!access.canEditPricing) {
+    disabled.push("totalPrice", "OverridePrice");
+  }
+  if (!access.canConfirm) {
+    disabled.push("confirmed");
+  }
+  if (!access.canSeeClientPII || !access.canEditClientPII) {
+    disabled.push("customerName", "phone", "email", "Viber", "Whatsapp", "Telegram");
+  }
+  return disabled;
 }
 
 // ════════════════════════════════════════════════════════════════

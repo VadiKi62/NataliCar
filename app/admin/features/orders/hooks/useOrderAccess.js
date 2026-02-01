@@ -13,7 +13,7 @@
  * const access = useOrderAccess(editedOrder);
  * 
  * {access.canSeeClientPII && <ClientContacts />}
- * {access.canEditDates && <DateEditor />}
+ * {access.canEditPickupDate && <DateEditor />}
  * {access.canEditReturn && <ReturnPlaceEditor />}
  * {!access.canEdit && <ReadOnlyBanner />}
  * ```
@@ -24,7 +24,12 @@ import { useSession } from "next-auth/react";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { getOrderAccess, ROLE } from "@/domain/orders/orderAccessPolicy";
+import {
+  getOrderAccess,
+  ROLE,
+  getDisabledFields as getDisabledFieldsFromPolicy,
+} from "@/domain/orders/orderAccessPolicy";
+import { getTimeBucket, athensNow } from "@/domain/time/athensTime";
 
 // Extend dayjs
 dayjs.extend(utc);
@@ -38,23 +43,24 @@ const ATHENS_TZ = "Europe/Athens";
 // ════════════════════════════════════════════════════════════════
 
 /**
- * Проверяет, является ли заказ прошлым (rentalEndDate < today в Athens TZ)
- * 
+ * Проверяет, является ли заказ прошлым (rentalEndDate < today в Athens TZ).
+ * Parsing consistent with getTimeBucket: UTC then tz(ATHENS_TZ).
+ *
  * @param {Object} order - Order object
  * @returns {boolean}
  */
 function isOrderPast(order) {
   if (!order?.rentalEndDate) return false;
-  
-  const endDate = dayjs(order.rentalEndDate);
-  const today = dayjs().tz(ATHENS_TZ).startOf("day");
-  
+
+  const endDate = dayjs.utc(order.rentalEndDate).tz(ATHENS_TZ).startOf("day");
+  const today = athensNow().startOf("day");
+
   return endDate.isBefore(today, "day");
 }
 
 /**
  * Создаёт OrderContext из order и session.
- * 
+ *
  * @param {Object} order
  * @param {Object} session
  * @returns {import("@/domain/orders/orderAccessPolicy").OrderContext}
@@ -66,16 +72,20 @@ function createContext(order, session) {
       isClientOrder: false,
       confirmed: false,
       isPast: false,
+      timeBucket: "FUTURE",
     };
   }
-  
+
   const isSuperAdmin = session.user.role === ROLE.SUPERADMIN;
-  
+  const isPast = isOrderPast(order);
+  const timeBucket = getTimeBucket(order); // from athensTime — single source for PAST/CURRENT/FUTURE
+
   return {
     role: isSuperAdmin ? "SUPERADMIN" : "ADMIN",
     isClientOrder: order.my_order === true,
     confirmed: order.confirmed === true,
-    isPast: isOrderPast(order),
+    isPast,
+    timeBucket,
   };
 }
 
@@ -117,10 +127,14 @@ export function useOrderAccess(order, options = {}) {
       return {
         ...access,
         canEdit: false,
-        canEditDates: false,
+        canEditPickupDate: false,
+        canEditReturnDate: false,
+        canEditPickupPlace: false,
         canEditReturn: false,
         canEditInsurance: false,
+        canEditFranchise: false,
         canEditPricing: false,
+        canEditClientPII: false,
         isViewOnly: true,
       };
     }
@@ -130,6 +144,7 @@ export function useOrderAccess(order, options = {}) {
     order?._id,
     order?.my_order,
     order?.confirmed,
+    order?.rentalStartDate,
     order?.rentalEndDate,
     session?.user?.role,
     forceViewOnly,
@@ -159,7 +174,7 @@ export function getAccessRestrictionReason(access, order) {
     }
   }
   
-  if (!access.canEditDates && order?.my_order) {
+  if ((!access.canEditPickupDate && !access.canEditReturnDate) && order?.my_order) {
     return "Даты клиентского заказа нельзя изменять";
   }
   
@@ -168,32 +183,13 @@ export function getAccessRestrictionReason(access, order) {
 
 /**
  * Возвращает список полей, которые нельзя редактировать.
- * 
+ * Delegates to orderAccessPolicy (single source of truth).
+ *
  * @param {import("@/domain/orders/orderAccessPolicy").OrderAccess} access
  * @returns {string[]}
  */
 export function getDisabledFields(access) {
-  if (!access) return [];
-  
-  const disabled = [];
-  
-  if (!access.canEditDates) {
-    disabled.push("rentalStartDate", "rentalEndDate", "timeIn", "timeOut", "numberOfDays");
-  }
-  if (!access.canEditReturn) {
-    disabled.push("placeOut");
-  }
-  if (!access.canEditInsurance) {
-    disabled.push("insurance");
-  }
-  if (!access.canEditPricing) {
-    disabled.push("totalPrice", "OverridePrice");
-  }
-  if (!access.canSeeClientPII) {
-    disabled.push("customerName", "phone", "email", "Viber", "Whatsapp", "Telegram");
-  }
-  
-  return disabled;
+  return getDisabledFieldsFromPolicy(access);
 }
 
 /**

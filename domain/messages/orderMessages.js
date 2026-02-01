@@ -54,5 +54,11 @@ export const orderMessages = {
     title: "Ошибка валидации",
     text: "Проверьте правильность заполнения полей.",
   },
+
+  // API: switchConfirm (confirm/unconfirm order)
+  CONFIRM_PERMISSION_DENIED: "Only superadmin can confirm or unconfirm client orders",
+  CONFIRM_SUCCESS: "Заказ успешно подтверждён",
+  UNCONFIRM_SUCCESS: "Подтверждение заказа снято",
+  CONFIRM_TOGGLE_ERROR: "Failed to toggle order confirmation",
 };
 

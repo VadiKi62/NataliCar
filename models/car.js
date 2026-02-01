@@ -307,5 +307,5 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
   return { total, days };
 };
 
-const Car = models.Car || model("Car", CarSchema);
+const Car = models?.Car || model("Car", CarSchema);
 export { CarSchema, Car };

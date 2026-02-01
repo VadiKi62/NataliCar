@@ -50,13 +50,12 @@ export async function generateMetadata() {
 
 export default async function Home() {
   unstable_noStore();
-  const {companyId} = companyDataConfig;
   
   // Загружаем данные параллельно для ускорения загрузки
   const [carsData, ordersData, companyData] = await Promise.all([
     fetchAllCars(),
     reFetchActiveOrders(),
-    fetchCompany(companyId),
+    fetchCompany(COMPANY_ID),
   ]);
 
   const company = companyData;

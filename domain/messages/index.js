@@ -5,4 +5,5 @@
  */
 
 export { conflictMessages } from "./conflictMessages";
+export { orderMessages } from "./orderMessages";
 export { default as timeRestrictionMessages } from "./timeRestrictionMessages";

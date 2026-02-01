@@ -1,51 +1,37 @@
 /**
  * orderPermissions.js
- * 
- * ⚠️ DEPRECATED: This file is now a simple re-export wrapper.
- * 
- * All RBAC logic is centralized in admin-rbac.js.
- * This file exists only for backward compatibility.
- * 
- * DO NOT add any logic here — use admin-rbac.js directly.
+ *
+ * ⚠️ DEPRECATED: Re-export wrapper only.
+ *
+ * Permission/time/policy logic lives in domain/orders/index.js (thin wrappers over orderAccessPolicy + athensTime).
+ * Role/ownership helpers live in admin-rbac.js. This file re-exports from index for backward compatibility.
  */
 
-// Re-export all permission functions from admin-rbac.js
+// Re-export from admin-rbac + orderRbacShim only (avoids loading index → confirmOrderFlow in tests)
 export {
-  // Order type checks
+  ROLE,
+  isSuperAdmin,
+  isAdmin,
   isClientOrder,
   isAdminCreatedOrder,
-  
-  // Permission checks
+  getOrderCreatorId,
+  isOwnOrder,
+} from "./admin-rbac";
+
+export {
+  getOrderTimeBucket,
+  isPastOrder,
+  isFutureOrder,
+  isCurrentOrder,
   canViewOrder,
   canEditOrder,
   canEditPricing,
   canDeleteOrder,
   canConfirmOrder,
   canEditOrderField,
-  
-  // Time helpers
-  getOrderTimeBucket,
-  isPastOrder,
-  isFutureOrder,
-  isCurrentOrder,
-  
-  // Ownership helpers
-  getOrderCreatorId,
-  isOwnOrder,
-  
-  // Localization
-  getPermissionDeniedMessage,
-  
-  // Role constants
-  ROLE,
-  
-  // Role checks
-  isSuperAdmin,
-  isAdmin,
-  
-  // Policy config
   ADMIN_POLICY,
-} from "./admin-rbac";
+  getPermissionDeniedMessage,
+} from "./orderRbacShim";
 
 // Deprecated functions (kept for backward compatibility only)
 /**

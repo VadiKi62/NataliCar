@@ -10,7 +10,7 @@ const SuccessMessage = ({
   submittedOrder,
   presetDates,
   onClose,
-  emailSent,
+  emailSent, // deprecated: уведомления отправляет бэкенд, фронт не знает о них
   message = null,
 }) => {
   const { t } = useTranslation();

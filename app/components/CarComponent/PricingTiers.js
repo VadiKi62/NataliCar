@@ -110,6 +110,7 @@ const PricingDisplay = ({
     }
   }
   const { t } = useTranslation();
+  const seasons = useMainContext()?.company?.seasons ?? fallbackSeasons;
   const currentSeason = getCurrentSeason(seasonDate, seasons);
   const pricingData = prices[currentSeason]?.days || {};
 

@@ -16,8 +16,8 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { BUSINESS_TZ, formatTime, formatDate } from "./businessTime";
-import { getOrderOwnership, isBusinessOrder, isInternalOrder } from "./orderOwnership";
+import { BUSINESS_TZ, formatTime, formatDate } from "../time/businessTime";
+import { getOrderOwnership, isBusinessOrder, isInternalOrder } from "../booking/orderOwnership";
 import { BOOKING_RULES } from "@config/bookingRules";
 
 dayjs.extend(utc);

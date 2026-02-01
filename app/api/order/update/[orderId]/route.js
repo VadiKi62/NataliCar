@@ -4,9 +4,13 @@ import Company from "@models/company";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
 import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
+import { getTimeBucket } from "@/domain/time/athensTime";
 import { checkFieldAccess } from "@/middleware/withOrderAccess";
 import { ROLE } from "@/domain/orders/admin-rbac";
+import { getActionFromChangedFields } from "@/domain/orders/orderNotificationPolicy";
+import { notifyOrderAction } from "@/domain/orders/orderNotificationDispatcher";
 import { analyzeConfirmationConflicts } from "@/domain/booking/analyzeConfirmationConflicts";
+import { COMPANY_ID } from "@config/company";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -193,15 +197,17 @@ export const PATCH = async (request, { params }) => {
     // ЕДИНАЯ ЛОГИКА ПРАВ: используем orderAccessPolicy напрямую
     // ════════════════════════════════════════════════════════════════
     const isSuperAdmin = session.user.role === ROLE.SUPERADMIN;
-    const isPast = order.rentalEndDate 
+    const isPast = order.rentalEndDate
       ? dayjs(order.rentalEndDate).tz("Europe/Athens").isBefore(dayjs().tz("Europe/Athens"), "day")
       : false;
-    
+    const timeBucket = getTimeBucket(order);
+
     const access = getOrderAccess({
       role: isSuperAdmin ? "SUPERADMIN" : "ADMIN",
       isClientOrder: order.my_order === true,
       confirmed: order.confirmed === true,
       isPast,
+      timeBucket,
     });
 
     // Проверяем все поля из payload через единую логику
@@ -285,6 +291,21 @@ export const PATCH = async (request, { params }) => {
         // Can confirm (possibly with warning)
         order.confirmed = true;
         const updatedOrder = await order.save();
+
+        try {
+          const action = getActionFromChangedFields(fieldsToUpdate, payload);
+          const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
+          await notifyOrderAction({
+            order: orderPlain,
+            user: session.user,
+            action,
+            actorName: session.user?.name || session.user?.email,
+            source: "BACKEND",
+            companyEmail: company?.email,
+          });
+        } catch (notifyErr) {
+          console.error("[update order] notifyOrderAction failed:", notifyErr?.message);
+        }
 
         const responseStatus = conflictAnalysis.level === "warning" ? 202 : 200;
         const responseMessage =
@@ -564,6 +585,21 @@ export const PATCH = async (request, { params }) => {
 
             const updatedOrder = await order.save();
 
+            try {
+              const action = getActionFromChangedFields(fieldsToUpdate, payload);
+              const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
+              await notifyOrderAction({
+                order: orderPlain,
+                user: session.user,
+                action,
+                actorName: session.user?.name || session.user?.email,
+                source: "BACKEND",
+                companyEmail: company?.email,
+              });
+            } catch (notifyErr) {
+              console.error("[update order] notifyOrderAction failed:", notifyErr?.message);
+            }
+
             // Restored from pre-refactor conflict logic: Return response with conflict info (exact format match)
             return new Response(
               JSON.stringify({
@@ -699,6 +735,20 @@ export const PATCH = async (request, { params }) => {
 
       const savedOrder = await order.save();
 
+      try {
+        const action = getActionFromChangedFields(fieldsToUpdate, payload);
+        const orderPlain = savedOrder.toObject ? savedOrder.toObject() : { ...savedOrder };
+        await notifyOrderAction({
+          order: orderPlain,
+          user: session.user,
+          action,
+          actorName: session.user?.name || session.user?.email,
+          source: "BACKEND",
+        });
+      } catch (notifyErr) {
+        console.error("[update order] notifyOrderAction failed:", notifyErr?.message);
+      }
+
       // Restored from pre-refactor conflict logic: Success logging
       if (process.env.NODE_ENV !== "production") {
         console.log("Order updated successfully");
@@ -732,6 +782,21 @@ export const PATCH = async (request, { params }) => {
         order.flightNumber = payload.flightNumber;
 
       const updatedOrder = await order.save();
+
+      try {
+        const action = getActionFromChangedFields(fieldsToUpdate, payload);
+        const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
+        await notifyOrderAction({
+          order: orderPlain,
+          user: session.user,
+          action,
+          actorName: session.user?.name || session.user?.email,
+          source: "BACKEND",
+          companyEmail: company?.email,
+        });
+      } catch (notifyErr) {
+        console.error("[update order] notifyOrderAction failed:", notifyErr?.message);
+      }
 
       return new Response(
         JSON.stringify({

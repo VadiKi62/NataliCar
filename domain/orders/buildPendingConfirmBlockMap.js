@@ -1,10 +1,10 @@
 /**
  * buildPendingConfirmBlockMap
- * 
+ *
  * Создаёт map pending заказов, которые НЕ МОГУТ быть подтверждены
  * из-за конфликта с уже подтверждёнными заказами.
- * 
- * Используется в MainContext для предварительного расчёта блокировок.
+ *
+ * Кешируем только ДАННЫЕ (conflictData), не строки — текст формирует UI.
  */
 
 import { canPendingOrderBeConfirmed } from "@/domain/booking/analyzeConfirmationConflicts";
@@ -12,9 +12,9 @@ import { canPendingOrderBeConfirmed } from "@/domain/booking/analyzeConfirmation
 /**
  * @param {Array} allOrders - все заказы
  * @param {Object} [company] - данные компании (для получения bufferTime)
- * @returns {{ pendingConfirmBlockById: Record<string, string> }}
+ * @returns {{ pendingConfirmBlockById: Record<string, object> }}
  *   - ключ: orderId
- *   - значение: сообщение о блокировке
+ *   - значение: conflictData (blockingOrder, conflictTime, conflictReturnTime, conflictPickupTime, actualGapMinutes, requiredBufferHours)
  */
 export function buildPendingConfirmBlockMap(allOrders, company) {
   const pendingConfirmBlockById = {};
@@ -23,7 +23,6 @@ export function buildPendingConfirmBlockMap(allOrders, company) {
     return { pendingConfirmBlockById };
   }
 
-  // 1) Группируем заказы по carId
   const byCar = new Map();
   for (const order of allOrders) {
     const carId = (order.car?._id || order.car)?.toString();
@@ -32,28 +31,22 @@ export function buildPendingConfirmBlockMap(allOrders, company) {
     byCar.get(carId).push(order);
   }
 
-  // 2) Для каждой машины — проверяем pending заказы vs confirmed
-  for (const [carId, orders] of byCar.entries()) {
-    // Отдельно confirmed заказы
+  for (const [, orders] of byCar.entries()) {
     const confirmed = orders.filter((x) => x.confirmed === true);
     if (confirmed.length === 0) continue;
 
-    // Pending заказы
     const pending = orders.filter((x) => !x.confirmed);
 
     for (const pendingOrder of pending) {
-      // Проверяем, может ли этот pending заказ быть подтверждён
       const result = canPendingOrderBeConfirmed({
         pendingOrder,
-        allOrders: confirmed, // передаём только confirmed для ускорения
-        bufferHours: company?.bufferTime, // Передаём bufferTime из компании
+        allOrders: confirmed,
+        bufferHours: company?.bufferTime,
       });
 
-      if (!result.canConfirm && pendingOrder._id) {
+      if (!result.canConfirm && result.conflictData && pendingOrder._id) {
         const orderId = pendingOrder._id.toString();
-        pendingConfirmBlockById[orderId] =
-          result.message ||
-          "⛔ Нельзя подтвердить: конфликт с подтверждённым заказом.";
+        pendingConfirmBlockById[orderId] = result.conflictData;
       }
     }
   }

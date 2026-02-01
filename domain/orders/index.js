@@ -33,6 +33,8 @@ export {
   createOrderContext,
 } from "./orderAccessPolicy";
 
+export { confirmOrderFlow } from "./confirmOrderFlow";
+
 // ============================================
 // NOTIFICATION DISPATCHER (единая точка входа)
 // ============================================
@@ -50,45 +52,33 @@ export { notifyOrderAction } from "./orderNotificationDispatcher";
 export { getActionFromChangedFields } from "./orderNotificationPolicy";
 
 // ============================================
-// RBAC (Backend enforcement)
+// RBAC — role/ownership from admin-rbac; permission/time/policy from orderRbacShim (thin wrappers over orderAccessPolicy + athensTime)
 // ============================================
 
 export {
-  // Role constants
   ROLE,
-  
-  // User role checks
   isSuperAdmin,
   isAdmin,
-  
-  // Order type checks
   isClientOrder,
   isAdminCreatedOrder,
-  
-  // Time helpers
+  getOrderCreatorId,
+  isOwnOrder,
+} from "./admin-rbac";
+
+export {
   getOrderTimeBucket,
   isPastOrder,
   isFutureOrder,
   isCurrentOrder,
-  
-  // Ownership helpers
-  getOrderCreatorId,
-  isOwnOrder,
-  
-  // Permission checks
   canViewOrder,
   canEditOrder,
   canEditPricing,
   canDeleteOrder,
   canConfirmOrder,
   canEditOrderField,
-  
-  // Policy config
   ADMIN_POLICY,
-  
-  // Localization
   getPermissionDeniedMessage,
-} from "./admin-rbac";
+} from "./orderRbacShim";
 
 // ============================================
 // DEPRECATED EXPORTS (for backward compatibility)
@@ -148,7 +138,7 @@ export function getLegacyPermissionDeniedMessage(locale = "en") {
  * @deprecated Use ADMIN_POLICY directly
  */
 export function getAdminPolicy() {
-  const { ADMIN_POLICY: policy } = require("./admin-rbac");
+  const { ADMIN_POLICY: policy } = require("./orderRbacShim");
   return policy;
 }
 

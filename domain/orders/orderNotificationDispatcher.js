@@ -32,6 +32,7 @@ import {
   getPriorityByIntent,
 } from "./orderNotificationPolicy";
 import { getOrderAccess } from "./orderAccessPolicy";
+import { getTimeBucket } from "@/domain/time/athensTime";
 import { ROLE } from "./admin-rbac";
 import { getApiUrl, sendTelegramMessage } from "@utils/action";
 import { DEVELOPER_EMAIL } from "@config/email";
@@ -413,13 +414,15 @@ export async function notifyOrderAction({
     return;
   }
   
-  // Вычисляем access из orderAccessPolicy
+  // Вычисляем access из orderAccessPolicy (timeBucket обязателен)
   const isSuperAdmin = user.role === ROLE.SUPERADMIN;
+  const timeBucket = getTimeBucket(order);
   const access = getOrderAccess({
     role: isSuperAdmin ? "SUPERADMIN" : "ADMIN",
     isClientOrder: order.my_order === true,
     confirmed: order.confirmed === true,
-    isPast: false, // Для уведомлений past не важен
+    isPast: timeBucket === "PAST",
+    timeBucket,
   });
   
   const intent = getActionIntent(action);

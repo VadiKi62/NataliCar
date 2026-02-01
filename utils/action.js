@@ -26,7 +26,7 @@ export const API_URL = RAW_API_URL
  * @param {string} path - API path starting with /api/...
  * @returns {string} Full URL for server, relative path for client
  */
-function getApiUrl(path) {
+export function getApiUrl(path) {
   // Client-side: use relative path to avoid CORS
   if (typeof window !== "undefined") {
     return path;
@@ -1318,7 +1318,7 @@ function formatOrderTelegramMessage(type, order, deletedBy) {
  * @param {string} message - Formatted message to send
  * @returns {Promise<boolean>} Success status
  */
-async function sendTelegramMessage(message) {
+export async function sendTelegramMessage(message) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
   if (!chatId) {

@@ -40,8 +40,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { addOrderNew } from "@utils/action";
 import SuccessMessage from "@/app/components/ui/feedback/SuccessMessage";
-import sendEmail from "@utils/sendEmail";
-import { DEVELOPER_EMAIL } from "@config/email";
 import { setTimeToDatejs } from "@utils/functions";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -81,7 +79,7 @@ const BookingModal = ({
   const [daysAndTotal, setDaysAndTotal] = useState({ days: 0, totalPrice: 0 });
   const [calcLoading, setCalcLoading] = useState(false);
   const { t } = useTranslation();
-  const { company, companyLoading, companyError } = useMainContext();
+  const { company, companyLoading, companyError, lang } = useMainContext();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -93,7 +91,6 @@ const BookingModal = ({
   const [insurance, setInsurance] = useState("");
   const [franchiseOrder, setFranchiseOrder] = useState(0);
   const [errors, setErrors] = useState({});
-  const [emailSent, setSuccessfullySent] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
@@ -468,64 +465,20 @@ const BookingModal = ({
         placeIn: placeIn,
         placeOut: placeOut,
         flightNumber: flightNumber,
+        locale: lang || "en",
       };
 
       const response = await addOrderNew(orderData);
 
-      const prepareEmailData = (orderData, status) => {
-        const formattedStartDate = dayjs
-          .utc(orderData.rentalStartDate)
-          .format("DD.MM.YYYY");
-        const formattedEndDate = dayjs
-          .utc(orderData.rentalEndDate)
-          .format("DD.MM.YYYY");
-        // 🎯 Форматируем время в Athens timezone
-        const formattedStartTime = formatTimeHHMM(fromServerUTC(orderData.timeIn));
-        const formattedEndTime = formatTimeHHMM(fromServerUTC(orderData.timeOut));
-        let title =
-          status === "success"
-            ? `Новое бронирование  ${orderData.carModel}`
-            : `Бронирование с неподтвержденными датами ${orderData.carModel}`;
-        let statusMessage =
-          status === "success"
-            ? "Создано бронирование в свободные даты."
-            : "Бронирование в ожидании подтверждения.";
-        return {
-          emailCompany: DEVELOPER_EMAIL,
-          email: orderData.email,
-          title: title,
-          message: `${statusMessage}\nБронь с ${formattedStartDate} (${formattedStartTime}) по ${formattedEndDate} (${formattedEndTime}). \n Кол-во дней : ${orderData.numberOfDays}  \n Сумма : ${response.data.totalPrice} евро. \n \n Данные машины :   ${orderData.carModel} regNumber : ${car.regNumber} \n \n Данные клиента : \n  Мейл : ${orderData.email}, \n Тел : ${orderData.phone} \n имя: ${orderData.customerName}`,
-        };
-      };
-
-      const sendConfirmationEmail = async (formData) => {
-        try {
-          const emailResponse = await sendEmail(
-            formData,
-            DEVELOPER_EMAIL,
-            company.useEmail
-          );
-          if (process.env.NODE_ENV === "development") {
-            console.log("emailResponse", emailResponse);
-          }
-          setSuccessfullySent(emailResponse.status === 200);
-        } catch (emailError) {
-          setSuccessfullySent(false);
-        }
-      };
-
+      // Фронт только обрабатывает ответ бэка: успех/ошибка создания заказа
       switch (response.status) {
         case "success":
           setSubmittedOrder(response.data);
           setIsSubmitted(true);
           fetchAndUpdateOrders();
-          await sendConfirmationEmail(
-            prepareEmailData(response.data, "success")
-          );
           break;
         case "pending": {
           setSubmittedOrder(response.data);
-          // Если сервер вернул messageCode и dates, формируем переведённое сообщение
           if (response.messageCode && response.dates) {
             setMessage(
               t(response.messageCode, { dates: response.dates.join(", ") })
@@ -535,9 +488,6 @@ const BookingModal = ({
           }
           setIsSubmitted(true);
           fetchAndUpdateOrders();
-          await sendConfirmationEmail(
-            prepareEmailData(response.data, "pending")
-          );
           break;
         }
         case "conflict":
@@ -572,7 +522,6 @@ const BookingModal = ({
     setIsSubmitted(false);
     setIsSubmitting(false);
     setSubmittedOrder(null);
-    setSuccessfullySent(false);
     setMessage(null);
     setPlaceIn("");
     setPlaceOut("");
@@ -778,7 +727,6 @@ const BookingModal = ({
                   submittedOrder={submittedOrder}
                   presetDates={presetDates}
                   onClose={onClose}
-                  emailSent={emailSent}
                   message={message}
                 />
               </Box>

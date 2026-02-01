@@ -32,12 +32,14 @@ describe("orderAccessPolicy", () => {
         isClientOrder: true,
         confirmed: false,
         isPast: true,
+        timeBucket: "PAST",
       });
 
       expect(access.canView).toBe(true);
       expect(access.canEdit).toBe(true);
       expect(access.canDelete).toBe(true);
-      expect(access.canEditDates).toBe(true);
+      expect(access.canEditPickupDate).toBe(true);
+      expect(access.canEditReturnDate).toBe(true);
       expect(access.canEditReturn).toBe(true);
       expect(access.canEditInsurance).toBe(true);
       expect(access.canEditPricing).toBe(true);
@@ -53,6 +55,7 @@ describe("orderAccessPolicy", () => {
         isClientOrder: false,
         confirmed: false,
         isPast: false,
+        timeBucket: "FUTURE",
       });
 
       expect(access.canView).toBe(true);
@@ -72,31 +75,37 @@ describe("orderAccessPolicy", () => {
         isClientOrder: true,
         confirmed: false,
         isPast: false,
+        timeBucket: "FUTURE",
       });
 
       expect(access.canView).toBe(true);
       expect(access.canEdit).toBe(false);
       expect(access.canDelete).toBe(true);
-      expect(access.canEditDates).toBe(false);
+      expect(access.canEditPickupDate).toBe(false);
+      expect(access.canEditReturnDate).toBe(false);
       expect(access.canEditReturn).toBe(false);
       expect(access.canSeeClientPII).toBe(false); // 🔥 KEY TEST
       expect(access.isViewOnly).toBe(true);
     });
 
-    it("CONFIRMED + FUTURE: limited edit, sees PII, notifies superadmin", () => {
+    it("CONFIRMED + FUTURE: limited edit (only return), sees PII, notifies superadmin", () => {
       const access = getOrderAccess({
         role: "ADMIN",
         isClientOrder: true,
         confirmed: true,
         isPast: false,
+        timeBucket: "FUTURE",
       });
 
       expect(access.canView).toBe(true);
       expect(access.canEdit).toBe(true);
       expect(access.canDelete).toBe(false); // ❌ can't delete confirmed
-      expect(access.canEditDates).toBe(false); // ❌ can't edit dates
-      expect(access.canEditReturn).toBe(true); // ✅ can edit return
-      expect(access.canEditInsurance).toBe(true); // ✅ can edit insurance
+      expect(access.canEditPickupDate).toBe(false); // ❌ can't edit dates
+      expect(access.canEditReturnDate).toBe(false);
+      expect(access.canEditPickupPlace).toBe(false); // ❌ can't edit placeIn
+      expect(access.canEditReturn).toBe(true); // ✅ can edit return only
+      expect(access.canEditInsurance).toBe(false); // ❌ client: never insurance
+      expect(access.canEditFranchise).toBe(false); // ❌ client: never franchise
       expect(access.canEditPricing).toBe(false); // ❌ can't edit pricing
       expect(access.canSeeClientPII).toBe(true); // 🔥 KEY TEST
       expect(access.notifySuperadminOnEdit).toBe(true); // 🔔 notify
@@ -109,6 +118,7 @@ describe("orderAccessPolicy", () => {
         isClientOrder: true,
         confirmed: true,
         isPast: true,
+        timeBucket: "PAST",
       });
 
       expect(access.canView).toBe(true);
@@ -124,6 +134,7 @@ describe("orderAccessPolicy", () => {
         isClientOrder: true,
         confirmed: false,
         isPast: true,
+        timeBucket: "PAST",
       });
 
       expect(access.canView).toBe(true);
@@ -145,12 +156,14 @@ describe("orderAccessPolicy", () => {
         isClientOrder: false,
         confirmed: false,
         isPast: false,
+        timeBucket: "FUTURE",
       });
 
       expect(access.canView).toBe(true);
       expect(access.canEdit).toBe(true);
       expect(access.canDelete).toBe(true);
-      expect(access.canEditDates).toBe(true);
+      expect(access.canEditPickupDate).toBe(true);
+      expect(access.canEditReturnDate).toBe(true);
       expect(access.canEditReturn).toBe(true);
       expect(access.canEditInsurance).toBe(true);
       expect(access.canEditPricing).toBe(true);
@@ -165,6 +178,7 @@ describe("orderAccessPolicy", () => {
         isClientOrder: false,
         confirmed: false,
         isPast: true,
+        timeBucket: "PAST",
       });
 
       expect(access.canView).toBe(true);
@@ -172,6 +186,27 @@ describe("orderAccessPolicy", () => {
       expect(access.canDelete).toBe(false);
       expect(access.canSeeClientPII).toBe(true); // internal = always visible
       expect(access.isViewOnly).toBe(true);
+    });
+
+    it("CURRENT: only start blocked (rentalStartDate, timeIn, placeIn); end + return editable; can confirm", () => {
+      const access = getOrderAccess({
+        role: "ADMIN",
+        isClientOrder: false,
+        confirmed: false,
+        isPast: false,
+        timeBucket: "CURRENT",
+      });
+
+      expect(access.canView).toBe(true);
+      expect(access.canEditPickupDate).toBe(false); // ❌ start
+      expect(access.canEditReturnDate).toBe(true);  // ✅ end
+      expect(access.canEditPickupPlace).toBe(false);
+      expect(access.canEditReturn).toBe(true);
+      expect(access.canEditInsurance).toBe(false);
+      expect(access.canEditFranchise).toBe(false);
+      expect(access.canEditPricing).toBe(false);
+      expect(access.canEditClientPII).toBe(false);
+      expect(access.canConfirm).toBe(true);
     });
   });
 
@@ -182,10 +217,10 @@ describe("orderAccessPolicy", () => {
   describe("Edge Cases", () => {
     it("always allows viewing (canView is always true)", () => {
       const scenarios = [
-        { role: "ADMIN", isClientOrder: true, confirmed: false, isPast: true },
-        { role: "ADMIN", isClientOrder: true, confirmed: true, isPast: true },
-        { role: "ADMIN", isClientOrder: false, confirmed: false, isPast: true },
-        { role: "SUPERADMIN", isClientOrder: true, confirmed: false, isPast: true },
+        { role: "ADMIN", isClientOrder: true, confirmed: false, isPast: true, timeBucket: "PAST" },
+        { role: "ADMIN", isClientOrder: true, confirmed: true, isPast: true, timeBucket: "PAST" },
+        { role: "ADMIN", isClientOrder: false, confirmed: false, isPast: true, timeBucket: "PAST" },
+        { role: "SUPERADMIN", isClientOrder: true, confirmed: false, isPast: true, timeBucket: "PAST" },
       ];
 
       scenarios.forEach((ctx) => {
@@ -200,6 +235,7 @@ describe("orderAccessPolicy", () => {
         isClientOrder: true,
         confirmed: true,
         isPast: false,
+        timeBucket: "FUTURE",
       });
 
       expect(access.notifySuperadminOnEdit).toBe(false);
@@ -211,9 +247,22 @@ describe("orderAccessPolicy", () => {
         isClientOrder: true,
         confirmed: true,
         isPast: false,
+        timeBucket: "FUTURE",
       });
 
       expect(access.notifySuperadminOnEdit).toBe(true);
+    });
+
+    it("throws when timeBucket is missing (CURRENT must exist, no FUTURE fallback)", () => {
+      expect(() =>
+        getOrderAccess({
+          role: "ADMIN",
+          isClientOrder: false,
+          confirmed: false,
+          isPast: false,
+          // timeBucket omitted
+        })
+      ).toThrow("timeBucket is required");
     });
   });
 });

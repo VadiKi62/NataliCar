@@ -31,7 +31,6 @@ import { useEditOrderPermissions } from "../hooks/useEditOrderPermissions";
 import { useEditOrderState } from "../hooks/useEditOrderState";
 import { useOrderAccess } from "../hooks/useOrderAccess";
 import { useSession } from "next-auth/react";
-import { isSuperAdmin } from "@/domain/orders/admin-rbac";
 // 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
 import {
   ATHENS_TZ,
@@ -42,8 +41,9 @@ import {
   formatDateYYYYMMDD,
   athensNow,
 } from "@/domain/time/athensTime";
-// 🎯 Утилита для проверки возможности подтверждения заказа
+// 🎯 Утилита для проверки возможности подтверждения заказа; формат сообщения (UI строит текст из данных)
 import { canPendingOrderBeConfirmed } from "@/domain/booking/analyzeConfirmationConflicts";
+import { isSuperAdmin } from "@/domain/orders";
 // 🎯 Модальное окно настройки буфера
 import BufferSettingsModal from "@/app/admin/features/settings/BufferSettingsModal";
 import { ORDER_COLORS } from "@/config/orderColors";
@@ -90,7 +90,7 @@ const EditOrderModal = ({
   cars, // <-- список автомобилей
   isViewOnly, // <-- режим просмотра (передаётся из BigCalendar для завершённых заказов)
 }) => {
-  const { allOrders, fetchAndUpdateOrders, company, pendingConfirmBlockById } = useMainContext();
+  const { allOrders, fetchAndUpdateOrders, company } = useMainContext();
   const { data: session } = useSession();
   const { t } = useTranslation();
   
@@ -106,9 +106,17 @@ const EditOrderModal = ({
     };
   }, [session]);
   
-  // 🎯 LAYER 1: Permissions (Domain/Logic Layer)
-  const permissions = useEditOrderPermissions(order, currentUser, isViewOnly);
-  
+  // 🎯 LAYER 1.5: Access Policy (Single Source of Truth)
+  // orderForAccess: order on open, updated on refetch so access (canSeeClientPII etc.) stays correct
+  const [orderForAccess, setOrderForAccess] = useState(order);
+  useEffect(() => {
+    setOrderForAccess((prev) => (prev?._id === order?._id ? order : prev));
+  }, [order]);
+  const access = useOrderAccess(orderForAccess || order, { forceViewOnly: isViewOnly });
+
+  // 🎯 LAYER 1: Permissions (Domain/Logic Layer) — client PII from access.canEditClientPII only
+  const permissions = useEditOrderPermissions(order, currentUser, isViewOnly, access);
+
   // 🎯 LAYER 2: State & Data Orchestration Layer
   const {
     editedOrder,
@@ -141,10 +149,6 @@ const EditOrderModal = ({
     fetchAndUpdateOrders,
     setCarOrders,
   });
-  
-  // 🎯 LAYER 1.5: Access Policy (Single Source of Truth)
-  // ⚠️ Используем editedOrder (актуальные данные после refetch)
-  const access = useOrderAccess(editedOrder || order, { forceViewOnly: isViewOnly });
   
   // UI state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -209,8 +213,9 @@ const EditOrderModal = ({
           OverridePrice: freshOrder.OverridePrice !== undefined ? freshOrder.OverridePrice : null,
         };
         
-        // Обновляем editedOrder свежими данными
+        // Обновляем editedOrder и orderForAccess свежими данными (для access.canSeeClientPII и т.д.)
         setEditedOrder(transformedOrder);
+        setOrderForAccess(transformedOrder);
       } catch (err) {
         console.warn("Failed to refetch order details:", err);
       }
@@ -266,6 +271,26 @@ const EditOrderModal = ({
 
   const handleConfirmationToggle = async () => {
     if (permissions.viewOnly || !permissions.canConfirm) return;
+    
+    // 🔧 FIX: Check for unsaved time changes before confirmation
+    // Confirmation toggle ONLY changes confirmed status, NOT time fields
+    // If user changed time and clicks Confirm, those changes would be lost
+    const hasUnsavedTimeChanges = (() => {
+      if (!order || !startTime || !endTime) return false;
+      const origTimeIn = fromServerUTC(order.timeIn);
+      const origTimeOut = fromServerUTC(order.timeOut);
+      const timeInChanged = startTime.format("HH:mm") !== origTimeIn?.format("HH:mm");
+      const timeOutChanged = endTime.format("HH:mm") !== origTimeOut?.format("HH:mm");
+      return timeInChanged || timeOutChanged;
+    })();
+    
+    if (hasUnsavedTimeChanges) {
+      const proceed = window.confirm(
+        "Есть несохранённые изменения времени. Нажмите \"Сохранить\" чтобы сохранить изменения, или \"ОК\" чтобы продолжить подтверждение без сохранения."
+      );
+      if (!proceed) return;
+    }
+    
     setConfirmToggleUpdating(true);
     setUpdateMessage(null);
     try {
@@ -323,8 +348,19 @@ const EditOrderModal = ({
   };
 
   // handleOrderUpdate is now handleSave from useEditOrderState hook
-  // Keeping old name for backward compatibility in UI
-  const handleOrderUpdate = handleSave;
+  // 🔴 SAFETY PATCH: Block save if there's a blocking conflict
+  // This prevents UI from auto-mutating time when conflicts exist
+  const handleOrderUpdate = useCallback(async () => {
+    // 🔴 CRITICAL: Early return if blocking conflict exists
+    // This is the primary defense against "auto-fix" side effects
+    // hasBlockingConflict comes from useEditOrderConflicts and covers conflicts with confirmed orders
+    if (hasBlockingConflict) {
+      setUpdateMessage("⛔ Невозможно сохранить: есть конфликт с подтверждённым заказом. Измените время или отмените изменения.");
+      return;
+    }
+    
+    await handleSave();
+  }, [handleSave, hasBlockingConflict, setUpdateMessage]);
 
   
   // Dev-only: Permission audit log
@@ -346,42 +382,44 @@ const EditOrderModal = ({
   };
 
   // 🎯 Проверяем, может ли pending заказ быть подтверждён
-  // Сначала проверяем precomputed map из контекста (быстро)
+  // Всегда считаем по текущим данным (editedOrder + startTime/endTime + allOrders), чтобы при сдвиге
+  // подтверждённого заказа или обновлении списка сообщение было актуальным (не из кеша).
   const confirmationCheck = useMemo(() => {
-    // Если заказ уже подтверждён — не нужно проверять
     if (editedOrder?.confirmed) {
       return { canConfirm: true, message: null, isBlocked: false };
     }
 
-    // 🚀 Быстрая проверка через precomputed map
-    const orderId = editedOrder?._id?.toString();
-    const blockMessage = pendingConfirmBlockById?.[orderId];
-    
-    if (blockMessage) {
-      return {
-        canConfirm: false,
-        message: blockMessage,
-        isBlocked: true,
-      };
-    }
-
-    // Fallback: если map ещё не обновился, пересчитываем
     const sameCarOrders = allOrders.filter((o) => {
       const oCarId = o.car?._id || o.car;
       return oCarId?.toString() === editedOrder?.car?.toString();
     });
 
+    // Текущие времена из формы (startTime/endTime) или из editedOrder при первом открытии/после refetch
+    const timeIn =
+      startTime && editedOrder?.rentalStartDate
+        ? toServerUTC(createAthensDateTime(formatDateYYYYMMDD(editedOrder.rentalStartDate), formatTimeHHMM(startTime)))
+        : editedOrder?.timeIn;
+    const timeOut =
+      endTime && editedOrder?.rentalEndDate
+        ? toServerUTC(createAthensDateTime(formatDateYYYYMMDD(editedOrder.rentalEndDate), formatTimeHHMM(endTime)))
+        : editedOrder?.timeOut;
+    const effectivePendingOrder = { ...editedOrder, timeIn, timeOut };
+
     const result = canPendingOrderBeConfirmed({
-      pendingOrder: editedOrder,
+      pendingOrder: effectivePendingOrder,
       allOrders: sameCarOrders,
-      bufferHours: company?.bufferTime, // Передаём bufferTime из компании
+      bufferHours: company?.bufferTime,
     });
-    
+
+    if (!result.canConfirm && result.message && !access?.canSeeClientPII) {
+      result.message = result.message.replace(/«[^»]*»/, "«Клиент»");
+    }
+
     return {
       ...result,
       isBlocked: !result.canConfirm,
     };
-  }, [editedOrder, allOrders, company, pendingConfirmBlockById]);
+  }, [editedOrder, allOrders, company, startTime, endTime, access?.canSeeClientPII]);
 
   // Создаём summary для конфликта подтверждения (для подсветки времени)
   const confirmationConflictSummary = useMemo(() => {
@@ -422,11 +460,23 @@ const EditOrderModal = ({
     return returnSummary;
   }, [confirmationConflictSummary, returnSummary]);
 
+  // PII-safe display for confirmation conflict messages: domain returns full data; mask client label only at render by access
+  const maskConfirmationConflictPII = useCallback(
+    (msg) => {
+      if (!msg) return msg;
+      if (access?.canSeeClientPII) return msg;
+      return msg.replace(/«[^»]*»/, "«Клиент»");
+    },
+    [access?.canSeeClientPII]
+  );
+
   // Проверка, заблокирована ли кнопка подтверждения
+  // Unconfirm (true→false): суперадмин может снять подтверждение с любых заказов; блокируем только для админа + клиентский текущий подтверждённый
+  const isClientOrder = order?.my_order === true;
   const isConfirmationDisabled =
     permissions.viewOnly ||
     !permissions.canConfirm ||
-    (permissions.isCurrentOrder && editedOrder?.confirmed) ||
+    (permissions.isCurrentOrder && editedOrder?.confirmed && isClientOrder && !isSuperAdmin(currentUser)) ||
     (!editedOrder?.confirmed && !confirmationCheck.canConfirm);
 
   return (
@@ -646,14 +696,14 @@ const EditOrderModal = ({
                     : t("order.orderNotConfirmed")
                 }
                 title={
-                  permissions.isCurrentOrder && editedOrder?.confirmed
+                  permissions.isCurrentOrder && editedOrder?.confirmed && isClientOrder && !isSuperAdmin(currentUser)
                     ? "Нельзя снять подтверждение у текущего заказа"
-                    : confirmationCheck.message || ""
+                    : maskConfirmationConflictPII(confirmationCheck.message) || ""
                 }
                 sx={isConfirmationDisabled ? disabledStyles : enabledStyles}
               />
-              {/* 🔴 Показываем сообщение о блокировке подтверждения */}
-              {!editedOrder?.confirmed && confirmationCheck.message && (
+              {/* 🔴 BLOCK: показываем сообщение о блокировке подтверждения (только если canConfirm === false) */}
+              {!editedOrder?.confirmed && confirmationCheck.message && !confirmationCheck.canConfirm && (
                 <Box
                   sx={{
                     mt: 1,
@@ -674,7 +724,7 @@ const EditOrderModal = ({
                     sx={{ color: "error.dark", fontSize: 12, mt: 0.5 }}
                   >
                     <BufferSettingsLinkifiedText
-                      text={confirmationCheck.message}
+                      text={maskConfirmationConflictPII(confirmationCheck.message)}
                       onOpen={() => setBufferModalOpen(true)}
                     />
                 </Typography>
@@ -704,7 +754,7 @@ const EditOrderModal = ({
                   sx={{ flex: 1, minHeight: 48 }}
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
-                  disabled={permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.rentalStartDate}
+                  disabled={permissions.viewOnly || !permissions.fieldPermissions.rentalStartDate}
                   inputProps={{ min: todayStr }}
                 />
                 <TextField
@@ -768,11 +818,11 @@ const EditOrderModal = ({
                     sx={{ color: "error.dark", fontSize: 12, mt: 0.5 }}
                   >
                     <BufferSettingsLinkifiedText
-                      text={
+                      text={maskConfirmationConflictPII(
                         pickupSummary?.level === "block"
                           ? pickupSummary.message
                           : returnSummary?.message
-                      }
+                      )}
                       onOpen={() => setBufferModalOpen(true)}
                     />
                   </Typography>
@@ -790,13 +840,15 @@ const EditOrderModal = ({
                   freeSolo
                   options={locations}
                   value={editedOrder.placeIn || ""}
-                  onChange={(_, newValue) =>
-                    updateField("placeIn", newValue || "")
-                  }
-                  onInputChange={(_, newInputValue) =>
-                    updateField("placeIn", newInputValue)
-                  }
-                  disabled={permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.placeIn}
+                  onChange={(_, newValue) => {
+                    if (!permissions.fieldPermissions.placeIn) return;
+                    updateField("placeIn", newValue || "");
+                  }}
+                  onInputChange={(_, newInputValue) => {
+                    if (!permissions.fieldPermissions.placeIn) return;
+                    updateField("placeIn", newInputValue);
+                  }}
+                  disabled={permissions.viewOnly || !permissions.fieldPermissions.placeIn}
                   PaperProps={{
                     sx: {
                       border: "2px solid",
@@ -839,7 +891,7 @@ const EditOrderModal = ({
                       size="medium"
                       sx={{ width: "25%", alignSelf: "stretch" }}
                       InputLabelProps={{ shrink: true }}
-                      disabled={permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.flightNumber}
+                      disabled={permissions.viewOnly || !permissions.fieldPermissions.flightNumber}
                     />
                   )}
                 <Autocomplete
@@ -970,10 +1022,8 @@ const EditOrderModal = ({
               </Box>
             </Box>
 
-            {/* Блок данных клиента: имя на отдельной строке, телефон и email — ниже в одну строку */}
-            {/* ✅ ARCHITECTURE: Используем access.canSeeClientPII из orderAccessPolicy */}
-            {/* Это единый источник истины для visibility правил */}
-            {access.canSeeClientPII && (
+            {/* Блок данных клиента: visibility = canSeeClientPII, editability = canEditClientPII (orderAccessPolicy only) */}
+            {access?.canSeeClientPII && (
             <Box sx={{ mb: 0 }}>
               <FormControl fullWidth margin="dense" sx={{ mt: 0, mb: 0 }}>
                 <TextField
@@ -986,11 +1036,12 @@ const EditOrderModal = ({
                     </>
                   }
                   value={editedOrder.customerName || ""}
-                  onChange={(e) =>
-                    !permissions.viewOnly &&
-                    updateField("customerName", e.target.value)
-                  }
-                  disabled={permissions.viewOnly || !permissions.fieldPermissions.customerName}
+                  onChange={(e) => {
+                    if (permissions.viewOnly || !access?.canEditClientPII) return;
+                    updateField("customerName", e.target.value);
+                  }}
+                  disabled={permissions.viewOnly || !access?.canEditClientPII}
+                  helperText={!access?.canEditClientPII ? access?.reasons?.clientPII : undefined}
                 />
               </FormControl>
               {/* Телефон и email — вертикально на мобильных */}
@@ -1017,11 +1068,12 @@ const EditOrderModal = ({
                         </>
                       }
                       value={editedOrder.phone || ""}
-                      onChange={(e) =>
-                        !permissions.viewOnly &&
-                        updateField("phone", e.target.value)
-                      }
-                      disabled={permissions.viewOnly || !permissions.fieldPermissions.phone}
+                      onChange={(e) => {
+                        if (permissions.viewOnly || !access?.canEditClientPII) return;
+                        updateField("phone", e.target.value);
+                      }}
+                      disabled={permissions.viewOnly || !access?.canEditClientPII}
+                      helperText={!access?.canEditClientPII ? access?.reasons?.clientPII : undefined}
                     />
                   </FormControl>
                   <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5, flexWrap: "wrap" }}>
@@ -1030,12 +1082,11 @@ const EditOrderModal = ({
                         <Checkbox
                           size="small"
                           checked={Boolean(editedOrder.Viber)}
-                          onChange={(e) =>
-                            !permissions.viewOnly &&
-                            permissions.fieldPermissions.Viber &&
-                            updateField("Viber", e.target.checked)
-                          }
-                          disabled={permissions.viewOnly || !permissions.fieldPermissions.Viber}
+                          onChange={(e) => {
+                            if (permissions.viewOnly || !access?.canEditClientPII) return;
+                            updateField("Viber", e.target.checked);
+                          }}
+                          disabled={permissions.viewOnly || !access?.canEditClientPII}
                         />
                       }
                       sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
@@ -1046,12 +1097,11 @@ const EditOrderModal = ({
                         <Checkbox
                           size="small"
                           checked={Boolean(editedOrder.Whatsapp)}
-                          onChange={(e) =>
-                            !permissions.viewOnly &&
-                            permissions.fieldPermissions.Whatsapp &&
-                            updateField("Whatsapp", e.target.checked)
-                          }
-                          disabled={permissions.viewOnly || !permissions.fieldPermissions.Whatsapp}
+                          onChange={(e) => {
+                            if (permissions.viewOnly || !access?.canEditClientPII) return;
+                            updateField("Whatsapp", e.target.checked);
+                          }}
+                          disabled={permissions.viewOnly || !access?.canEditClientPII}
                         />
                       }
                       sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
@@ -1062,12 +1112,11 @@ const EditOrderModal = ({
                         <Checkbox
                           size="small"
                           checked={Boolean(editedOrder.Telegram)}
-                          onChange={(e) =>
-                            !permissions.viewOnly &&
-                            permissions.fieldPermissions.Telegram &&
-                            updateField("Telegram", e.target.checked)
-                          }
-                          disabled={permissions.viewOnly || !permissions.fieldPermissions.Telegram}
+                          onChange={(e) => {
+                            if (permissions.viewOnly || !access?.canEditClientPII) return;
+                            updateField("Telegram", e.target.checked);
+                          }}
+                          disabled={permissions.viewOnly || !access?.canEditClientPII}
                         />
                       }
                       sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
@@ -1100,11 +1149,12 @@ const EditOrderModal = ({
                       </>
                     }
                     value={editedOrder.email || ""}
-                    onChange={(e) =>
-                      !permissions.viewOnly &&
-                      updateField("email", e.target.value)
-                    }
-                    disabled={permissions.viewOnly || !permissions.fieldPermissions.email}
+                    onChange={(e) => {
+                      if (permissions.viewOnly || !access?.canEditClientPII) return;
+                      updateField("email", e.target.value);
+                    }}
+                    disabled={permissions.viewOnly || !access?.canEditClientPII}
+                    helperText={!access?.canEditClientPII ? access?.reasons?.clientPII : undefined}
                   />
                 </FormControl>
               </Box>

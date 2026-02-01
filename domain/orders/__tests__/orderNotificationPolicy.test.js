@@ -25,7 +25,8 @@ const createAccess = (overrides = {}) => ({
   canView: true,
   canEdit: true,
   canDelete: true,
-  canEditDates: true,
+  canEditPickupDate: true,
+  canEditReturnDate: true,
   canEditReturn: true,
   canEditInsurance: true,
   canEditPricing: true,
@@ -280,9 +281,11 @@ describe("orderNotificationPolicy", () => {
       expect(isActionAllowedByAccess("UPDATE_DATES", null)).toBe(false);
     });
 
-    it("UPDATE_DATES requires canEditDates", () => {
-      expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditDates: true }))).toBe(true);
-      expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditDates: false }))).toBe(false);
+    it("UPDATE_DATES requires canEditPickupDate or canEditReturnDate", () => {
+      expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditPickupDate: true, canEditReturnDate: true }))).toBe(true);
+      expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditPickupDate: true, canEditReturnDate: false }))).toBe(true);
+      expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditPickupDate: false, canEditReturnDate: true }))).toBe(true);
+      expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditPickupDate: false, canEditReturnDate: false }))).toBe(false);
     });
 
     it("UPDATE_RETURN requires canEditReturn", () => {

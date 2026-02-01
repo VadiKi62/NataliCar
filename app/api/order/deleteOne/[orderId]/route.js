@@ -2,7 +2,10 @@ import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
-import { canDeleteOrder } from "@/domain/orders/orderPermissions";
+// 🔧 FIXED: Use orderAccessPolicy directly (no legacy shims)
+import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
+import { getTimeBucket } from "@/domain/time/athensTime";
+import { ROLE } from "@/domain/orders/admin-rbac";
 import { sendOrderDeletedTelegramNotification } from "@utils/action";
 
 export const DELETE = async (request, { params }) => {
@@ -25,14 +28,22 @@ export const DELETE = async (request, { params }) => {
       });
     }
     
-    // Check if admin has permission to delete this order
-    const permission = canDeleteOrder(orderToDelete, session.user);
+    // 🔧 FIXED: Check permissions using orderAccessPolicy (SSOT)
+    const timeBucket = getTimeBucket(orderToDelete);
+    const isPast = timeBucket === "PAST";
+    const access = getOrderAccess({
+      role: session.user.role === ROLE.SUPERADMIN ? "SUPERADMIN" : "ADMIN",
+      isClientOrder: orderToDelete.my_order === true,
+      confirmed: orderToDelete.confirmed === true,
+      isPast,
+      timeBucket,
+    });
     
-    if (!permission.allowed) {
+    if (!access.canDelete) {
       return new Response(
         JSON.stringify({ 
           success: false,
-          message: permission.reason,
+          message: "У вас нет прав на удаление этого заказа",
           code: "PERMISSION_DENIED",
         }),
         { status: 403, headers: { "Content-Type": "application/json" } }

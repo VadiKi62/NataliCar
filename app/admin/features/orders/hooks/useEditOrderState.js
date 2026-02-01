@@ -381,6 +381,20 @@ export function useEditOrderState({
   const updateField = useCallback((field, value, options = {}) => {
     if (permissions.viewOnly) return;
 
+    // ⛔ HARD PERMISSION GUARD: state layer must reject forbidden fields even if UI fires (e.g. MUI Autocomplete onInputChange when disabled)
+    if (
+      permissions.fieldPermissions &&
+      permissions.fieldPermissions[field] === false
+    ) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          `[PERMISSION BLOCKED] Attempt to edit forbidden field "${field}"`,
+          { value }
+        );
+      }
+      return;
+    }
+
     // 🔧 PRICE ARCHITECTURE: Handle totalPrice field based on source
     // - manual input → set OverridePrice in local state (priceMode: "MANUAL")
     // - auto → update totalPrice, optionally clear OverridePrice (if clearOverride: true)
@@ -456,7 +470,7 @@ export function useEditOrderState({
       
       return updated;
     });
-  }, [permissions.viewOnly]);
+  }, [permissions.viewOnly, permissions.fieldPermissions]);
 
   /**
    * Update start date (Athens timezone)

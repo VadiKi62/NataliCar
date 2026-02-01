@@ -327,6 +327,37 @@ export function reinterpretAsAthens(localDayjs, dateStr) {
   return createAthensDateTime(dateStr, timeStr);
 }
 
+/**
+ * Вычисляет time bucket заказа: PAST | CURRENT | FUTURE (Athens TZ).
+ * CURRENT = started today or earlier AND not finished yet (end >= today).
+ * Даты интерпретируются в Athens. Поддерживаются частичные даты (только start или только end).
+ *
+ * @param {Object} order - Order with rentalStartDate, rentalEndDate (Date or ISO string, typically UTC from DB)
+ * @returns {"PAST" | "CURRENT" | "FUTURE"}
+ */
+export function getTimeBucket(order) {
+  if (!order) return "FUTURE";
+  const hasStart = order.rentalStartDate != null;
+  const hasEnd = order.rentalEndDate != null;
+  const today = athensNow().startOf("day");
+
+  if (!hasStart && !hasEnd) return "FUTURE";
+  if (!hasStart && hasEnd) {
+    const end = dayjs.utc(order.rentalEndDate).tz(ATHENS_TZ).startOf("day");
+    return end.isBefore(today, "day") ? "PAST" : "CURRENT";
+  }
+  if (hasStart && !hasEnd) {
+    const start = dayjs.utc(order.rentalStartDate).tz(ATHENS_TZ).startOf("day");
+    return start.isAfter(today, "day") ? "FUTURE" : "CURRENT";
+  }
+
+  const start = dayjs.utc(order.rentalStartDate).tz(ATHENS_TZ).startOf("day");
+  const end = dayjs.utc(order.rentalEndDate).tz(ATHENS_TZ).startOf("day");
+  if (end.isBefore(today, "day")) return "PAST";
+  if (start.isAfter(today, "day")) return "FUTURE";
+  return "CURRENT";
+}
+
 export default {
   ATHENS_TZ,
   createAthensDateTime,
@@ -341,4 +372,5 @@ export default {
   isValidAthensTime,
   reinterpretAsAthens,
   athensNow,
+  getTimeBucket,
 };

@@ -6,5 +6,5 @@ const DiscountSettingSchema = new mongoose.Schema({
   endDate: { type: Date },
 });
 
-export default mongoose.models.DiscountSetting ||
+export default mongoose.models?.DiscountSetting ||
   mongoose.model("DiscountSetting", DiscountSettingSchema);

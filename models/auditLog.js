@@ -240,7 +240,7 @@ auditLogSchema.methods.toLogString = function () {
 };
 
 const AuditLog =
-  mongoose.models.AuditLog || mongoose.model("AuditLog", auditLogSchema);
+  mongoose.models?.AuditLog || mongoose.model("AuditLog", auditLogSchema);
 
 export default AuditLog;
 

@@ -176,13 +176,13 @@ describe("orderPermissions RBAC", () => {
     test("ADMIN cannot delete past confirmed orders", () => {
       const result = canDeleteOrder(pastConfirmedOrder, admin);
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("past");
+      expect(result.reason).toContain("delete");
     });
-    
+
     test("ADMIN cannot delete past pending orders", () => {
       const result = canDeleteOrder(pastPendingOrder, admin);
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("past");
+      expect(result.reason).toContain("delete");
     });
   });
   
@@ -288,14 +288,18 @@ describe("orderPermissions RBAC", () => {
     test("ADMIN cannot edit totalPrice of client orders", () => {
       const result = canEditOrderField(clientOrder, admin, "totalPrice");
       expect(result.allowed).toBe(false);
-      expect(result.reason).toContain("price");
+      expect(result.reason).toContain("edit");
     });
-    
-    test("admin can always edit admin orders (my_order=false)", () => {
-      const fields = ["customerName", "phone", "rentalStartDate", "timeIn", "totalPrice"];
-      fields.forEach((field) => {
-        expect(canEditOrderField(adminOrder, admin, field).allowed).toBe(true);
-      });
+
+    test("ADMIN can edit non-PII fields on internal orders (my_order=false)", () => {
+      expect(canEditOrderField(adminOrder, admin, "rentalStartDate").allowed).toBe(true);
+      expect(canEditOrderField(adminOrder, admin, "timeIn").allowed).toBe(true);
+      expect(canEditOrderField(adminOrder, admin, "totalPrice").allowed).toBe(true);
+    });
+
+    test("ADMIN cannot edit client PII on internal orders (policy: canEditClientPII false)", () => {
+      expect(canEditOrderField(adminOrder, admin, "customerName").allowed).toBe(false);
+      expect(canEditOrderField(adminOrder, admin, "phone").allowed).toBe(false);
     });
   });
 
@@ -304,14 +308,14 @@ describe("orderPermissions RBAC", () => {
   // ─────────────────────────────────────────────────────────────
   
   describe("Admin confirmation permissions", () => {
-    // UPDATED: Per orderAccessPolicy.js, ADMIN can NEVER confirm orders
-    // Only SUPERADMIN can confirm/unconfirm
-    test("ADMIN cannot confirm any orders (per orderAccessPolicy)", () => {
+    test("ADMIN cannot confirm client orders", () => {
       expect(canConfirmOrder(clientOrder, admin).allowed).toBe(false);
-      expect(canConfirmOrder(adminOrder, admin).allowed).toBe(false);
-      expect(canConfirmOrder(superadminOrder, admin).allowed).toBe(false);
     });
-    
+
+    test("ADMIN can confirm/unconfirm internal orders (FUTURE)", () => {
+      expect(canConfirmOrder(adminOrder, admin).allowed).toBe(true);
+    });
+
     test("SUPERADMIN can confirm any orders", () => {
       expect(canConfirmOrder(clientOrder, superadmin).allowed).toBe(true);
       expect(canConfirmOrder(adminOrder, superadmin).allowed).toBe(true);

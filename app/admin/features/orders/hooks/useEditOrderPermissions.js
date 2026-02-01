@@ -1,133 +1,102 @@
 /**
  * useEditOrderPermissions
- * 
- * 🎯 DOMAIN / LOGIC LAYER — Pure permission logic, no UI, no state
- * 
+ *
+ * 🎯 THIN ADAPTER — orderAccessPolicy is the only source of truth
+ *
  * Responsibilities:
- * - Permission checks (delegates to RBAC helpers)
- * - Business rules (isCompletedOrder, isCurrentOrder, viewOnly)
- * - Derived flags (canEditField map)
- * 
+ * - Map access (from useOrderAccess) to fieldPermissions and legacy flags
+ * - No dayjs, no RBAC helpers, no duplicate isPast/confirmed/my_order logic
+ *
  * Rules:
  * - MUST NOT use React state
  * - MUST NOT fetch data
  * - MUST NOT mutate order
- * - ONLY returns booleans and derived flags
+ * - ONLY returns booleans derived from access
  */
 
-import { useMemo, useCallback } from "react";
-import dayjs from "dayjs";
-import {
-  canEditOrder,
-  canEditPricing,
-  canDeleteOrder,
-  canConfirmOrder,
-  canEditOrderField,
-} from "@/domain/orders/orderPermissions";
-import { isSuperAdmin } from "@/domain/orders/admin-rbac";
+import { useMemo } from "react";
 
 /**
- * Hook for order permission checks and derived flags
- * 
- * @param {Object} order - Order object
- * @param {Object} currentUser - Current user object (from session)
- * @param {boolean} isViewOnly - External view-only flag (from props)
- * @returns {Object} Permission flags and derived state
+ * Default access when useOrderAccess returns null (e.g. no session).
+ * Safe: everything read-only, no edit/delete/confirm.
  */
-export function useEditOrderPermissions(order, currentUser, isViewOnly = false) {
-  // Field-level permission helper
-  const canEditField = useCallback(
-    (field) => {
-      if (!order || !currentUser) return false;
-      return canEditOrderField(order, currentUser, field).allowed;
-    },
-    [order, currentUser]
-  );
+// When access is null (e.g. no session), all edits forbidden. Explicit flags so we never infer from canEdit.
+const DEFAULT_ACCESS = {
+  canEdit: false,
+  canDelete: false,
+  canConfirm: false,
+  canEditPickupDate: false,
+  canEditReturnDate: false,
+  canEditPickupPlace: false,
+  canEditReturn: false,
+  canEditInsurance: false,
+  canEditFranchise: false,
+  canEditPricing: false,
+  canEditClientPII: false,
+  isViewOnly: true,
+  isPast: true,
+};
 
-  // Field-level permissions (computed for all editable fields)
+/**
+ * Hook: thin adapter from orderAccessPolicy (access) to UI shape.
+ * Single source of truth: access. No orderPermissions, no dayjs.
+ *
+ * @param {Object} order - Order object (unused; kept for API compatibility)
+ * @param {Object} currentUser - Current user (unused; kept for API compatibility)
+ * @param {boolean} isViewOnly - Unused; forceViewOnly is applied in useOrderAccess
+ * @param {import("@/domain/orders/orderAccessPolicy").OrderAccess | null} access - From useOrderAccess
+ * @returns {Object} fieldPermissions, canEdit, canDelete, canConfirm, viewOnly, isCurrentOrder
+ */
+export function useEditOrderPermissions(order, currentUser, isViewOnly = false, access = null) {
+  const a = access ?? DEFAULT_ACCESS;
+
   const fieldPermissions = useMemo(
     () => ({
-      rentalStartDate: canEditField("rentalStartDate"),
-      rentalEndDate: canEditField("rentalEndDate"),
-      timeIn: canEditField("timeIn"),
-      timeOut: canEditField("timeOut"),
-      totalPrice: canEditField("totalPrice"),
-      placeIn: canEditField("placeIn"),
-      placeOut: canEditField("placeOut"),
-      car: canEditField("car"),
-      insurance: canEditField("insurance"),
-      ChildSeats: canEditField("ChildSeats"),
-      franchiseOrder: canEditField("franchiseOrder"),
-      customerName: canEditField("customerName"),
-      phone: canEditField("phone"),
-      email: canEditField("email"),
-      Viber: canEditField("Viber"),
-      Whatsapp: canEditField("Whatsapp"),
-      Telegram: canEditField("Telegram"),
-      flightNumber: canEditField("flightNumber"),
+      rentalStartDate: a.canEditPickupDate,
+      rentalEndDate: a.canEditReturnDate,
+      timeIn: a.canEditPickupDate,
+      timeOut: a.canEditReturnDate,
+      totalPrice: a.canEditPricing,
+      placeIn: a.canEditPickupPlace,
+      placeOut: a.canEditReturn,
+      car: a.canEdit,
+      insurance: a.canEditInsurance,
+      ChildSeats: a.canEditInsurance,
+      franchiseOrder: a.canEditFranchise,
+      customerName: a.canEditClientPII,
+      phone: a.canEditClientPII,
+      email: a.canEditClientPII,
+      Viber: a.canEditClientPII,
+      Whatsapp: a.canEditClientPII,
+      Telegram: a.canEditClientPII,
+      flightNumber: a.canEditPickupPlace, // backend checks flightNumber with canEditPickupPlace (placeIn group)
     }),
-    [canEditField]
+    [
+      a.canEdit,
+      a.canEditPickupDate,
+      a.canEditReturnDate,
+      a.canEditPickupPlace,
+      a.canEditReturn,
+      a.canEditInsurance,
+      a.canEditFranchise,
+      a.canEditPricing,
+      a.canEditClientPII,
+    ]
   );
 
-  // Legacy permissions (kept for backward compatibility)
-  const canEdit = useMemo(() => {
-    if (!order || !currentUser) return false;
-    return canEditOrder(order, currentUser).allowed;
-  }, [order, currentUser]);
-
-  const canEditDatesPrice = useMemo(() => {
-    if (!order || !currentUser) return false;
-    return canEditPricing(order, currentUser).allowed;
-  }, [order, currentUser]);
-
-  const canDelete = useMemo(() => {
-    if (!order || !currentUser) return false;
-    return canDeleteOrder(order, currentUser).allowed;
-  }, [order, currentUser]);
-
-  const canConfirm = useMemo(() => {
-    if (!order || !currentUser) return false;
-    return canConfirmOrder(order, currentUser).allowed;
-  }, [order, currentUser]);
-
-  // Business rule: Is order completed? (end date before today)
-  const isCompletedOrder = useMemo(() => {
-    if (!order) return false;
-    return dayjs(order.rentalEndDate).isBefore(dayjs(), "day");
-  }, [order]);
-
-  // Business rule: Is order current? (start before today, end today or later)
-  const isCurrentOrder = useMemo(() => {
-    if (!order) return false;
-    return (
-      dayjs(order.rentalStartDate).isBefore(dayjs(), "day") &&
-      !dayjs(order.rentalEndDate).isBefore(dayjs(), "day")
-    );
-  }, [order]);
-
-  // View-only flag: external flag OR completed order (unless superadmin)
-  // IMPORTANT: Superadmin can edit even completed orders (axiom: superadmin always allowed)
-  const viewOnly = useMemo(() => {
-    return (isViewOnly || isCompletedOrder) && !isSuperAdmin(currentUser);
-  }, [isViewOnly, isCompletedOrder, currentUser]);
-
-  return {
-    // Field-level permissions
-    fieldPermissions,
-    canEditField,
-
-    // Legacy permissions
-    canEdit,
-    canEditDatesPrice,
-    canDelete,
-    canConfirm,
-
-    // Derived flags
-    isCompletedOrder,
-    isCurrentOrder,
-    viewOnly,
-  };
+  return useMemo(
+    () => ({
+      fieldPermissions,
+      canEditField: (field) => Boolean(fieldPermissions[field]),
+      canEdit: a.canEdit,
+      canDelete: a.canDelete,
+      canConfirm: a.canConfirm,
+      viewOnly: a.isViewOnly,
+      isCurrentOrder: !a.isPast,
+      isCompletedOrder: a.isPast,
+    }),
+    [fieldPermissions, a.canEdit, a.canDelete, a.canConfirm, a.isViewOnly, a.isPast]
+  );
 }
 
 export default useEditOrderPermissions;
-

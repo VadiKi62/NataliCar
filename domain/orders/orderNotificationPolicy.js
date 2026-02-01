@@ -150,17 +150,50 @@ export function getOrderNotifications(params) {
   }
 
   // ════════════════════════════════════════════════════════════════
-  // 🏢 COMPANY NOTIFICATION
+  // 🏢 COMPANY NOTIFICATION (новый клиентский заказ)
+  // ════════════════════════════════════════════════════════════════
+  // EMAIL_TESTING=true → только SUPERADMIN (без письма компании)
+  // иначе → COMPANY_EMAIL без данных клиента + SUPERADMIN
   // ════════════════════════════════════════════════════════════════
   
   if (action === "CREATE" && isClientOrder && !isConfirmed) {
-    notifications.push({
-      target: ["COMPANY_EMAIL", "SUPERADMIN"],
-      channels: ["EMAIL", "TELEGRAM"],
-      reason: "New client order created",
-      includePII: false, // PII hidden until confirmed
-      priority: "INFO",
-    });
+    const emailTesting = process.env.EMAIL_TESTING === "true";
+
+    if (emailTesting) {
+      // Режим тестирования: уведомление только SUPERADMIN
+      notifications.push({
+        target: "SUPERADMIN",
+        channels: ["TELEGRAM", "EMAIL"],
+        reason: "New client order created (EMAIL_TESTING)",
+        includePII: true,
+        priority: "INFO",
+      });
+    } else {
+      // Продакшен: компания — письмо без данных клиента; суперадмин — полное уведомление
+      notifications.push({
+        target: "COMPANY_EMAIL",
+        channels: ["EMAIL"],
+        reason: "New client order created",
+        includePII: false, // без данных клиента
+        priority: "INFO",
+      });
+      notifications.push({
+        target: "SUPERADMIN",
+        channels: ["TELEGRAM", "EMAIL"],
+        reason: "New client order created",
+        includePII: true,
+        priority: "INFO",
+      });
+      if (order.email && String(order.email).trim()) {
+        notifications.push({
+          target: "CUSTOMER",
+          channels: ["EMAIL"],
+          reason: "New client order created — confirmation to customer",
+          includePII: true,
+          priority: "INFO",
+        });
+      }
+    }
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -173,7 +206,7 @@ export function getOrderNotifications(params) {
       target: "DEVELOPERS",
       channels: ["TELEGRAM"],
       reason: `AUDIT: ${isClientOrder ? "Client" : "Internal"} order deleted`,
-      includePII: false,
+      includePII: true,
       priority: "DEBUG",
     });
   }
@@ -264,7 +297,7 @@ export function isActionAllowedByAccess(action, access) {
 
   switch (action) {
     case "UPDATE_DATES":
-      return access.canEditDates === true;
+      return access.canEditPickupDate === true || access.canEditReturnDate === true;
     case "UPDATE_RETURN":
       return access.canEditReturn === true;
     case "UPDATE_INSURANCE":
@@ -292,7 +325,7 @@ export function isActionAllowedByAccess(action, access) {
  * @type {Record<string, "CRITICAL" | "INFO" | "DEBUG">}
  */
 export const PRIORITY_BY_INTENT = {
-  ORDER_CREATED: "INFO",
+  ORDER_CREATED: "CRITICAL",
   ORDER_CONFIRMED: "INFO",
   ORDER_UNCONFIRMED: "INFO",
   CRITICAL_EDIT: "CRITICAL",
