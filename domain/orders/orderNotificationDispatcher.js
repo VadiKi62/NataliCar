@@ -33,6 +33,11 @@ import {
 } from "./orderNotificationPolicy";
 import { getOrderAccess } from "./orderAccessPolicy";
 import { ROLE } from "./admin-rbac";
+import { getApiUrl, sendTelegramMessage } from "@utils/action";
+import { DEVELOPER_EMAIL } from "@config/email";
+import { getOrderNotificationStrings } from "@locales/customerEmail";
+import { renderCustomerOrderConfirmationEmail, renderAdminOrderNotificationEmail } from "@/app/ui/email/renderEmail";
+import dayjs from "dayjs";
 
 // ════════════════════════════════════════════════════════════════
 // TYPES
@@ -47,9 +52,16 @@ import { ROLE } from "./admin-rbac";
  * @property {string} orderId - Order ID
  * @property {string} [orderNumber] - Order number for display
  * @property {string} [carNumber] - Car registration number
+ * @property {string} [carModel] - Car model name
+ * @property {Date|string} [rentalStartDate] - Rental start
+ * @property {Date|string} [rentalEndDate] - Rental end
+ * @property {number} [totalPrice] - Total price
  * @property {string} [customerName] - Customer name (if PII allowed)
  * @property {string} [phone] - Customer phone (if PII allowed)
  * @property {string} [email] - Customer email (if PII allowed)
+ * @property {boolean} [Viber] - Prefer Viber contact
+ * @property {boolean} [Whatsapp] - Prefer Whatsapp contact
+ * @property {boolean} [Telegram] - Prefer Telegram contact
  * @property {string} action - Action performed
  * @property {string} intent - Action intent (from ACTION_INTENT)
  * @property {string} [actorName] - Who performed the action
@@ -68,24 +80,38 @@ const PII_FIELDS = ["customerName", "phone", "email", "Viber", "Whatsapp", "Tele
 
 /**
  * Санитайзер payload — гарантирует что PII не утечёт.
- * 
+ * - SUPERADMIN: всегда с контактами клиента (девелоперу).
+ * - CUSTOMER: всегда с контактами (клиент получает свои данные).
+ * - COMPANY_EMAIL: никогда не включаем контакты клиента (политика задаёт includePII: false, здесь явно стрипим).
+ * - Остальные: по флагу includePII и access.canSeeClientPII.
+ *
  * @param {NotificationPayload} payload
  * @param {import("./orderAccessPolicy").OrderAccess} access
  * @param {boolean} includePII - Флаг из notification
+ * @param {string} [target] - SUPERADMIN | CUSTOMER | COMPANY_EMAIL | ...
  * @returns {NotificationPayload}
  */
-function sanitizePayload(payload, access, includePII) {
-  // Если разрешено PII и access позволяет — возвращаем как есть
-  if (includePII && access?.canSeeClientPII) {
+function sanitizePayload(payload, access, includePII, target) {
+  if (target === "COMPANY_EMAIL") {
+    const sanitized = { ...payload };
+    for (const field of PII_FIELDS) {
+      delete sanitized[field];
+    }
+    return sanitized;
+  }
+
+  const allowPII =
+    target === "SUPERADMIN" ||
+    target === "CUSTOMER" ||
+    (includePII && access?.canSeeClientPII);
+  if (allowPII) {
     return payload;
   }
 
-  // Иначе удаляем все PII поля
   const sanitized = { ...payload };
   for (const field of PII_FIELDS) {
     delete sanitized[field];
   }
-  
   return sanitized;
 }
 
@@ -141,54 +167,169 @@ async function auditLog({ order, user, action, access, intent, source }) {
 // ════════════════════════════════════════════════════════════════
 
 /**
+ * Форматирует дату в DD-MM-YY для уведомлений.
+ * @param {Date|string} d
+ * @returns {string}
+ */
+function formatDateShort(d) {
+  if (!d) return "—";
+  return dayjs(d).format("DD-MM-YY");
+}
+
+/**
+ * Форматирует payload в текст для Telegram/email.
+ * Для нового заказа (ORDER_CREATED) — полный блок с данными клиента.
+ * @param {NotificationPayload} payload
+ * @param {string} reason
+ * @returns {string}
+ */
+function formatNotificationText(payload, reason) {
+  if (payload.intent === "ORDER_CREATED") {
+    const carDisplay = payload.carNumber
+      ? `${payload.carModel || "—"} (${payload.carNumber})`
+      : (payload.carModel || "—");
+    const customerLines = [
+      payload.customerName != null ? `• Name: ${payload.customerName}` : null,
+      payload.phone != null ? `• Phone: ${payload.phone}` : null,
+      payload.email != null && payload.email !== "" ? `• Email: ${payload.email}` : null,
+      payload.Viber === true ? "• Viber ✓" : null,
+      payload.Whatsapp === true ? "• Whatsapp ✓" : null,
+      payload.Telegram === true ? "• Telegram ✓" : null,
+    ].filter(Boolean);
+    const hasPII = customerLines.length > 0;
+    const lines = [
+      `🆕 NEW ORDER #${payload.orderNumber || payload.orderId}`,
+      `🚗 Car: ${carDisplay}`,
+      `📅 From: ${formatDateShort(payload.rentalStartDate)}`,
+      `📅 To: ${formatDateShort(payload.rentalEndDate)}`,
+      `💰 Total: €${payload.totalPrice ?? ""}`,
+      ...(hasPII ? ["", "👤 Customer:", ...customerLines, "------------"] : []),
+    ].filter(Boolean);
+    return lines.join("\n");
+  }
+
+  const lines = [
+    reason,
+    "",
+    `Заказ: ${payload.orderNumber || payload.orderId}`,
+    `Авто: ${payload.carNumber || "—"}`,
+    `Действие: ${payload.action}`,
+    payload.actorName ? `Кто: ${payload.actorName}` : null,
+    `Источник: ${payload.source}`,
+    payload.timestamp ? `Время: ${new Date(payload.timestamp).toISOString()}` : null,
+  ].filter(Boolean);
+  return lines.join("\n");
+}
+
+/**
+ * Форматирует письмо для клиента: title, text, html из единого рендерера (app/ui/email).
+ * @param {NotificationPayload} payload
+ * @returns {{ title: string, body: string, bodyHtml: string }}
+ */
+function formatCustomerEmailContent(payload) {
+  const { title, text, html } = renderCustomerOrderConfirmationEmail(payload);
+  return {
+    title,
+    body: text,
+    bodyHtml: html,
+  };
+}
+
+/**
  * Отправляет уведомление в Telegram.
- * 
+ *
  * @param {string} target - Recipient (SUPERADMIN, DEVELOPERS, etc.)
  * @param {NotificationPayload} payload
  * @param {string} reason
  * @param {"CRITICAL" | "INFO" | "DEBUG"} priority
  */
 async function sendTelegramNotification(target, payload, reason, priority) {
-  // В production здесь будет реальный вызов Telegram API
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[TELEGRAM → ${target}] [${priority}]`, reason, payload);
-    return;
+  const emoji = priority === "CRITICAL" ? "🚨" : priority === "INFO" ? "ℹ️" : "🔍";
+  const text = `${emoji} ${reason}\n\n${formatNotificationText(payload, reason)}`;
+  const sent = await sendTelegramMessage(text);
+  if (process.env.NODE_ENV !== "production" && !sent) {
+    console.log(`[TELEGRAM → ${target}] [${priority}] (send failed, logged)`, reason, payload);
   }
-  
-  // TODO: Интеграция с Telegram Bot API
-  // const chatId = getTelegramChatId(target);
-  // const emoji = priority === "CRITICAL" ? "🚨" : priority === "INFO" ? "ℹ️" : "🔍";
-  // await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-  //   method: "POST",
-  //   body: JSON.stringify({
-  //     chat_id: chatId,
-  //     text: `${emoji} ${reason}\n\n${formatPayload(payload)}`,
-  //   }),
-  // });
 }
 
 /**
  * Отправляет уведомление по email.
- * 
- * @param {string} target - Recipient
+ * Получатель по target (политика уже не даёт COMPANY_EMAIL при EMAIL_TESTING):
+ * - CUSTOMER и payload.email → to = клиент, cc = DEVELOPER_EMAIL
+ * - COMPANY_EMAIL и companyEmail → to = компания, cc = DEVELOPER_EMAIL
+ * - Иначе → to = DEVELOPER_EMAIL, cc пусто
+ * DEVELOPER_EMAIL всегда в to или в cc.
+ *
+ * @param {string} target - Из getOrderNotifications (SUPERADMIN, COMPANY_EMAIL, etc.)
  * @param {NotificationPayload} payload
  * @param {string} reason
  * @param {"CRITICAL" | "INFO" | "DEBUG"} priority
+ * @param {string} [companyEmail] - Email компании из БД (для target COMPANY_EMAIL)
  */
-async function sendEmailNotification(target, payload, reason, priority) {
-  // В production здесь будет реальный вызов email API
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[EMAIL → ${target}] [${priority}]`, reason, payload);
-    return;
+async function sendEmailNotification(target, payload, reason, priority, companyEmail) {
+  // Режим тестирования решается в orderNotificationPolicy (COMPANY_EMAIL не добавляется при EMAIL_TESTING).
+  const customerEmail = payload.email && String(payload.email).trim();
+  const sendToCustomer = target === "CUSTOMER" && customerEmail;
+  const sendToCompany = target === "COMPANY_EMAIL" && companyEmail;
+  let to;
+  let cc;
+  if (sendToCustomer) {
+    to = [customerEmail];
+    cc = [DEVELOPER_EMAIL];
+  } else if (sendToCompany) {
+    to = [companyEmail];
+    cc = [DEVELOPER_EMAIL];
+  } else {
+    to = [DEVELOPER_EMAIL];
+    cc = [];
   }
-  
-  // TODO: Интеграция с email сервисом
-  // const email = getEmailAddress(target, payload);
-  // await sendEmail({
-  //   to: email,
-  //   subject: `[${priority}] ${reason}`,
-  //   body: formatEmailBody(payload, reason),
-  // });
+
+  let title;
+  let body;
+  let html;
+  if (sendToCustomer) {
+    const customerContent = formatCustomerEmailContent(payload);
+    title = customerContent.title;
+    body = customerContent.body;
+    html = customerContent.bodyHtml;
+  } else {
+    const emoji = priority === "CRITICAL" ? "🚨" : priority === "INFO" ? "ℹ️" : "🔍";
+    title = `${emoji} ${reason}`;
+    body = formatNotificationText(payload, reason);
+    html = renderAdminOrderNotificationEmail(title, body);
+  }
+
+  const toList = Array.isArray(to) ? to.filter(Boolean) : [];
+  const ccList = Array.isArray(cc) ? cc.filter(Boolean) : [];
+  if (toList.length === 0 && !sendToCustomer) {
+    toList.push(DEVELOPER_EMAIL);
+  }
+
+  try {
+    const url = getApiUrl("/api/sendEmail");
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "",
+        emailCompany: DEVELOPER_EMAIL,
+        title,
+        message: body,
+        html: html || undefined,
+        to: toList,
+        cc: ccList,
+      }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[EMAIL → ${target}] [${priority}] (send failed)`, reason, err?.message);
+    }
+    throw err;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -197,12 +338,13 @@ async function sendEmailNotification(target, payload, reason, priority) {
 
 /**
  * Отправляет все уведомления для действия над заказом.
- * 
+ *
  * @param {import("./orderNotificationPolicy").Notification[]} notifications
  * @param {NotificationPayload} payload
  * @param {import("./orderAccessPolicy").OrderAccess} access
+ * @param {string} [companyEmail] - Email компании из БД (для target COMPANY_EMAIL)
  */
-async function dispatchOrderNotifications(notifications, payload, access) {
+async function dispatchOrderNotifications(notifications, payload, access, companyEmail) {
   if (!notifications || notifications.length === 0) {
     return;
   }
@@ -216,8 +358,8 @@ async function dispatchOrderNotifications(notifications, payload, access) {
     // Priority вычисляется декларативно по intent
     const priority = getPriorityByIntent(intent);
     
-    // 🔒 ОБЯЗАТЕЛЬНО: санитайзим payload
-    const safePayload = sanitizePayload(payload, access, includePII);
+    // 🔒 Санитайзим payload (SUPERADMIN всегда получает PII)
+    const safePayload = sanitizePayload(payload, access, includePII, target);
     
     for (const channel of channels) {
       if (channel === "TELEGRAM") {
@@ -229,7 +371,7 @@ async function dispatchOrderNotifications(notifications, payload, access) {
       
       if (channel === "EMAIL") {
         promises.push(
-          sendEmailNotification(target, safePayload, reason, priority)
+          sendEmailNotification(target, safePayload, reason, priority, companyEmail)
             .catch(err => console.error(`[Notification Error] EMAIL → ${target}:`, err))
         );
       }
@@ -255,6 +397,8 @@ async function dispatchOrderNotifications(notifications, payload, access) {
  * @param {import("./orderNotificationPolicy").OrderAction} params.action
  * @param {string} [params.actorName] - Who performed the action
  * @param {NotificationSource} [params.source="UI"] - Where the action originated
+ * @param {string} [params.companyEmail] - Email компании из БД (для target COMPANY_EMAIL при EMAIL_TESTING=false)
+ * @param {string} [params.locale] - Язык клиента (en, ru, el) для письма клиенту
  */
 export async function notifyOrderAction({
   order,
@@ -262,6 +406,8 @@ export async function notifyOrderAction({
   action,
   actorName,
   source = "UI",
+  companyEmail,
+  locale,
 }) {
   if (!order || !user) {
     return;
@@ -314,20 +460,36 @@ export async function notifyOrderAction({
     return;
   }
   
-  // Формируем payload
+  // Формируем payload (все поля для формата NEW ORDER и PII для SUPERADMIN)
   const payload = {
     orderId: order._id?.toString?.() || order._id,
     orderNumber: order.orderNumber,
     carNumber: order.carNumber,
+    carModel: order.carModel,
+    rentalStartDate: order.rentalStartDate,
+    rentalEndDate: order.rentalEndDate,
+    timeIn: order.timeIn,
+    timeOut: order.timeOut,
+    placeIn: order.placeIn,
+    placeOut: order.placeOut,
+    numberOfDays: order.numberOfDays,
+    ChildSeats: order.ChildSeats ?? order.childSeats ?? 0,
+    insurance: order.insurance,
+    flightNumber: order.flightNumber,
+    totalPrice: order.totalPrice,
     customerName: order.customerName,
     phone: order.phone,
-    email: order.email,
+    email: order.email ?? "",
+    Viber: order.Viber === true,
+    Whatsapp: order.Whatsapp === true,
+    Telegram: order.Telegram === true,
     action,
     intent,
     actorName,
     source,
     timestamp: new Date(),
+    locale: locale || order.locale || "en",
   };
   
-  await dispatchOrderNotifications(notifications, payload, access);
+  await dispatchOrderNotifications(notifications, payload, access, companyEmail);
 }

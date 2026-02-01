@@ -16,139 +16,24 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { DEVELOPER_EMAIL } from "@config/email";
+import { EMAIL_SIGNATURE_HTML, EMAIL_SIGNATURE_TEXT } from "@/app/ui/email/templates/signature";
 
-// Email signature constants (using theme colors)
-const EMAIL_SIGNATURE_HTML = `
-<div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #e0e0e0;">
-  <div style="text-align: center; font-size: 13px; color: #616161; line-height: 1.8;">
-    <div style="margin-bottom: 8px;">
-      <strong style="color: #890000; font-size: 14px;">BBQR Support</strong>
-    </div>
-    <div style="color: #757575; margin-bottom: 12px;">
-      Smart QR menus & waiter call system for restaurants
-    </div>
-    <div style="margin-top: 16px;">
-      <a href="https://www.bbqr.site" style="color: #008989; text-decoration: none; margin: 0 12px;">
-        🌐 www.bbqr.site
-      </a>
-      <span style="color: #bdbdbd;">|</span>
-      <a href="mailto:support@bbqr.site" style="color: #008989; text-decoration: none; margin: 0 12px;">
-        ✉️ support@bbqr.site
-      </a>
-    </div>
-  </div>
-</div>`;
-
-const EMAIL_SIGNATURE_TEXT = `--
-
-BBQR Support
-Smart QR menus & waiter call system for restaurants
-
-Website: https://www.bbqr.site
-Email: support@bbqr.site`;
-
-// Helper function to create beautiful HTML email template
-function createEmailHTML(title, message) {
-  // Theme colors
-  const colors = {
-    primary: "#0d8d8d", // Тёмно-красный
-    secondary: "#008989", // Бирюзовый
-    background: "#ffffff", // Белый фон
-    text: "#1a1a1a", // Тёмный текст
-    textSecondary: "#616161", // Серый текст
-    border: "#e0e0e0", // Светлая граница
-    accent: "#894500", // Коричнево-оранжевый
-  };
-
-  // Format message - preserve line breaks and structure
-  const formattedMessage = message
+/** Minimal HTML when only text is provided: wrap lines + signature. No theme, no branding. */
+function wrapTextWithSignature(title, text) {
+  const lines = (text || "")
     .split("\n")
     .map((line) => {
       const trimmed = line.trim();
-      if (!trimmed) return '<div style="height: 8px;"></div>'; // Spacing for empty lines
-
-      // Check if line is a label (ends with :)
-      if (trimmed.endsWith(":")) {
-        return `<div style="margin: 16px 0 8px 0;"><strong style="color: ${colors.primary}; font-size: 15px;">${trimmed}</strong></div>`;
-      }
-
-      // Check if line contains key information (dates, prices, etc.)
-      if (
-        trimmed.includes("Бронь") ||
-        trimmed.includes("Сумма") ||
-        trimmed.includes("дней")
-      ) {
-        return `<div style="margin: 8px 0; padding: 8px 12px; background-color: #f5f5f5; border-left: 3px solid ${colors.secondary}; border-radius: 4px;"><span style="color: ${colors.text}; line-height: 1.6;">${trimmed}</span></div>`;
-      }
-
-      // Regular text
-      return `<div style="margin: 8px 0; color: ${colors.text}; line-height: 1.6;">${trimmed}</div>`;
+      if (!trimmed) return "<div style=\"height: 8px;\"></div>";
+      return "<div style=\"margin: 8px 0; color: #1a1a1a; line-height: 1.6; font-family: sans-serif;\">" + trimmed.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/&/g, "&amp;") + "</div>";
     })
     .join("");
-
-  return `
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <!-- Email Container -->
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <!-- Main Content Card -->
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: ${
-          colors.background
-        }; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background: linear-gradient(135deg, ${
-              colors.primary
-            } 0%, ${
-    colors.secondary
-  } 100%); padding: 30px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">
-                ${title}
-              </h1>
-            </td>
-          </tr>
-          
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px;">
-              <div style="text-align: center; max-width: 520px; margin: 0 auto;">
-                ${formattedMessage}
-              </div>
-            </td>
-          </tr>
-          
-          <!-- Signature -->
-          <tr>
-            <td style="padding: 0 40px 30px 40px;">
-              ${EMAIL_SIGNATURE_HTML}
-            </td>
-          </tr>
-          
-        </table>
-        
-        <!-- Footer -->
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; margin-top: 20px;">
-          <tr>
-            <td style="text-align: center; padding: 20px; color: ${
-              colors.textSecondary
-            }; font-size: 12px;">
-              <p style="margin: 0;">© ${new Date().getFullYear()} Natali Cars. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-        
-      </td>
-    </tr>
-  </table>
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${(title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</title></head>
+<body style="margin: 0; padding: 24px; font-family: sans-serif;">
+  ${lines}
+  ${EMAIL_SIGNATURE_HTML}
 </body>
 </html>`;
 }
@@ -203,48 +88,57 @@ export async function POST(request) {
     const emailTransporter = getTransporter();
 
     const body = await request.json();
-    const { email, emailCompany, title, message } = body;
+    const {
+      title,
+      text: bodyText,
+      html: bodyHtml,
+      to: bodyTo,
+      cc: bodyCc,
+      replyTo: bodyReplyTo,
+      email,
+      message,
+    } = body;
 
-    // Main recipient is ALWAYS DEVELOPER_EMAIL (cars@bbqr.site)
-    // In testing mode: only company email, customer email is ignored
-    // In production: company email + customer email (if provided)
+    const text = bodyText != null ? bodyText : message;
+    const useNotificationRecipients = Array.isArray(bodyTo) && bodyTo.length > 0;
     const actualCustomerEmail = isTestingMode ? null : email;
 
     console.log("Email request:", {
       companyEmail: COMPANY_EMAIL,
-      customerEmail: isTestingMode
-        ? "DISABLED (testing mode)"
-        : email || "not provided",
+      customerEmail: isTestingMode ? "DISABLED (testing mode)" : email || "not provided",
       subject: title,
-      messageLength: message?.length || 0,
+      hasText: !!text,
+      hasHtml: !!bodyHtml,
       testingMode: isTestingMode,
+      useNotificationRecipients: !!useNotificationRecipients,
     });
 
-    if (!title || !message) {
+    if (!title || (!text && !bodyHtml)) {
       return NextResponse.json(
-        { error: "Missing required email data (title, message)." },
+        { error: "Missing email content: title and (text or html) required." },
         { status: 400 }
       );
     }
 
-    // Prepare text message with signature
-    const messageWithSignature = `${message}\n\n${EMAIL_SIGNATURE_TEXT}`;
+    const hasReadyHtml = typeof bodyHtml === "string" && bodyHtml.trim().length > 0;
+    const finalText = hasReadyHtml ? (text || "") : `${text || ""}\n\n${EMAIL_SIGNATURE_TEXT}`;
+    const finalHtml = hasReadyHtml ? bodyHtml : wrapTextWithSignature(title, text || "");
 
-    // Prepare beautiful HTML email with theme colors and centered layout
-    const htmlEmail = createEmailHTML(title, message);
-
-    // Determine recipients:
-    // - ALWAYS send to DEVELOPER_EMAIL (cars@bbqr.site)
-    // - In testing mode: only company email
-    // - In production: company email + customer email (if provided)
-    let recipients;
-    if (isTestingMode) {
-      recipients = [COMPANY_EMAIL];
+    // Determine recipients: either from notification (to/cc) or legacy (company + customer)
+    let toRecipients;
+    let ccRecipients = [];
+    if (useNotificationRecipients) {
+      toRecipients = bodyTo.filter(Boolean);
+      ccRecipients = Array.isArray(bodyCc) ? bodyCc.filter(Boolean) : [];
     } else {
-      recipients =
-        actualCustomerEmail && actualCustomerEmail.trim()
-          ? [COMPANY_EMAIL, actualCustomerEmail.trim()]
-          : [COMPANY_EMAIL];
+      if (isTestingMode) {
+        toRecipients = [COMPANY_EMAIL];
+      } else {
+        toRecipients =
+          actualCustomerEmail && actualCustomerEmail.trim()
+            ? [COMPANY_EMAIL, actualCustomerEmail.trim()]
+            : [COMPANY_EMAIL];
+      }
     }
 
     // In testing mode, prefix subject with [TEST]
@@ -252,11 +146,12 @@ export async function POST(request) {
 
     const mailOptions = {
       from: `Natali Cars <${SMTP_USER}>`,
-      to: recipients,
-      replyTo: SMTP_USER,
+      to: toRecipients,
+      cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+      replyTo: bodyReplyTo || SMTP_USER,
       subject: emailSubject,
-      text: messageWithSignature,
-      html: htmlEmail,
+      text: finalText,
+      html: finalHtml,
     };
 
     console.log("Sending email with mailOptions:", {

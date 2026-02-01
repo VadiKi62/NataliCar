@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import { Car } from "@models/car";
 import { Order } from "@models/order";
 import { User } from "@models/user";
+import Company from "@models/company";
+import { COMPANY_ID } from "@config/company";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -17,7 +19,7 @@ import {
   setTimeToDatejs,
   checkConflicts,
 } from "@utils/analyzeDates";
-import { sendNewOrderTelegramNotification } from "@utils/action";
+import { notifyOrderAction } from "@/domain/orders/orderNotificationDispatcher";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -49,6 +51,7 @@ export async function POST(request) {
       Whatsapp,
       Telegram,
       totalPrice: totalPriceFromClient,
+      locale: clientLocale,
     } = await request.json();
 
     // Check if request comes from admin session
@@ -193,9 +196,6 @@ export async function POST(request) {
       createdByAdminId,
     });
 
-    // Добавьте дополнительное логгирование для email перед созданием заказа:
-    console.log("API: email перед созданием заказа:", typeof email, email);
-
     if (nonConfirmedDates.length > 0) {
       newOrder.hasConflictDates = [
         ...new Set([...newOrder.hasConflictDates, ...conflicOrdersId]),
@@ -205,29 +205,30 @@ export async function POST(request) {
 
       await updateConflictingOrders(conflicOrdersId, newOrder._id);
 
-      // Send Telegram notification for new order (pending)
-      sendNewOrderTelegramNotification({
-        id: newOrder.orderNumber || newOrder._id,
-        startDate: newOrder.rentalStartDate.toISOString(),
-        endDate: newOrder.rentalEndDate.toISOString(),
-        totalPrice: newOrder.totalPrice,
-        currency: "EUR",
-        car: {
-          model: existingCar.model,
-          regNumber: existingCar.regNumber,
-        },
-        customer: {
-          name: newOrder.customerName,
-          phone: newOrder.phone,
-          email: newOrder.email,
-        },
-      }).catch(() => {}); // Fire and forget, don't block response
+      // Уведомления по политике (orderNotificationPolicy)
+      let notificationError = null;
+      const orderPlain = newOrder.toObject ? newOrder.toObject() : { ...newOrder };
+      const user = session?.user || { id: null, role: 0, isAdmin: false };
+      const company = await Company.findById(COMPANY_ID);
+      try {
+        await notifyOrderAction({
+          order: orderPlain,
+          user,
+          action: "CREATE",
+          source: "BACKEND",
+          companyEmail: company?.email,
+          locale: clientLocale,
+        });
+      } catch (err) {
+        notificationError = err?.message || "Notifications failed";
+      }
 
       return new Response(
         JSON.stringify({
           messageCode: "bookMesssages.bookPendingDates",
           dates: nonConfirmedDates,
           data: newOrder,
+          ...(notificationError && { notificationError }),
         }),
         {
           status: 202,
@@ -243,25 +244,28 @@ export async function POST(request) {
     // Save the updated car document
     await existingCar.save();
 
-    // Send Telegram notification for new order
-    sendNewOrderTelegramNotification({
-      id: newOrder.orderNumber || newOrder._id,
-      startDate: newOrder.rentalStartDate.toISOString(),
-      endDate: newOrder.rentalEndDate.toISOString(),
-      totalPrice: newOrder.totalPrice,
-      currency: "EUR",
-      car: {
-        model: existingCar.model,
-        regNumber: existingCar.regNumber,
-      },
-      customer: {
-        name: newOrder.customerName,
-        phone: newOrder.phone,
-        email: newOrder.email,
-      },
-    }).catch(() => {}); // Fire and forget, don't block response
+    // Уведомления по политике (orderNotificationPolicy)
+    let notificationError = null;
+    const orderPlain = newOrder.toObject ? newOrder.toObject() : { ...newOrder };
+    const user = session?.user || { id: null, role: 0, isAdmin: false };
+    const company = await Company.findById(COMPANY_ID);
+    try {
+      await notifyOrderAction({
+        order: orderPlain,
+        user,
+        action: "CREATE",
+        source: "BACKEND",
+        companyEmail: company?.email,
+        locale: clientLocale,
+      });
+    } catch (err) {
+      notificationError = err?.message || "Notifications failed";
+    }
 
-    return new Response(JSON.stringify(newOrder), {
+    const body = newOrder.toObject ? newOrder.toObject() : { ...newOrder };
+    if (notificationError) body.notificationError = notificationError;
+
+    return new Response(JSON.stringify(body), {
       status: 201,
       headers: { "Content-Type": "application/json" },
     });
