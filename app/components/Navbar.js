@@ -37,6 +37,16 @@ import {
 } from "@mui/material";
 import dynamic from "next/dynamic";
 
+const LANG_LABELS = {
+  en: "English",
+  el: "Ελληνικά",
+  ru: "Русский",
+  de: "Deutsch",
+  bg: "Български",
+  ro: "Română",
+  sr: "Srpski",
+};
+
 // ============================================================
 // ADMIN-ONLY CODE ISOLATION
 // All admin UI is loaded via AdminRoot to prevent bundle leakage
@@ -522,9 +532,10 @@ export default function NavBar({
                   sx={{
                     fontStretch: "extra-condensed",
                     textTransform: "uppercase",
+                    fontSize: "0.85rem",
                   }}
                 >
-                  {lang}
+                  {LANG_LABELS[lang] || lang}
                 </Typography>
               </LanguageSwitcher>
 
@@ -731,6 +742,18 @@ export default function NavBar({
           </MenuItem>
           <MenuItem onClick={() => handleLanguageSelect("ru")}>
             Русский
+          </MenuItem>
+          <MenuItem onClick={() => handleLanguageSelect("de")}>
+            Deutsch
+          </MenuItem>
+          <MenuItem onClick={() => handleLanguageSelect("bg")}>
+            Български
+          </MenuItem>
+          <MenuItem onClick={() => handleLanguageSelect("ro")}>
+            Română
+          </MenuItem>
+          <MenuItem onClick={() => handleLanguageSelect("sr")}>
+            Srpski
           </MenuItem>
         </LanguagePopover>
 

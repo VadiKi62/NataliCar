@@ -50,13 +50,12 @@ export const MainContextProvider = ({
   const { i18n } = useTranslation();
   const [lang, setLang] = useState(i18n.language);
 
-  // Функция для смены языка с сохранением в localStorage
   const changeLanguage = useCallback(
     (newLang) => {
-      if (["en", "el", "ru"].includes(newLang)) {
+      const supportedLngs = ["en", "el", "ru", "de", "bg", "ro", "sr"];
+      if (supportedLngs.includes(newLang)) {
         i18n.changeLanguage(newLang);
         setLang(newLang);
-        // Сохраняем выбранный язык в localStorage
         if (typeof window !== "undefined") {
           localStorage.setItem("selectedLanguage", newLang);
         }
