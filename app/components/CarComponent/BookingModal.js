@@ -12,6 +12,7 @@ function generateOrderNumber() {
   );
 }
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import {
   Dialog,
   DialogTitle,
@@ -113,6 +114,7 @@ const BookingModal = ({
   const [placeIn, setPlaceIn] = useState("");
   const [placeOut, setPlaceOut] = useState("");
   const [flightNumber, setFlightNumber] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Получение стоимости с сервера при изменении дат
   const fetchTotalPrice = useCallback(async () => {
@@ -416,6 +418,9 @@ const BookingModal = ({
     if (email && !validateEmail(email))
       newErrors.email = "Invalid email address";
     if (!validatePhone(phone)) newErrors.phone = "Invalid phone number";
+    if (!termsAccepted) {
+      newErrors.terms = t("order.agreeToTermsRequired") || "You must agree to the rental terms.";
+    }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -518,6 +523,7 @@ const BookingModal = ({
     setViber(false);
     setWhatsapp(false);
     setTelegram(false);
+    setTermsAccepted(false);
     setErrors({});
     setIsSubmitted(false);
     setIsSubmitting(false);
@@ -1067,8 +1073,9 @@ const BookingModal = ({
                   <Box
                     sx={{
                       display: "flex",
-                      gap: 1,
-                      mt: 0.5,
+                      alignItems: "center",
+                      gap: 2,
+                      mt: 1,
                       mb: 0.5,
                       flexWrap: "wrap",
                     }}
@@ -1081,7 +1088,7 @@ const BookingModal = ({
                           onChange={(e) => setViber(e.target.checked)}
                         />
                       }
-                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
                       label="Viber"
                     />
                     <FormControlLabel
@@ -1092,7 +1099,7 @@ const BookingModal = ({
                           onChange={(e) => setWhatsapp(e.target.checked)}
                         />
                       }
-                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
                       label="WhatsApp"
                     />
                     <FormControlLabel
@@ -1103,10 +1110,57 @@ const BookingModal = ({
                           onChange={(e) => setTelegram(e.target.checked)}
                         />
                       }
-                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                      sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
                       label="Telegram"
                     />
                   </Box>
+                </Box>
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    p: 1.25,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    bgcolor: "action.hover",
+                  }}
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={termsAccepted}
+                        onChange={(e) => {
+                          setTermsAccepted(e.target.checked);
+                          if (errors.terms) setErrors((prev) => ({ ...prev, terms: undefined }));
+                        }}
+                      />
+                    }
+                    sx={{
+                      alignItems: "flex-start",
+                      m: 0,
+                      "& .MuiFormControlLabel-label": { fontSize: "0.85rem", lineHeight: 1.4 },
+                      maxWidth: "100%",
+                    }}
+                    label={
+                      <Typography component="span" variant="body2" sx={{ fontSize: "0.85rem", lineHeight: 1.4 }}>
+                        {t("order.agreeToTerms")}{" "}
+                        <Link
+                          href="/rental-terms"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "inherit", textDecoration: "underline" }}
+                        >
+                          {t("order.rentalTerms")}
+                        </Link>
+                      </Typography>
+                    }
+                  />
+                  {errors.terms && (
+                    <Typography color="error" variant="caption" sx={{ display: "block", mt: 0.5 }}>
+                      {errors.terms}
+                    </Typography>
+                  )}
                 </Box>
                 {errors.submit && (
                   <Typography color="error" sx={{ mt: 2 }}>

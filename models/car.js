@@ -42,6 +42,13 @@ const CarSchema = new Schema({
     type: String,
     required: true,
   },
+  /** SEO-friendly URL segment. Unique (sparse: only indexed when set). Normalize in utility, not here. */
+  slug: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+  },
   photoUrl: {
     type: String,
   },

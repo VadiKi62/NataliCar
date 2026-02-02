@@ -67,6 +67,22 @@ export const fetchCar = async (id) => {
   }
 };
 
+/** Fetch a single car by slug (SEO-friendly URL). */
+export const fetchCarBySlug = async (slug) => {
+  try {
+    const response = await fetch(getApiUrl(`/api/car/slug/${encodeURIComponent(slug)}`), {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (response.status === 404) throw new Error("Car not found");
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching car by slug:", error.message);
+    throw error;
+  }
+};
+
 // Fetch all cars using fetch
 export const fetchAll = async () => {
   try {

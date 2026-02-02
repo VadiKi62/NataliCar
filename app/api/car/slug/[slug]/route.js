@@ -2,16 +2,18 @@ import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { withOrderVisibility } from "@/middleware/withOrderVisibility";
 
-function getId(paramId) {
-  return Array.isArray(paramId) ? paramId[0] : paramId;
-}
-
 async function handler(request, { params }) {
   try {
     await connectToDB();
 
-    const id = getId(params.id);
-    const car = await Car.findById(id).populate("orders").lean();
+    const slug = params.slug;
+    if (!slug) {
+      return new Response("Slug required", { status: 400 });
+    }
+
+    const car = await Car.findOne({ slug: slug.trim().toLowerCase() })
+      .populate("orders")
+      .lean();
 
     if (!car) {
       return new Response("Car not found", { status: 404 });
