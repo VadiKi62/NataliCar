@@ -122,8 +122,11 @@ export function useOrderAccess(order, options = {}) {
     // Получаем доступы
     const access = getOrderAccess(ctx);
     
-    // Применяем forceViewOnly если нужно
-    if (forceViewOnly && access.canEdit) {
+    // Применяем forceViewOnly если нужно, НО SUPERADMIN всегда имеет полный доступ
+    // WHY: forceViewOnly передаётся из UI для прошлых заказов, но policy для SUPERADMIN
+    // уже вернул полный доступ — не переопределяем его.
+    const isSuperAdminAccess = ctx.role === "SUPERADMIN";
+    if (forceViewOnly && access.canEdit && !isSuperAdminAccess) {
       return {
         ...access,
         canEdit: false,
