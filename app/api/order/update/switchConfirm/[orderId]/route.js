@@ -1,6 +1,6 @@
 import { Order } from "@models/order";
 import Company from "@models/company";
-import BookingRules from "@/config/bookingRules";
+import { COMPANY_ID } from "@config/company";
 import { connectToDB } from "@utils/database";
 import { requireAdmin } from "@/lib/adminAuth";
 import { confirmOrderFlow } from "@/domain/orders/confirmOrderFlow";
@@ -32,9 +32,9 @@ export const PATCH = async (request, { params }) => {
       );
     }
 
-    const companyId = session.user.companyId || "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
+    const companyId = session.user.companyId || COMPANY_ID;
     const company = await Company.findById(companyId);
-    const bufferHours = Number(company?.bufferTime ?? BookingRules.bufferHours);
+    const bufferHours = company?.bufferTime != null ? Number(company.bufferTime) : undefined;
 
     const result = await confirmOrderFlow({
       order,
@@ -50,9 +50,8 @@ export const PATCH = async (request, { params }) => {
   } catch (error) {
     console.error("Error updating order:", error);
 
-    const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: сделать динамическим
-    const company = await Company.findById(companyId);
-    const bufferHours = Number(company?.bufferTime ?? 2);
+    const company = await Company.findById(COMPANY_ID);
+    const bufferHours = company?.bufferTime != null ? Number(company.bufferTime) : undefined;
 
     const body = {
       success: false,

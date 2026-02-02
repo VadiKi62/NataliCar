@@ -675,7 +675,7 @@ export const updateOrderInline = async (orderId, fields) => {
       level: "block",
       conflicts: [],
       affectedOrders: [],
-      bufferHours: 2,
+      bufferHours: data.bufferHours,
     };
   }
 
@@ -689,7 +689,7 @@ export const updateOrderInline = async (orderId, fields) => {
         level: "block",
         conflicts: data.conflicts ?? data.conflictDates ?? [],
         affectedOrders: data.affectedOrders ?? [],
-        bufferHours: data.bufferHours ?? 2,
+        bufferHours: data.bufferHours,
       };
     }
     throw new Error(data.message || "Failed to update order");
@@ -707,7 +707,7 @@ export const updateOrderInline = async (orderId, fields) => {
     level: null,
     conflicts: [],
     affectedOrders: [],
-    bufferHours: 2,
+    bufferHours: data.bufferHours,
   };
 };
 
@@ -758,7 +758,7 @@ export const updateOrderConfirmation = async (orderId) => {
         level: data.level || "block",
         conflicts: data.conflicts ?? [],
         affectedOrders: data.affectedOrders ?? [],
-        bufferHours: data.bufferHours ?? 2,
+        bufferHours: data.bufferHours,
       };
     }
     // For other errors, throw
@@ -774,7 +774,7 @@ export const updateOrderConfirmation = async (orderId) => {
       level: data.level ?? null,
       conflicts: data.conflicts ?? [],
       affectedOrders: data.affectedOrders ?? [],
-      bufferHours: data.bufferHours ?? 2,
+      bufferHours: data.bufferHours,
     };
   }
 
@@ -888,16 +888,21 @@ export async function getConfirmedOrders(orderIds) {
   }
 }
 
-// Fetch company with caching (revalidate: 3600 секунд = 1 час)
-export async function fetchCompany(companyId) {
+/**
+ * Загружает компанию из БД.
+ * @param {string} companyId - ID компании
+ * @param {{ skipCache?: boolean }} [options] - skipCache: true — всегда читать из БД (после сохранения буфера и т.д.)
+ */
+export async function fetchCompany(companyId, options = {}) {
   try {
     const response = await fetch(getApiUrl(`/api/company/${companyId}`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
-      // Кеширование: данные обновляются каждый час
-      next: { revalidate: 24*3600 },
+      ...(options.skipCache
+        ? { cache: "no-store" }
+        : { next: { revalidate: 3600 } }),
     });
 
     if (response.status === 404) {

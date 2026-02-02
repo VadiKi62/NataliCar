@@ -7,7 +7,6 @@
 
 import { Box, Typography, Tooltip } from "@mui/material";
 import dayjs from "dayjs";
-import { BOOKING_RULES } from "@config/bookingRules";
 
 /**
  * Конвертирует время "HH:mm" в позицию на шкале (0-100%)
@@ -33,16 +32,17 @@ function timeToPercent(time) {
  * @param {string} props.date - YYYY-MM-DD
  * @param {TimeSegment[]} props.segments - Занятые слоты
  * @param {Object} props.editing - { start: "HH:mm", end: "HH:mm" }
- * @param {number} props.bufferHours - Буфер (default 2)
+ * @param {number} [props.bufferHours] - Буфер в часах (только из company.bufferTime)
  * @param {Object} props.conflicts - { blocks: [], warnings: [], infos: [] }
  */
 export default function ConflictTimeline({
   date,
   segments = [],
   editing = null,
-  bufferHours = BOOKING_RULES.bufferHours,
+  bufferHours,
   conflicts = { blocks: [], warnings: [], infos: [] },
 }) {
+  const effectiveBufferHours = (bufferHours != null && typeof bufferHours === "number" && bufferHours >= 0) ? bufferHours : 0;
   const hours = Array.from({ length: 25 }, (_, i) => i);
 
   const hasBlocks = conflicts?.blocks?.length > 0;
@@ -184,7 +184,7 @@ export default function ConflictTimeline({
           .map((segment, idx) => {
             const startPercent = timeToPercent(segment.start);
             const endPercent = timeToPercent(segment.end);
-            const bufferPercent = (bufferHours / 24) * 100;
+            const bufferPercent = (effectiveBufferHours / 24) * 100;
 
             return (
               <Box key={`buffer-${idx}`}>
@@ -269,7 +269,7 @@ export default function ConflictTimeline({
               borderRadius: 0.5,
             }}
           />
-          <Typography variant="caption">Buffer ({bufferHours}h)</Typography>
+          <Typography variant="caption">Buffer ({effectiveBufferHours}h)</Typography>
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <Typography variant="caption">★ = My Order</Typography>

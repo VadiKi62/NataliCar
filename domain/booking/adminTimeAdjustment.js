@@ -17,10 +17,14 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { BUSINESS_TZ, formatTime, formatDate } from "./businessTime";
 import { getOrderOwnership } from "./orderOwnership";
-import { BOOKING_RULES } from "@config/bookingRules";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+/** Буфер в часах: только из company.bufferTime. Если не передан — 0. */
+function effectiveBufferHours(bufferHours) {
+  return typeof bufferHours === "number" && !isNaN(bufferHours) && bufferHours >= 0 ? bufferHours : 0;
+}
 
 /**
  * Типы результата проверки
@@ -39,11 +43,6 @@ dayjs.extend(timezone);
  * @property {Object|null} conflictOrder - Конфликтующий заказ
  * @property {boolean} requiresAcknowledgement - Требуется подтверждение админа
  */
-
-/**
- * Буфер времени между заказами (часы) - из централизованной конфигурации
- */
-const TIME_BUFFER_HOURS = BOOKING_RULES.bufferHours;
 
 /**
  * Проверяет, разрешено ли изменение времени
@@ -222,6 +221,7 @@ function getConfirmedConflictMessage(otherOrder, direction) {
  * @param {Array} params.overlapOrders - Заказы с пересечением дат
  * @param {string} params.pickupDate - Дата получения (YYYY-MM-DD)
  * @param {string} params.returnDate - Дата возврата (YYYY-MM-DD)
+ * @param {number} [params.bufferHours] - Буфер в часах (только из company.bufferTime)
  * @returns {TimeConstraints}
  */
 export function getTimeConstraints({
@@ -229,7 +229,9 @@ export function getTimeConstraints({
   overlapOrders,
   pickupDate,
   returnDate,
+  bufferHours,
 }) {
+  const bufHours = effectiveBufferHours(bufferHours);
   const constraints = {
     minPickupTime: null,
     maxReturnTime: null,
@@ -269,7 +271,7 @@ export function getTimeConstraints({
       if (!result.allowed) {
         // Блокируем время до окончания другого заказа + buffer
         const otherEndTime = dayjs(otherOrder.timeOut).tz(BUSINESS_TZ);
-        const minTime = otherEndTime.add(TIME_BUFFER_HOURS, "hour");
+        const minTime = otherEndTime.add(bufHours, "hour");
         
         if (!constraints.minPickupTime || minTime.isAfter(dayjs(constraints.minPickupTime, "HH:mm"))) {
           constraints.minPickupTime = minTime.format("HH:mm");
@@ -295,7 +297,7 @@ export function getTimeConstraints({
       if (!result.allowed) {
         // Блокируем время после начала другого заказа - buffer
         const otherStartTime = dayjs(otherOrder.timeIn).tz(BUSINESS_TZ);
-        const maxTime = otherStartTime.subtract(TIME_BUFFER_HOURS, "hour");
+        const maxTime = otherStartTime.subtract(bufHours, "hour");
         
         if (!constraints.maxReturnTime || maxTime.isBefore(dayjs(constraints.maxReturnTime, "HH:mm"))) {
           constraints.maxReturnTime = maxTime.format("HH:mm");

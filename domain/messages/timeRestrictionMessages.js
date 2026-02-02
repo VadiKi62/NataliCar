@@ -18,7 +18,6 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { BUSINESS_TZ, formatTime, formatDate } from "../time/businessTime";
 import { getOrderOwnership, isBusinessOrder, isInternalOrder } from "../booking/orderOwnership";
-import { BOOKING_RULES } from "@config/bookingRules";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -34,9 +33,11 @@ dayjs.extend(timezone);
  */
 
 /**
- * Буфер времени между заказами (часы) - из централизованной конфигурации
+ * Буфер в часах: только из company.bufferTime. Если не передан — 0 (без буфера).
  */
-const TIME_BUFFER_HOURS = BOOKING_RULES.bufferHours;
+function effectiveBufferHours(bufferHours) {
+  return typeof bufferHours === "number" && !isNaN(bufferHours) && bufferHours >= 0 ? bufferHours : 0;
+}
 
 /**
  * Получает сообщение об ограничении времени получения (pickup)
@@ -44,10 +45,11 @@ const TIME_BUFFER_HOURS = BOOKING_RULES.bufferHours;
  * @param {Object} params
  * @param {string} params.pickupDate - Дата получения YYYY-MM-DD
  * @param {Array} params.existingOrders - Существующие заказы на машину
+ * @param {number} [params.bufferHours] - Буфер в часах (только из company.bufferTime)
  * @param {string} [params.locale="ru"] - Язык сообщений
  * @returns {TimeRestriction|null}
  */
-export function getPickupTimeRestriction({ pickupDate, existingOrders, locale = "ru" }) {
+export function getPickupTimeRestriction({ pickupDate, existingOrders, bufferHours, locale = "ru" }) {
   if (!pickupDate || !existingOrders?.length) {
     return null;
   }
@@ -71,7 +73,7 @@ export function getPickupTimeRestriction({ pickupDate, existingOrders, locale = 
   // Берём заказ с самым поздним временем окончания
   const lastEndingOrder = sortedOrders[0];
   const returnTime = dayjs(lastEndingOrder.timeOut).tz(BUSINESS_TZ);
-  const minPickupTime = returnTime.add(TIME_BUFFER_HOURS, "hour");
+  const minPickupTime = returnTime.add(effectiveBufferHours(bufferHours), "hour");
 
   const ownership = getOrderOwnership(lastEndingOrder);
   const isBusiness = ownership.ownership === "business";
@@ -102,7 +104,7 @@ export function getPickupTimeRestriction({ pickupDate, existingOrders, locale = 
     message: isBusiness ? localeMessages.business : localeMessages.internal,
     conflictOrder: lastEndingOrder,
     ownership: ownership.ownership,
-    bufferHours: TIME_BUFFER_HOURS,
+    bufferHours: effectiveBufferHours(bufferHours),
   };
 }
 
@@ -112,10 +114,11 @@ export function getPickupTimeRestriction({ pickupDate, existingOrders, locale = 
  * @param {Object} params
  * @param {string} params.returnDate - Дата возврата YYYY-MM-DD
  * @param {Array} params.existingOrders - Существующие заказы на машину
+ * @param {number} [params.bufferHours] - Буфер в часах (только из company.bufferTime)
  * @param {string} [params.locale="ru"] - Язык сообщений
  * @returns {TimeRestriction|null}
  */
-export function getReturnTimeRestriction({ returnDate, existingOrders, locale = "ru" }) {
+export function getReturnTimeRestriction({ returnDate, existingOrders, bufferHours, locale = "ru" }) {
   if (!returnDate || !existingOrders?.length) {
     return null;
   }
@@ -139,7 +142,7 @@ export function getReturnTimeRestriction({ returnDate, existingOrders, locale = 
   // Берём заказ с самым ранним временем начала
   const firstStartingOrder = sortedOrders[0];
   const pickupTime = dayjs(firstStartingOrder.timeIn).tz(BUSINESS_TZ);
-  const maxReturnTime = pickupTime.subtract(TIME_BUFFER_HOURS, "hour");
+  const maxReturnTime = pickupTime.subtract(effectiveBufferHours(bufferHours), "hour");
 
   const ownership = getOrderOwnership(firstStartingOrder);
   const isBusiness = ownership.ownership === "business";
@@ -170,7 +173,7 @@ export function getReturnTimeRestriction({ returnDate, existingOrders, locale = 
     message: isBusiness ? localeMessages.business : localeMessages.internal,
     conflictOrder: firstStartingOrder,
     ownership: ownership.ownership,
-    bufferHours: TIME_BUFFER_HOURS,
+    bufferHours: effectiveBufferHours(bufferHours),
   };
 }
 
@@ -237,19 +240,22 @@ export function getPendingBusinessWarnings({ startDate, endDate, existingOrders,
  * @param {string} params.pickupDate - YYYY-MM-DD
  * @param {string} params.returnDate - YYYY-MM-DD
  * @param {Array} params.existingOrders
+ * @param {number} [params.bufferHours] - Буфер в часах (только из company.bufferTime)
  * @param {string} [params.locale="ru"]
  * @returns {Object}
  */
-export function getAllTimeRestrictions({ pickupDate, returnDate, existingOrders, locale = "ru" }) {
+export function getAllTimeRestrictions({ pickupDate, returnDate, existingOrders, bufferHours, locale = "ru" }) {
   const pickupRestriction = getPickupTimeRestriction({
     pickupDate,
     existingOrders,
+    bufferHours,
     locale,
   });
 
   const returnRestriction = getReturnTimeRestriction({
     returnDate,
     existingOrders,
+    bufferHours,
     locale,
   });
 

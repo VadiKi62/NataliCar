@@ -161,7 +161,7 @@ function LegendCalendarAdmin({ client }) {
       /> */}
 
       {/* Кнопка настроек буфера */}
-      <Tooltip title={`Буфер между заказами: ${company?.bufferTime ?? 2} ч. (нажмите для изменения)`} arrow>
+      <Tooltip title={`Буфер между заказами: ${company?.bufferTime != null ? `${company.bufferTime} ч.` : "—"} (нажмите для изменения)`} arrow>
         <IconButton
           onClick={() => setBufferModalOpen(true)}
           size="small"

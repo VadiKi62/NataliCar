@@ -229,10 +229,8 @@ export const PATCH = async (request, { params }) => {
     // Дополнительная проверка для подтверждения (требует конфликт-анализа)
     if (hasConfirmationChange) {
       if (!access.canConfirm) {
-        // Get company for bufferHours normalization
-        const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: make dynamic
-        const company = await Company.findById(companyId);
-        const bufferHours = Number(company?.bufferTime ?? 2);
+        const company = await Company.findById(COMPANY_ID);
+        const bufferHours = company?.bufferTime != null ? Number(company.bufferTime) : undefined;
 
         return new Response(
           JSON.stringify({
@@ -259,10 +257,8 @@ export const PATCH = async (request, { params }) => {
           car: order.car,
         });
 
-        // Get company for bufferTime
-        const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: make dynamic
-        const company = await Company.findById(companyId);
-        const bufferHours = Number(company?.bufferTime ?? 2);
+        const company = await Company.findById(COMPANY_ID);
+        const bufferHours = company?.bufferTime != null ? Number(company.bufferTime) : undefined;
 
         // Analyze conflicts
         const conflictAnalysis = analyzeConfirmationConflicts({
@@ -328,13 +324,11 @@ export const PATCH = async (request, { params }) => {
           }
         );
       } else {
-        // Unconfirming (always allowed)
         order.confirmed = false;
         const updatedOrder = await order.save();
 
-        const companyId = "679903bd10e6c8a8c0f027bc"; // TODO: make dynamic
-        const company = await Company.findById(companyId);
-        const bufferHours = Number(company?.bufferTime ?? 2);
+        const company = await Company.findById(COMPANY_ID);
+        const bufferHours = company?.bufferTime != null ? Number(company.bufferTime) : undefined;
 
         return new Response(
           JSON.stringify({

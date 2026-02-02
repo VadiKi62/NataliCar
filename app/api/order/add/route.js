@@ -20,12 +20,13 @@ import {
   checkConflicts,
 } from "@utils/analyzeDates";
 import { notifyOrderAction } from "@/domain/orders/orderNotificationDispatcher";
+import { orderGuard } from "@/middleware/orderGuard";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isBetween);
 
-export async function POST(request) {
+async function postOrderAddHandler(request) {
   try {
     await connectToDB();
 
@@ -284,6 +285,8 @@ export async function POST(request) {
     );
   }
 }
+
+export const POST = orderGuard(postOrderAddHandler);
 
 // function that iterates over all conflicting orders adding to them new conflicts orders
 async function updateConflictingOrders(conflicOrdersId, newOrderId) {

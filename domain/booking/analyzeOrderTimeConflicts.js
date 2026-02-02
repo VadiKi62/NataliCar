@@ -15,7 +15,6 @@
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import { BOOKING_RULES } from "./bookingRules";
 import {
   ATHENS_TZ,
   fromServerUTC,
@@ -152,7 +151,7 @@ function doTimesOverlap(start1, end1, start2, end2, bufferHours) {
  * @param {string} params.date - Дата в формате "YYYY-MM-DD"
  * @param {string} [params.editingPickupTime] - Время получения "HH:mm" (Athens)
  * @param {string} [params.editingReturnTime] - Время возврата "HH:mm" (Athens)
- * @param {number} [params.bufferHours] - Буферное время в часах (из компании, по умолчанию из BOOKING_RULES)
+ * @param {number} [params.bufferHours] - Буферное время в часах (только из company.bufferTime)
  * @returns {TimeConflictResult}
  */
 export function analyzeOrderTimeConflicts({
@@ -163,8 +162,8 @@ export function analyzeOrderTimeConflicts({
   editingReturnTime,
   bufferHours,
 }) {
-  // Используем bufferHours из параметра, если передан, иначе из BOOKING_RULES
-  const effectiveBufferHours = bufferHours ?? BOOKING_RULES.bufferHours;
+  const effectiveBufferHours =
+    typeof bufferHours === "number" && !isNaN(bufferHours) && bufferHours >= 0 ? bufferHours : 0;
 
   const result = {
     minPickupTime: null,

@@ -334,7 +334,7 @@ export const MainContextProvider = ({
   const updateCompanyInContext = useCallback(async (companyId) => {
     try {
       const { fetchCompany } = await import("@utils/action");
-      const freshCompany = await fetchCompany(companyId);
+      const freshCompany = await fetchCompany(companyId, { skipCache: true });
       if (process.env.NODE_ENV === "development") {
         if (process.env.NODE_ENV === "development") {
           console.log("[MainContext] Updating company", {

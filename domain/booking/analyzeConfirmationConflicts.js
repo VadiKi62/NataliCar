@@ -12,7 +12,6 @@
  */
 
 import { fromServerUTC, formatTimeHHMM } from "../time/athensTime";
-import { BOOKING_RULES } from "./bookingRules";
 import {
   formatConfirmedConflictMessage,
   formatPendingConflictMessage,
@@ -76,14 +75,13 @@ function calculateGapHours(end1, start2) {
  * @param {Object} params
  * @param {Object} params.orderToConfirm - Заказ, который хотим подтвердить
  * @param {Array} params.allOrders - Все заказы для этой машины
- * @param {number} [params.bufferHours] - Буферное время в часах (из компании, по умолчанию из BOOKING_RULES)
+ * @param {number} [params.bufferHours] - Буферное время в часах (только из company.bufferTime)
  * @returns {ConfirmationAnalysisResult}
  */
 export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, bufferHours }) {
-  console.log("analyzeConfirmationConflicts bufferHours:", bufferHours);
-  // Используем bufferHours из параметра, если передан, иначе из BOOKING_RULES
-  const effectiveBufferHours = bufferHours ?? BOOKING_RULES?.bufferHours ?? 2;
-  console.log("analyzeConfirmationConflicts effectiveBufferHours:", effectiveBufferHours);
+  // Единственный источник: company.bufferTime. Без fallback — если не передан, считаем 0 (нет буфера).
+  const effectiveBufferHours =
+    typeof bufferHours === "number" && !isNaN(bufferHours) && bufferHours >= 0 ? bufferHours : 0;
   const result = {
     canConfirm: true,
     level: null,
@@ -241,12 +239,12 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
  * @param {Object} params
  * @param {Object} params.pendingOrder
  * @param {Array} params.allOrders
- * @param {number} [params.bufferHours] - Буферное время в часах (из компании, по умолчанию из BOOKING_RULES)
+ * @param {number} [params.bufferHours] - Буферное время в часах (только из company.bufferTime)
  * @returns {{ canConfirm: boolean, blockingOrder: Object | null, message: string | null }}
  */
 export function canPendingOrderBeConfirmed({ pendingOrder, allOrders, bufferHours }) {
-  // Используем bufferHours из параметра, если передан, иначе из BOOKING_RULES
-  const effectiveBufferHours = bufferHours ?? BOOKING_RULES?.bufferHours ?? 2;
+  const effectiveBufferHours =
+    typeof bufferHours === "number" && !isNaN(bufferHours) && bufferHours >= 0 ? bufferHours : 0;
 
   if (!pendingOrder || pendingOrder.confirmed) {
     return { canConfirm: true, blockingOrder: null, message: null };

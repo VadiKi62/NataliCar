@@ -56,6 +56,7 @@ import {
   fromServerUTC,
   formatTimeHHMM,
 } from "@/domain/time/athensTime";
+import "@/styles/animations.css";
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
@@ -414,13 +415,15 @@ const BookingModal = ({
     if (isSubmitting) return;
 
     const newErrors = {};
-    if (!name) newErrors.name = "Name is required";
+    const requiredMsg = t("order.required") || "Required";
+    if (!name?.trim()) newErrors.name = requiredMsg;
     if (email && !validateEmail(email))
       newErrors.email = "Invalid email address";
-    if (!validatePhone(phone)) newErrors.phone = "Invalid phone number";
-    if (!termsAccepted) {
-      newErrors.terms = t("order.agreeToTermsRequired") || "You must agree to the rental terms.";
-    }
+    if (!phone?.trim()) newErrors.phone = requiredMsg;
+    if (phone?.trim() && !validatePhone(phone)) newErrors.phone = "Invalid phone number";
+    // if (!termsAccepted) newErrors.terms = requiredMsg; // поле политики/условий пока закомментировано
+    if (!presetDates?.startDate || !presetDates?.endDate) newErrors.dates = t("order.requiredDates") || "Pick-up and return dates";
+    if (timeErrors) newErrors.time = timeErrors;
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -771,10 +774,10 @@ const BookingModal = ({
                             : {}
                         }
                         onChange={(e) => handleStartTimeChange(e.target.value)}
-                        error={Boolean(timeErrors)}
+                        error={Boolean(timeErrors || errors.time)}
                         helperText={
-                          timeErrors
-                            ? timeErrors
+                          errors.time || timeErrors
+                            ? (errors.time || timeErrors)
                             : timeLimits.minStart
                             ? `${t("order.minAllowed", {
                                 defaultValue: "Не раньше: ",
@@ -1011,22 +1014,28 @@ const BookingModal = ({
                       </Select>
                     </FormControl>
                   </Box>
-                  {/* Поле Name опущено ниже по вертикали с помощью mt: 2 */}
-                  <BookingTextField
-                    label={
-                      <>
-                        <span>{t("order.yourName")}</span>
-                        <span style={{ color: "red" }}>*</span>
-                      </>
-                    }
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    error={!!errors.name}
-                    helperText={errors.name}
-                    sx={{
-                      mt: 2,
-                    }}
-                  />
+                  {/* Поле Name: подсветка при ошибке + опциональное подергивание */}
+                  <Box
+                    className={errors.name ? "booking-field-shake" : ""}
+                    sx={{ mt: 2 }}
+                  >
+                    <BookingTextField
+                      label={
+                        <>
+                          <span>{t("order.yourName")}</span>
+                          <span style={{ color: "red" }}>*</span>
+                        </>
+                      }
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                      }}
+                      error={!!errors.name}
+                      helperText={errors.name}
+                      fullWidth
+                    />
+                  </Box>
 
                   {/* Phone и Email: всегда в одну строку */}
                   <Box
@@ -1115,14 +1124,16 @@ const BookingModal = ({
                     />
                   </Box>
                 </Box>
+                {/* Поле «Согласие с условиями аренды» — пока закомментировано
                 <Box
+                  className={errors.terms ? "booking-field-shake" : ""}
                   sx={{
                     mt: 1.5,
                     p: 1.25,
                     border: "1px solid",
-                    borderColor: "divider",
+                    borderColor: errors.terms ? "error.main" : "divider",
                     borderRadius: 1,
-                    bgcolor: "action.hover",
+                    bgcolor: errors.terms ? "error.lighter" : "action.hover",
                   }}
                 >
                   <FormControlLabel
@@ -1162,12 +1173,13 @@ const BookingModal = ({
                     </Typography>
                   )}
                 </Box>
+                */}
                 {errors.submit && (
                   <Typography color="error" sx={{ mt: 2 }}>
                     {errors.submit}
                   </Typography>
                 )}
-                {/* Кнопки внутри DialogContent, BOOK по центру и мигает */}
+                {/* Кнопки: Бронировать всегда активна, при ошибках подсвечиваются поля (Formik-стиль) */}
                 <Box
                   sx={{
                     display: "flex",
@@ -1217,13 +1229,6 @@ const BookingModal = ({
                         onClick={handleSubmit}
                         loading={isSubmitting}
                         pulse={!isSubmitting}
-                        disabled={
-                          !name ||
-                          !phone ||
-                          !presetDates?.startDate ||
-                          !presetDates?.endDate ||
-                          Boolean(timeErrors)
-                        }
                         label={
                           isSubmitting
                             ? t("order.processing") || "Processing..."

@@ -22,22 +22,21 @@ import {
   CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { BOOKING_RULES } from "@/domain/booking/bookingRules";
 import { useMainContext } from "@app/Context";
 import { updateCompanyBuffer } from "@utils/action";
 
 export default function BufferSettingsModal({ open, onClose }) {
   const { company, updateCompanyInContext } = useMainContext();
-  // Используем bufferTime из компании, если доступен, иначе fallback из BOOKING_RULES
-  const currentBufferTime = Number(company?.bufferTime ?? BOOKING_RULES.bufferHours);
-  const [bufferHours, setBufferHours] = useState(currentBufferTime);
+  // bufferTime только из company (БД)
+  const currentBufferTime = company?.bufferTime != null ? Number(company.bufferTime) : undefined;
+  const [bufferHours, setBufferHours] = useState(currentBufferTime ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setBufferHours(currentBufferTime);
+      setBufferHours(currentBufferTime != null ? currentBufferTime : "");
       setError(null);
       setSuccess(false);
     }
@@ -58,7 +57,7 @@ export default function BufferSettingsModal({ open, onClose }) {
     }
 
     // Если значение не изменилось - ничего не делаем
-    if (bufferValue === currentBufferTime) {
+    if (currentBufferTime != null && bufferValue === currentBufferTime) {
       setError("Значение не изменилось");
       return;
     }
@@ -188,7 +187,7 @@ export default function BufferSettingsModal({ open, onClose }) {
           onClick={handleSave} 
           variant="contained" 
           color="primary"
-          disabled={loading || Number(bufferHours) === currentBufferTime}
+          disabled={loading || bufferHours === "" || isNaN(Number(bufferHours)) || (currentBufferTime != null && Number(bufferHours) === currentBufferTime)}
           startIcon={loading ? <CircularProgress size={16} /> : null}
         >
           {loading ? "Сохранение..." : "Сохранить"}

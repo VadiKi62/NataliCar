@@ -94,8 +94,8 @@ export function useEditOrderConflicts({
       ? formatTimeHHMM(returnTime) 
       : null;
 
-    // Получаем bufferTime из компании (или используем значение по умолчанию)
-    const bufferHours = company?.bufferTime ?? 0;
+    // bufferTime только из company (БД)
+    const bufferHours = company?.bufferTime;
 
     // Анализируем конфликты для даты pickup
     const pickupResult = analyzeOrderTimeConflicts({
