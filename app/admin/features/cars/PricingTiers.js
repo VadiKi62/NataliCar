@@ -24,15 +24,14 @@ const PricingTiersTable = ({
   const [rows, setRows] = useState([]);
   const [pendingUpdates, setPendingUpdates] = useState({});
   const prices = isAddcar ? defaultPrices : car?.pricingTiers;
+  const seasons = fallbackSeasons;
 
   useEffect(() => {
-    // console.log("prices :", prices);
-
     if (prices) {
       const data = Object.entries(prices).map(([season, pricing]) => ({
         id: season,
         season,
-        seasonDates: getSeasonDates(season),
+        seasonDates: getSeasonDates(season, seasons),
         ...Object.entries(pricing.days).reduce(
           (acc, [key, value]) => ({
             ...acc,

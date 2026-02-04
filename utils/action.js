@@ -882,26 +882,39 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
       return { success: false, error: "bufferTime must be a number between 0 and 24 hours" };
     }
 
-    const response = await fetch(getApiUrl(`/api/company/buffer/${companyId}`), {
+    const path = `/api/company/buffer/${String(companyId)}`;
+    const url = typeof window !== "undefined" ? `${window.location.origin}${path}` : getApiUrl(path);
+    const response = await fetch(url, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({ bufferTime: bufferTimeNumber }),
-      // Не кешируем мутации
       cache: "no-store",
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (_) {
+      return { success: false, error: "Сервер вернул неверный ответ" };
+    }
 
     if (!response.ok) {
-      return { success: false, error: data.error || "Failed to update buffer" };
+      return { success: false, error: data?.error || "Failed to update buffer" };
     }
 
     return { success: true, data: data.data };
   } catch (error) {
-    console.error("Error updating company buffer:", error.message);
-    return { success: false, error: error.message || "Network error" };
+    console.error("Error updating company buffer:", error);
+    const message = error.message || "Network error";
+    return {
+      success: false,
+      error: message === "Failed to fetch"
+        ? "Нет связи с сервером. Проверьте интернет или откройте страницу заново."
+        : message,
+    };
   }
 }
 

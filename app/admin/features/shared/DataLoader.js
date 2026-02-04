@@ -14,9 +14,9 @@ export default async function DataLoader({ viewType }) {
   unstable_noStore(); // Отключаем кеширование для админки
   
   // ⚡ Запускаем ВСЕ загрузки параллельно с Promise.all
-  // Это выполняется только один раз при загрузке страницы
+  // skipCache: true для компании — чтобы после изменения буфера при перезагрузке подтягивались свежие данные из БД
   const [company, cars, orders] = await Promise.all([
-    fetchCompany(COMPANY_ID),
+    fetchCompany(COMPANY_ID, { skipCache: true }),
     fetchAllCars(),
     reFetchAllOrders(),
   ]);
