@@ -359,7 +359,10 @@ export const MainContextProvider = ({
   }, []); // company не нужен в зависимостях, так как мы используем его только для логирования
   const ordersByCarId = useCallback(
     (carId) => {
-      return allOrders?.filter((order) => order.car === carId);
+      return allOrders?.filter((order) => {
+        const orderCarId = order.car?._id ?? order.car;
+        return orderCarId != null && String(orderCarId) === String(carId);
+      }) ?? [];
     },
     [allOrders]
   );
@@ -374,12 +377,6 @@ export const MainContextProvider = ({
       return { pendingConfirmBlockById: {} };
     }
     
-    if (process.env.NODE_ENV === "development") {
-      console.log("[MainContext] Recomputing pendingConfirmBlockById", {
-        bufferTime,
-        ordersCount: allOrders.length,
-      });
-    }
     // Передаём объект с bufferTime для совместимости с buildPendingConfirmBlockMap
     return buildPendingConfirmBlockMap(allOrders, { bufferTime });
   }, [allOrders, bufferTime]);

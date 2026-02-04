@@ -59,7 +59,6 @@ export const fetchCar = async (id) => {
     }
 
     const data = await response.json();
-    console.log("Fetched Car:", data);
     return data;
   } catch (error) {
     console.error("Error fetching car:", error.message);
@@ -97,7 +96,6 @@ export const fetchAll = async () => {
     if (!response.ok) {
       const body = await response.text().catch(() => "<no body>");
       console.error("Fetch /api/car/all failed", {
-        apiUrl,
         status: response.status,
         body,
       });
@@ -144,8 +142,8 @@ export const fetchAllCars = async () => {
 
 // ============================================================
 // ✅ CLIENT-SAFE — Use this in public/client pages!
-// Fetches ONLY orders with rentalStartDate >= today (Athens timezone).
-// Server-side filtering ensures clients never receive historical data.
+// Fetches orders with rentalEndDate >= today (Athens): current + future only.
+// Excludes only orders that have already ended (so calendar shows all relevant blocks).
 // ============================================================
 export const reFetchActiveOrders = async () => {
   try {
@@ -197,10 +195,8 @@ export const addOrderNew = async (orderData) => {
     });
 
     const result = await response.json();
-    console.log("ADDING ORDER RESULT", result);
 
     if (response.status === 201) {
-      console.log("Order added:", result);
       return { status: "success", data: result };
     } else if (response.status === 200) {
       // Non-confirmed dates conflict
@@ -271,7 +267,6 @@ export const fetchOrdersByCar = async (carId) => {
  */
 export const moveOrderToCar = async (orderId, newCarId, newCarNumber) => {
   try {
-    console.log("[moveOrderToCar] orderId:", orderId);
     const response = await fetch("/api/order/update/moveCar", {
       method: "PUT",
       headers: {
@@ -287,10 +282,6 @@ export const moveOrderToCar = async (orderId, newCarId, newCarNumber) => {
     });
 
     const data = await response.json();
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[moveOrderToCar] Response:", { status: response.status, data });
-    }
 
     return {
       status: response.status,
@@ -354,7 +345,6 @@ export const changeRentalDates = async (
 
     if (response.status === 201) {
       // Handle success, no conflicts
-      console.log("Заказ обновлен!:", data.message);
       return {
         status: 201,
         message: data.message,
@@ -362,7 +352,6 @@ export const changeRentalDates = async (
       };
     } else if (response.status === 202) {
       // Handle non-confirmed conflict dates (partial update)
-      console.log("Заказ обновлен но есть pending conflicts:", data);
       return {
         status: 202,
         message: data.message,
@@ -371,7 +360,6 @@ export const changeRentalDates = async (
       };
     } else if (response.status === 408) {
       // Handle non-confirmed conflict dates (partial update)
-      console.log("Заказ не обновлен - time-conflicts:", data);
       return {
         status: 408,
         message: data.message,
@@ -379,7 +367,6 @@ export const changeRentalDates = async (
       };
     } else if (response.status === 409) {
       // Handle confirmed conflict dates (no update)
-      console.log("Confirmed conflicting dates:", data);
       return {
         status: 409,
         message: data.message,
@@ -387,7 +374,6 @@ export const changeRentalDates = async (
       };
     } else if (response.status === 403) {
       // Handle permission denied (protected order)
-      console.log("Permission denied:", data);
       return {
         status: 403,
         message: data.message || "Permission denied: Only superadmin can modify this order",
@@ -395,7 +381,6 @@ export const changeRentalDates = async (
       };
     } else if (response.status === 401) {
       // Handle unauthorized
-      console.log("Unauthorized:", data);
       return {
         status: 401,
         message: data.message || "Unauthorized",
@@ -433,7 +418,6 @@ export const changeRentalDates = async (
  * }}
  */
 export const toggleConfirmedStatus = async (orderId) => {
-  console.log("toggleConfirmedStatus orderId:", orderId);
   try {
     const response = await fetch(getApiUrl(`/api/order/update/switchConfirm/${orderId}`), {
       method: "PATCH",
@@ -448,7 +432,6 @@ export const toggleConfirmedStatus = async (orderId) => {
 
     // ✅ Успех (200) или успех с предупреждением (202)
     if (response.status === 200 || response.status === 202) {
-      console.log("Order confirmation status updated:", data);
       return {
         success: true,
         updatedOrder: data.data,
@@ -460,7 +443,6 @@ export const toggleConfirmedStatus = async (orderId) => {
 
     // ⛔ Блок (409) — нельзя подтвердить
     if (response.status === 409) {
-      console.log("Order confirmation blocked:", data);
       return {
         success: false,
         message: data.message,
@@ -471,7 +453,6 @@ export const toggleConfirmedStatus = async (orderId) => {
 
     // ⛔ Permission denied (403) — только суперадмин может изменить
     if (response.status === 403) {
-      console.log("Permission denied:", data);
       return {
         success: false,
         message: data.message || "Permission denied: Only superadmin can modify this order",
@@ -634,15 +615,6 @@ export const updateOrder = async (orderId, payload) => {
  */
 export const updateOrderInline = async (orderId, fields) => {
   // 🔧 UNIFIED: Use single endpoint for all updates
-  // Debug logging (dev only)
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[updateOrderInline] Request:", {
-      orderId,
-      endpoint: `/api/order/update/${orderId}`,
-      fields,
-    });
-  }
-  
   const response = await fetch(getApiUrl(`/api/order/update/${orderId}`), {
     method: "PATCH",
     headers: {
@@ -654,17 +626,6 @@ export const updateOrderInline = async (orderId, fields) => {
   });
 
   const data = await response.json();
-
-  // Debug logging (dev only)
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[updateOrderInline] Response:", {
-      orderId,
-      status: response.status,
-      success: data.success,
-      dataKeys: data.data ? Object.keys(data.data) : data.updatedOrder ? Object.keys(data.updatedOrder) : [],
-      data: data.data || data.updatedOrder || data,
-    });
-  }
 
   // Normalize response to match unified contract
   if (response.status === 403) {
@@ -737,15 +698,6 @@ export const updateOrderConfirmation = async (orderId) => {
 
   // Pass through normalized response structure from backend
   // Backend always returns: { success, data, message, level, conflicts, affectedOrders, bufferHours }
-  
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[updateOrderConfirmation] result:", {
-      status: response.status,
-      success: data.success,
-      level: data.level,
-      orderId,
-    });
-  }
 
   // Check if response is ok
   if (!response.ok) {
@@ -783,7 +735,6 @@ export const updateOrderConfirmation = async (orderId) => {
 };
 
 export const addCar = async (formData) => {
-  console.log("carDae from actions", formData);
   try {
     const response = await fetch("/api/car/addOne", {
       method: "POST",
@@ -793,7 +744,6 @@ export const addCar = async (formData) => {
     const result = await response.json();
 
     if (result.success) {
-      console.log("Car added successfully:", result.data);
       return { message: result.message, data: result.data, type: 200 };
     } else {
       console.error("Failed to add car:", result.message);
@@ -816,8 +766,6 @@ export const deleteCar = async (carId) => {
 
     const data = await response.json();
 
-    console.log(data);
-
     return { message: data.message, type: 200, data: carId };
   } catch (error) {
     console.error("Error deleting car", error);
@@ -831,7 +779,6 @@ export const deleteCar = async (carId) => {
 
 // UPDATE car
 export const updateCar = async (updatedCar) => {
-  console.log("updatedCar passing to backend from action", updatedCar);
   try {
     const response = await fetch(getApiUrl(`/api/car/update`), {
       method: "PUT",
@@ -910,7 +857,6 @@ export async function fetchCompany(companyId, options = {}) {
     }
 
     const data = await response.json();
-    console.log("Fetched Company:", data);
     return data;
   } catch (error) {
     console.error("Error fetching company:", error.message);
@@ -952,7 +898,6 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
       return { success: false, error: data.error || "Failed to update buffer" };
     }
 
-    console.log(`✅ Buffer updated: ${companyId} → ${bufferTimeNumber}h`);
     return { success: true, data: data.data };
   } catch (error) {
     console.error("Error updating company buffer:", error.message);
@@ -1433,13 +1378,7 @@ export async function sendNewOrderTelegramNotification(order) {
 
   // Format and send message
   const message = formatOrderTelegramMessage("new_order", order);
-  const success = await sendTelegramMessage(message);
-
-  if (success) {
-    console.log(`[Telegram] New order notification sent for order #${order.id}`);
-  }
-
-  return success;
+  return await sendTelegramMessage(message);
 }
 
 /**
@@ -1495,11 +1434,5 @@ export async function sendOrderDeletedTelegramNotification(order, deletedBy) {
 
   // Format and send message
   const message = formatOrderTelegramMessage("order_deleted", order, deletedBy);
-  const success = await sendTelegramMessage(message);
-
-  if (success) {
-    console.log(`[Telegram] Order deleted notification sent for order #${order.id}`);
-  }
-
-  return success;
+  return await sendTelegramMessage(message);
 }

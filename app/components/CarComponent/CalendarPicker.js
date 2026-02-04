@@ -221,32 +221,12 @@ const CalendarPicker = ({
     // функция которая возвращает 4 массива дат для удобного рендеринга клиентского календаря
     const { unavailable, confirmed, startEnd, transformedStartEndOverlap } =
       extractArraysOfStartEndConfPending(orders);
-
-    // тестим в консоли на конкретной машине
-    // if (carId === "670bb226223dd911f0595287") {
-    //   console.log("startEnd DAYS", startEnd);
-    //   console.log("transformedStartEnd", transformedStartEndOverlap);
-    // }
     // задаем єти 4 массива в стейт
     setStartEndOverlapDates(transformedStartEndOverlap);
     setUnavailableDates(unavailable);
     setConfirmedDates(confirmed);
     setStartEndDates(startEnd);
 
-    // Точечная диагностика для конкретной даты (если указана DEBUG_DATE)
-    if (process.env.NODE_ENV === "development" && DEBUG_DATE && (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)) {
-      const isConf = confirmed?.includes(DEBUG_DATE);
-      const isUnav = unavailable?.includes(DEBUG_DATE);
-      const se = startEnd?.filter((d) => d.date === DEBUG_DATE);
-      const ov = transformedStartEndOverlap?.find((d) => d.date === DEBUG_DATE);
-      console.log(`[CalendarPicker][DEBUG ${DEBUG_DATE}] snapshot`, {
-        carId,
-        inConfirmed: isConf,
-        inUnavailable: isUnav,
-        startEndOnDate: se,
-        overlapOnDate: ov,
-      });
-    }
   }, [orders, carId]);
 
   // ДОБАВИТЬ ЭТОТ useEffect ЗДЕСЬ:
@@ -312,31 +292,6 @@ const CalendarPicker = ({
     // если предыдущая функция нашла что-то, то эта вернет тру, и если нет таких дат, которые начальные и конечные тогда это будет фолс
     const isStartAndEndDateOverlap = Boolean(isStartAndEndDateOverlapInfo);
 
-    // Точечный лог текущей ячейки (если совпадает с DEBUG_DATE)
-    if (
-      DEBUG_DATE &&
-      dateStr === DEBUG_DATE &&
-      (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
-    ) {
-      const key = `${carId || "no-car"}::${dateStr}`;
-      if (!loggedCellsRef.current.has(key)) {
-        loggedCellsRef.current.add(key);
-        if (process.env.NODE_ENV === "development") {
-          console.log(`[CalendarPicker][DEBUG ${dateStr}] cell flags`, {
-            carId,
-            isDisabled,
-            isConfirmed,
-            isUnavailable,
-            isStartDate,
-            isEndDate,
-            isStartAndEndDateOverlap,
-            startEndInfo,
-            overlapInfo: isStartAndEndDateOverlapInfo,
-          });
-        }
-      }
-    }
-
     // тест в консоли для конкретной машины
     // if (carId === "670bb226223dd911f0595287" && isStartAndEndDateOverlap) {
     //   console.log("isStartAndEndDateOverlapInfo", isStartAndEndDateOverlapInfo);
@@ -396,15 +351,6 @@ const CalendarPicker = ({
       isStartAndEndDateOverlapInfo?.endConfirmed ||
       isStartAndEndDateOverlapInfo?.startConfirmed
     ) {
-      if (
-        DEBUG_DATE &&
-        dateStr === DEBUG_DATE &&
-        (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
-      ) {
-        if (process.env.NODE_ENV === "development") {
-          console.log(`[CalendarPicker][DEBUG ${dateStr}] apply FULL RED`);
-        }
-      }
       backgroundColor = "primary.main";
       color = "common.white";
     } else if (
@@ -412,17 +358,6 @@ const CalendarPicker = ({
       isStartAndEndDateOverlapInfo?.endPending ||
       isStartAndEndDateOverlapInfo?.startPending
     ) {
-      if (
-        DEBUG_DATE &&
-        dateStr === DEBUG_DATE &&
-        (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
-      ) {
-        if (process.env.NODE_ENV === "development") {
-          console.log(
-            `[CalendarPicker][DEBUG ${dateStr}] apply PENDING background`
-          );
-        }
-      }
       backgroundColor = "neutral.gray200"; // Ожидающие заказы - очень светло-серый
       color = "text.primary";
     }
@@ -493,13 +428,6 @@ const CalendarPicker = ({
     }
 
     if (!isStartDate && isEndDate && !isStartAndEndDateOverlap) {
-      if (
-        DEBUG_DATE &&
-        dateStr === DEBUG_DATE &&
-        (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId)
-      ) {
-        console.log(`[CalendarPicker][DEBUG ${dateStr}] apply END-HALF (left)`);
-      }
       return (
         <Box
           sx={{
@@ -804,37 +732,7 @@ const CalendarPicker = ({
           start: range[0].hour(hourStart).minute(minuteStart),
           end: range[1].hour(hourEnd).minute(minuteEnd),
         });
-        // Лог: дата возврата из CalendarPicker при бронировании (ограничено DEBUG флагами)
-        if (
-          (!DEBUG_CAR_ID || DEBUG_CAR_ID === carId) &&
-          (!DEBUG_DATE || DEBUG_DATE === range[1].format("YYYY-MM-DD"))
-        ) {
-          try {
-            const returnDateLocal = dayjs.tz(
-              `${range[1].format("YYYY-MM-DD")} ${String(hourEnd).padStart(
-                2,
-                "0"
-              )}:${String(minuteEnd).padStart(2, "0")}`,
-              "YYYY-MM-DD HH:mm",
-              "Europe/Athens"
-            );
-            if (process.env.NODE_ENV === "development") {
-              console.log("[CalendarPicker] Return date selected:", {
-                carId,
-                dateLocal: returnDateLocal.format("YYYY-MM-DD HH:mm"),
-                dateUTC: returnDateLocal.utc().format("YYYY-MM-DD HH:mm"),
-              });
-            }
-          } catch (e) {
-            if (process.env.NODE_ENV === "development") {
-              console.log("[CalendarPicker] Return date log error:", e);
-            }
-          }
-        }
         setShowBookButton(true);
-        if (process.env.NODE_ENV === "development") {
-          console.log("selected time!!!!!!!", selectedTimes);
-        }
       }
     }
   };

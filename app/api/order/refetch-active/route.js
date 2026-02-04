@@ -1,7 +1,9 @@
 /**
  * POST /api/order/refetch-active
  *
- * CLIENT-SAFE endpoint — returns ONLY orders with rentalStartDate >= today (Athens timezone)
+ * CLIENT-SAFE endpoint — returns orders that are still "active" for the calendar:
+ * rentalEndDate >= today (Athens). Includes current (ongoing) and future orders;
+ * excludes only orders that have already ended.
  */
 
 import { connectToDB } from "@utils/database";
@@ -29,7 +31,7 @@ async function handler(request) {
     const todayStartUTC = getTodayAthensStartUTC();
 
     const orders = await Order.find({
-      rentalStartDate: { $gte: todayStartUTC },
+      rentalEndDate: { $gte: todayStartUTC },
     })
       .select(
         "rentalStartDate rentalEndDate timeIn timeOut car carNumber confirmed customerName phone email Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber"
