@@ -1,6 +1,7 @@
 import Company from "@models/company";
 import { connectToDB } from "@utils/database";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 /**
  * PUT /api/company/buffer/[id]
@@ -58,7 +59,8 @@ export const PUT = async (request, { params }) => {
     company.bufferTime = bufferTimeNumber;
     const updatedCompany = await company.save();
 
-    console.log(`✅ Company bufferTime updated: ${companyId} → ${bufferTimeNumber} hours`);
+    // Инвалидируем кэш GET /api/company/[id], чтобы в production сразу отдавался свежий bufferTime
+    revalidatePath(`/api/company/${companyId}`);
 
     return NextResponse.json(
       {
