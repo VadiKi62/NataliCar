@@ -772,9 +772,9 @@ body .MuiAutocomplete-popper .MuiPaper-root {
   
   /* Контейнер ячеек с датами */
   .bigcalendar-root .bigcalendar-cell-wrapper {
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
+    height: 17.82px !important;
+    min-height: 17.82px !important;
+    max-height: 17.82px !important;
   }
 }
 
@@ -954,9 +954,9 @@ body.hide-navbar-on-landscape-sm
   }
 
   body.hide-navbar-on-landscape-sm .bigcalendar-root .bigcalendar-cell-wrapper {
-    height: 26px !important;
-    min-height: 26px !important;
-    max-height: 26px !important;
+    height: 21.06px !important;
+    min-height: 21.06px !important;
+    max-height: 21.06px !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     line-height: 1 !important;
@@ -969,9 +969,9 @@ body.hide-navbar-on-landscape-sm
   body.hide-navbar-on-landscape-sm .bigcalendar-root .MuiTableCell-root > span,
   body.hide-navbar-on-landscape-sm .bigcalendar-root td > div,
   body.hide-navbar-on-landscape-sm .bigcalendar-root th > div {
-    height: 26px !important;
-    min-height: 26px !important;
-    max-height: 26px !important;
+    height: 21.06px !important;
+    min-height: 21.06px !important;
+    max-height: 21.06px !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     line-height: 1 !important;
@@ -1025,8 +1025,8 @@ body.hide-navbar-on-landscape-sm
     .MuiTableCell-root:first-child {
     padding-left: 4px !important;
     padding-right: 4px !important;
-    height: 26px !important;
-    min-height: 26px !important;
+    height: 21.06px !important;
+    min-height: 21.06px !important;
   }
 
   body.hide-navbar-on-landscape-sm .bigcalendar-root tbody tr,
@@ -1034,7 +1034,7 @@ body.hide-navbar-on-landscape-sm
     border-bottom: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    height: 26px !important;
+    height: 21.06px !important;
   }
 
   @media (max-width: 420px) {

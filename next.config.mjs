@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,16 +28,16 @@ const nextConfig = {
     if (!config.resolve.alias) {
       config.resolve.alias = {};
     }
-    config.resolve.alias['@'] = path.resolve(__dirname);
-    config.resolve.alias['@app'] = path.resolve(__dirname, 'app');
-    config.resolve.alias['@utils'] = path.resolve(__dirname, 'utils');
-    config.resolve.alias['@styles'] = path.resolve(__dirname, 'styles');
-    config.resolve.alias['@config'] = path.resolve(__dirname, 'config');
-    config.resolve.alias['@domain'] = path.resolve(__dirname, 'domain');
-    config.resolve.alias['@models'] = path.resolve(__dirname, 'models');
-    config.resolve.alias['@theme'] = path.resolve(__dirname, 'theme.js');
-    config.resolve.alias['@locales'] = path.resolve(__dirname, 'locales');
-    config.resolve.alias['@lib'] = path.resolve(__dirname, 'lib');
+    config.resolve.alias["@"] = path.resolve(__dirname);
+    config.resolve.alias["@app"] = path.resolve(__dirname, "app");
+    config.resolve.alias["@utils"] = path.resolve(__dirname, "utils");
+    config.resolve.alias["@styles"] = path.resolve(__dirname, "styles");
+    config.resolve.alias["@config"] = path.resolve(__dirname, "config");
+    config.resolve.alias["@domain"] = path.resolve(__dirname, "domain");
+    config.resolve.alias["@models"] = path.resolve(__dirname, "models");
+    config.resolve.alias["@theme"] = path.resolve(__dirname, "theme.js");
+    config.resolve.alias["@locales"] = path.resolve(__dirname, "locales");
+    config.resolve.alias["@lib"] = path.resolve(__dirname, "lib");
     return config;
   },
 };

@@ -170,19 +170,37 @@ function BigCalendarHeader({
             </Box>
 
             {/* Нижняя строка: стрелки + месяц */}
-            <Box sx={calendarStyles.monthRow}>
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0 }}>
-                <CalendarNavButton 
-                  direction="prev" 
-                  onClick={onPrevMonth} 
-                  color={headerStyles.weekdayText} 
+            <Box
+              sx={{
+                ...calendarStyles.monthRow,
+                width: "100%",
+                display: "grid",
+                gridTemplateColumns: "minmax(24px, 10%) minmax(0, 80%) minmax(24px, 10%)",
+                alignItems: "center",
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CalendarNavButton
+                  direction="prev"
+                  onClick={onPrevMonth}
+                  color={headerStyles.weekdayText}
                 />
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Select
-                  className="bigcalendar-month-select" // Для globals.css
+                  className="bigcalendar-month-select" // ??? globals.css
                   value={month}
                   onChange={onMonthChange}
                   size="small"
-                  sx={calendarStyles.monthSelect}
+                  sx={{
+                    ...calendarStyles.monthSelect,
+                    width: "100%",
+                    minWidth: 0,
+                    "& .MuiSelect-select": {
+                      ...(calendarStyles.monthSelect["& .MuiSelect-select"] || {}),
+                      textAlign: "center",
+                    },
+                  }}
                   renderValue={() => {
                     const months = monthNames[currentLang] || monthNames.en;
                     const abbr = (name) =>
@@ -207,10 +225,12 @@ function BigCalendarHeader({
                     </MenuItem>
                   ))}
                 </Select>
-                <CalendarNavButton 
-                  direction="next" 
-                  onClick={onNextMonth} 
-                  color={headerStyles.weekdayText} 
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CalendarNavButton
+                  direction="next"
+                  onClick={onNextMonth}
+                  color={headerStyles.weekdayText}
                 />
               </Box>
             </Box>

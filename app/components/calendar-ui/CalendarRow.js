@@ -1043,8 +1043,34 @@ export default function CarTableRow({
                   : "pointer",
               border: border,
               width: "100%",
+              "&:hover .bigcalendar-empty-plus": {
+                opacity: 1,
+              },
             }}
-          ></Box>
+          >
+            {!moveMode && !cellState.isPastDay && (
+              <Box
+                className="bigcalendar-empty-plus"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "text.disabled",
+                  fontSize: { xs: "12px", sm: "13px", md: "14px" },
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  opacity: 0,
+                  transition: "opacity 0.15s ease",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+              >
+                +
+              </Box>
+            )}
+          </Box>
         );
       }
 
@@ -1779,8 +1805,8 @@ export default function CarTableRow({
             sx={{
               width: "100%",
               // Адаптивная высота ячеек — row height определяется этим значением
-              height: { xs: "28px", sm: "36px", md: "44px", lg: "50px" },
-              minHeight: { xs: "28px", sm: "36px", md: "44px", lg: "50px" },
+              height: { xs: "21.06px", sm: "27.54px", md: "34.02px", lg: "38.88px" },
+              minHeight: { xs: "21.06px", sm: "27.54px", md: "34.02px", lg: "38.88px" },
               display: "flex",
               justifyContent: "center",
               alignItems: "center",

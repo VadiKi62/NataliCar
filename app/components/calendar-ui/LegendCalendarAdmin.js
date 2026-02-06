@@ -115,7 +115,6 @@ function LegendCalendarAdmin({ client }) {
       flexWrap="wrap"
       width="100%"
       sx={{
-        mb: 2,
         py: 1.5,
         px: 2,
         backgroundColor: theme.palette.backgroundDark1?.bg || "#1a1a1a",

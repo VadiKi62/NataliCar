@@ -1,22 +1,22 @@
 /**
  * orderAccessPolicy.js
- * 
+ *
  * ════════════════════════════════════════════════════════════════
  * ЕДИНЫЙ ИСТОЧНИК ИСТИНЫ ДЛЯ ВСЕХ ДОСТУПОВ К ЗАКАЗАМ
  * ════════════════════════════════════════════════════════════════
- * 
+ *
  * ❗ Без React. Без UI. Только бизнес-правила.
  * ❗ ВСЕ изменения доступов делаются ТОЛЬКО здесь.
  * ❗ UI и backend — тупые потребители.
- * 
+ *
  * ROLES:
  * - SUPERADMIN: полный доступ ко всему
  * - ADMIN: ограниченный доступ согласно правилам ниже
- * 
+ *
  * ORDER TYPES:
  * - Client order (my_order === true): заказ от клиента
  * - Internal order (my_order === false): внутренний заказ админа
- * 
+ *
  * TIME BUCKETS (only policy computes these):
  * - PAST: rentalEndDate < today → только просмотр
  * - CURRENT: start < today && end >= today
@@ -73,9 +73,9 @@ import { ROLE } from "@models/user";
 
 /**
  * Единая функция определения доступов к заказу.
- * 
+ *
  * ЧИТАЕТСЯ КАК БИЗНЕС-ДОКУМЕНТАЦИЯ.
- * 
+ *
  * @param {OrderContext} ctx - Order context
  * @returns {OrderAccess} - Access permissions
  */
@@ -84,14 +84,17 @@ export function getOrderAccess(ctx) {
   // WHY: timeBucket MUST be required. Fallback to FUTURE would misclassify CURRENT internal orders
   // as FUTURE and wrongly allow insurance/pricing edits; fail fast so callers always pass getTimeBucket(order).
   if (timeBucket === undefined || timeBucket === null) {
-    throw new Error("orderAccessPolicy: timeBucket is required (use getTimeBucket from @/domain/time/athensTime)");
+    throw new Error(
+      "orderAccessPolicy: timeBucket is required (use getTimeBucket from @/domain/time/athensTime)"
+    );
   }
   const bucket = timeBucket;
 
   // ════════════════════════════════════════════════════════════════
   // 🟣 SUPERADMIN — полный доступ ко всему
   // ════════════════════════════════════════════════════════════════
-  const REASON_CLIENT_PII = "Client contact data can only be edited by Superadmin";
+  const REASON_CLIENT_PII =
+    "Client contact data can only be edited by Superadmin";
 
   if (role === "SUPERADMIN") {
     return {
@@ -155,9 +158,9 @@ export function getOrderAccess(ctx) {
         canEdit: false,
         canDelete: false,
         canEditPickupDate: false,
-        canEditReturnDate: false,
+        canEditReturnDate: true,
         canEditPickupPlace: false,
-        canEditReturn: false,
+        canEditReturn: true,
         canEditInsurance: false,
         canEditFranchise: false,
         canEditPricing: false,
@@ -178,11 +181,11 @@ export function getOrderAccess(ctx) {
       canEdit: true,
       canDelete: false,
       canEditPickupDate: false,
-      canEditReturnDate: false,
-      canEditPickupPlace: false,   // placeIn NEVER for client (do not derive from canEdit)
-      canEditReturn: false,
-      canEditInsurance: false,   // client: never insurance
-      canEditFranchise: false,    // client: never franchise (do not tie to canEditInsurance)
+      canEditReturnDate: true,
+      canEditPickupPlace: false, // placeIn NEVER for client (do not derive from canEdit)
+      canEditReturn: true,
+      canEditInsurance: false, // client: never insurance
+      canEditFranchise: false, // client: never franchise (do not tie to canEditInsurance)
       canEditPricing: false,
       canConfirm: false,
       canSeeClientPII: true,
@@ -204,10 +207,10 @@ export function getOrderAccess(ctx) {
       canView: true,
       canEdit: true,
       canDelete: false,
-      canEditPickupDate: false,   // ❌ start: rentalStartDate, timeIn
-      canEditReturnDate: true,   // ✅ end date only: rentalEndDate, numberOfDays
+      canEditPickupDate: false, // ❌ start: rentalStartDate, timeIn
+      canEditReturnDate: true, // ✅ end date only: rentalEndDate, numberOfDays
       canEditPickupPlace: false, // ❌ placeIn
-      canEditReturn: true,       // ✅ return place + time: placeOut, timeOut
+      canEditReturn: true, // ✅ return place + time: placeOut, timeOut
       canEditInsurance: false,
       canEditFranchise: false,
       canEditPricing: false,
@@ -233,9 +236,9 @@ export function getOrderAccess(ctx) {
     canEditInsurance: true,
     canEditFranchise: true,
     canEditPricing: true,
-    canConfirm: true,   // admin can unconfirm internal FUTURE
+    canConfirm: true, // admin can unconfirm internal FUTURE
     canSeeClientPII: true,
-    canEditClientPII: true,   // ADMIN never edits client PII
+    canEditClientPII: true, // ADMIN never edits client PII
     notifySuperadminOnEdit: false,
     isViewOnly: false,
     isPast: false,
@@ -269,7 +272,9 @@ export function createOrderContext(order, user, isPastFn, timeBucket) {
   }
 
   if (timeBucket === undefined || timeBucket === null) {
-    throw new Error("orderAccessPolicy: timeBucket is required (use getTimeBucket from @/domain/time/athensTime)");
+    throw new Error(
+      "orderAccessPolicy: timeBucket is required (use getTimeBucket from @/domain/time/athensTime)"
+    );
   }
 
   const isSuperAdmin = user.role === ROLE.SUPERADMIN;
@@ -324,7 +329,14 @@ export function getDisabledFields(access) {
     disabled.push("confirmed");
   }
   if (!access.canSeeClientPII || !access.canEditClientPII) {
-    disabled.push("customerName", "phone", "email", "Viber", "Whatsapp", "Telegram");
+    disabled.push(
+      "customerName",
+      "phone",
+      "email",
+      "Viber",
+      "Whatsapp",
+      "Telegram"
+    );
   }
   return disabled;
 }

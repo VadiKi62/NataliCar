@@ -721,7 +721,8 @@ export const calendarStyles = {
     display: { xs: "none", sm: "flex" },
     justifyContent: "center",
     alignItems: "center",
-    py: 0.5,
+    pt: 0.5,
+    pb: 0,
     px: 2,
     flexShrink: 0,
     "@media (max-width:900px) and (orientation: landscape)": {
@@ -857,7 +858,7 @@ export const calendarStyles = {
   // Ячейка с датами (обёртка)
   cellWrapper: {
     width: "100%",
-    height: { xs: "28px", sm: "36px", md: "44px", lg: "50px" },
+    height: { xs: "21.06px", sm: "27.54px", md: "34.02px", lg: "38.88px" },
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
