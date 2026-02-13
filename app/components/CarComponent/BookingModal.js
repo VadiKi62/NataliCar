@@ -960,9 +960,7 @@ const BookingModal = ({
                         label={t("order.franchise")}
                         type="number"
                         value={franchiseOrder || 0}
-                        onChange={(e) =>
-                          setFranchiseOrder(parseFloat(e.target.value) || 0)
-                        }
+                        InputProps={{ readOnly: true }}
                         size="small"
                         sx={{ 
                           flex: 1,

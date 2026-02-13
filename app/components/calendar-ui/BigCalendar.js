@@ -22,11 +22,11 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { 
-  ActionButton, 
-  CancelButton, 
-  ConfirmModal, 
-  OrdersByDateModal, 
+import {
+  ActionButton,
+  CancelButton,
+  ConfirmModal,
+  OrdersByDateModal,
   ModalLayout,
   CalendarNavButton,
   CalendarFirstColumn,
@@ -67,7 +67,13 @@ import { useFirstColumnWidth } from "@/hooks/useFirstColumnWidth";
 // ============================================
 // BigCalendarLayout — визуальный каркас (без state/effects)
 // ============================================
-function BigCalendarLayout({ showLegend, borderStyle, calendarRef, children, firstColumnWidth }) {
+function BigCalendarLayout({
+  showLegend,
+  borderStyle,
+  calendarRef,
+  children,
+  firstColumnWidth,
+}) {
   return (
     <Box
       ref={calendarRef}
@@ -135,7 +141,15 @@ function BigCalendarHeader({
             maxWidth: "var(--resource-col-width, auto)",
           }}
         >
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-end",
+              height: "100%",
+              pb: 0.9,
+            }}
+          >
             {/* Верхняя строка: год */}
             <Box sx={calendarStyles.yearRow}>
               <Select
@@ -149,7 +163,11 @@ function BigCalendarHeader({
                     const start =
                       rangeDirection === "forward"
                         ? dayjs().year(year).month(month).date(15)
-                        : dayjs().year(year).month(month).subtract(1, "month").date(15);
+                        : dayjs()
+                            .year(year)
+                            .month(month)
+                            .subtract(1, "month")
+                            .date(15);
                     const end =
                       rangeDirection === "forward"
                         ? start.add(1, "month").date(15)
@@ -162,7 +180,11 @@ function BigCalendarHeader({
                 }}
               >
                 {Array.from({ length: 5 }, (_, index) => (
-                  <MenuItem key={index} value={year - 2 + index} sx={{ fontSize: 13, py: 0.2 }}>
+                  <MenuItem
+                    key={index}
+                    value={year - 2 + index}
+                    sx={{ fontSize: 13, py: 0.2 }}
+                  >
                     {year - 2 + index}
                   </MenuItem>
                 ))}
@@ -175,18 +197,31 @@ function BigCalendarHeader({
                 ...calendarStyles.monthRow,
                 width: "100%",
                 display: "grid",
-                gridTemplateColumns: "minmax(24px, 10%) minmax(0, 80%) minmax(24px, 10%)",
+                gridTemplateColumns:
+                  "minmax(24px, 10%) minmax(0, 80%) minmax(24px, 10%)",
                 alignItems: "center",
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <CalendarNavButton
                   direction="prev"
                   onClick={onPrevMonth}
                   color={headerStyles.weekdayText}
                 />
               </Box>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <Select
                   className="bigcalendar-month-select" // ??? globals.css
                   value={month}
@@ -197,14 +232,17 @@ function BigCalendarHeader({
                     width: "100%",
                     minWidth: 0,
                     "& .MuiSelect-select": {
-                      ...(calendarStyles.monthSelect["& .MuiSelect-select"] || {}),
+                      ...(calendarStyles.monthSelect["& .MuiSelect-select"] ||
+                        {}),
                       textAlign: "center",
                     },
                   }}
                   renderValue={() => {
                     const months = monthNames[currentLang] || monthNames.en;
                     const abbr = (name) =>
-                      isPortraitPhone && viewMode === "range15" ? name.slice(0, 3) : name;
+                      isPortraitPhone && viewMode === "range15"
+                        ? name.slice(0, 3)
+                        : name;
                     if (viewMode === "range15") {
                       if (rangeDirection === "forward") {
                         const currentLabel = months[month];
@@ -220,13 +258,23 @@ function BigCalendarHeader({
                   }}
                 >
                   {Array.from({ length: 12 }, (_, index) => (
-                    <MenuItem key={index} value={index} sx={{ fontSize: 13, py: 0.2 }}>
+                    <MenuItem
+                      key={index}
+                      value={index}
+                      sx={{ fontSize: 13, py: 0.2 }}
+                    >
                       {(monthNames[currentLang] || monthNames.en)[index]}
                     </MenuItem>
                   ))}
                 </Select>
               </Box>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <CalendarNavButton
                   direction="next"
                   onClick={onNextMonth}
@@ -243,16 +291,30 @@ function BigCalendarHeader({
             key={day.dayjs.valueOf()}
             colIndex={idx}
             isToday={idx === todayIndex}
-            backgroundColor={idx === todayIndex ? headerStyles.todayBg : headerStyles.baseBg}
+            backgroundColor={
+              idx === todayIndex ? headerStyles.todayBg : headerStyles.baseBg
+            }
             onClick={() => onDayClick(day)}
-            onMouseEnter={() => calendarRef?.current?.setAttribute("data-hover-col", idx)}
-            onMouseLeave={() => calendarRef?.current?.removeAttribute("data-hover-col")}
+            onMouseEnter={() =>
+              calendarRef?.current?.setAttribute("data-hover-col", idx)
+            }
+            onMouseLeave={() =>
+              calendarRef?.current?.removeAttribute("data-hover-col")
+            }
             title="Нажмите для просмотра всех начинающихся и заканчивающихся заказов на эту дату"
           >
-            <div style={{ color: day.isSunday ? headerStyles.sundayText : "inherit" }}>
+            <div
+              style={{
+                color: day.isSunday ? headerStyles.sundayText : "inherit",
+              }}
+            >
               {day.date}
             </div>
-            <div style={{ color: day.isSunday ? headerStyles.sundayText : "inherit" }}>
+            <div
+              style={{
+                color: day.isSunday ? headerStyles.sundayText : "inherit",
+              }}
+            >
               {(weekday2[currentLang] || weekday2.en)[day.dayjs.day()]}
             </div>
           </CalendarDayCell>
@@ -302,8 +364,12 @@ export default function BigCalendar({ cars, showLegend = true }) {
       weekdayText: "text.primary",
       border: calendarColors.border || theme.palette.divider,
     };
-  }, [theme.palette.primary.main, theme.palette.divider, theme.palette.calendar]);
-  
+  }, [
+    theme.palette.primary.main,
+    theme.palette.divider,
+    theme.palette.calendar,
+  ]);
+
   // i18n для динамического перевода месяцев и дней недели
   const { i18n } = useTranslation();
   const currentLang = i18n.language || "en";
@@ -597,11 +663,14 @@ export default function BigCalendar({ cars, showLegend = true }) {
 
   // Calculate first column width based on longest vehicle name
   // Uses computed styles from actual DOM for accurate measurement
-  const { width: firstColumnWidth, setMeasurementRef } = useFirstColumnWidth(cars, {
-    minWidth: 160,
-    maxWidth: 400,
-    debounceMs: 150,
-  });
+  const { width: firstColumnWidth, setMeasurementRef } = useFirstColumnWidth(
+    cars,
+    {
+      minWidth: 160,
+      maxWidth: 400,
+      debounceMs: 150,
+    }
+  );
 
   const handleAddOrderClick = (car, dateStr) => {
     // Если в режиме перемещения - не открываем AddOrderModal
@@ -614,13 +683,16 @@ export default function BigCalendar({ cars, showLegend = true }) {
 
   // 🔧 PERF FIX: Memoize handler to prevent re-creating function on every render
   // Inline functions in props cause unnecessary re-renders of child components
-  const handleDayClick = useCallback((day) => {
-    setHeaderOrdersModal({
-      open: true,
-      date: day.dayjs,
-      orders: allOrders,
-    });
-  }, [allOrders]);
+  const handleDayClick = useCallback(
+    (day) => {
+      setHeaderOrdersModal({
+        open: true,
+        date: day.dayjs,
+        orders: allOrders,
+      });
+    },
+    [allOrders]
+  );
 
   // 🔧 PERF FIX: Memoize selectedDate to prevent dayjs re-parsing every render
   const selectedDate = useMemo(() => {
@@ -652,7 +724,6 @@ export default function BigCalendar({ cars, showLegend = true }) {
     const car = cars.find((c) => c.carNumber === carNumber);
     return car ? car.regNumber : carNumber;
   };
-
 
   const updateOrder = async (orderData) => {
     try {
@@ -688,17 +759,17 @@ export default function BigCalendar({ cars, showLegend = true }) {
 
   return (
     <>
-    <BigCalendarLayout
-      showLegend={showLegend}
-      borderStyle={`1px solid ${calendarHeaderStyles.border}`}
-      calendarRef={calendarRef}
-      firstColumnWidth={firstColumnWidth}
-    >
-      {/* Table с sticky header */}
-      <Table
-        stickyHeader
-        sx={{ width: "auto", minWidth: { xs: 700, sm: 0 } }}
+      <BigCalendarLayout
+        showLegend={showLegend}
+        borderStyle={`1px solid ${calendarHeaderStyles.border}`}
+        calendarRef={calendarRef}
+        firstColumnWidth={firstColumnWidth}
       >
+        {/* Table с sticky header */}
+        <Table
+          stickyHeader
+          sx={{ width: "auto", minWidth: { xs: 700, sm: 0 } }}
+        >
           {/* Шапка таблицы — вынесена в отдельный компонент */}
           <BigCalendarHeader
             days={days}
@@ -754,7 +825,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
             ))}
           </TableBody>
         </Table>
-    </BigCalendarLayout>
+      </BigCalendarLayout>
 
       {/* Модальные окна — вне BigCalendarLayout */}
 
@@ -804,38 +875,42 @@ export default function BigCalendar({ cars, showLegend = true }) {
               },
             }}
           >
-          {/* Сортировка: сначала ранние, затем поздние */}
-          {[...selectedOrders]
-            .sort((a, b) => dayjs(a.rentalStartDate).valueOf() - dayjs(b.rentalStartDate).valueOf())
-            .map((order, index) => (
-            <Grid
-              item
-              key={order._id}
-              xs={12}
-              md={
-                selectedOrders.length === 1
-                  ? 12
-                  : selectedOrders.length === 2
-                  ? 6
-                  : selectedOrders.length >= 3 && selectedOrders.length <= 4
-                  ? 3
-                  : 2
-              }
-            >
-              <EditOrderModal
-                order={order}
-                open={open}
-                onClose={handleClose}
-                onSave={handleSaveOrder}
-                isConflictOrder={selectedOrders.length > 1 ? true : false}
-                setIsConflictOrder={setIsConflictOrder}
-                startEndDates={startEndDates}
-                cars={cars}
-                isViewOnly={isPast(order.rentalEndDate)}
-              />
-            </Grid>
-          ))}
-        </Grid>
+            {/* Сортировка: сначала ранние, затем поздние */}
+            {[...selectedOrders]
+              .sort(
+                (a, b) =>
+                  dayjs(a.rentalStartDate).valueOf() -
+                  dayjs(b.rentalStartDate).valueOf()
+              )
+              .map((order, index) => (
+                <Grid
+                  item
+                  key={order._id}
+                  xs={12}
+                  md={
+                    selectedOrders.length === 1
+                      ? 12
+                      : selectedOrders.length === 2
+                      ? 6
+                      : selectedOrders.length >= 3 && selectedOrders.length <= 4
+                      ? 3
+                      : 2
+                  }
+                >
+                  <EditOrderModal
+                    order={order}
+                    open={open}
+                    onClose={handleClose}
+                    onSave={handleSaveOrder}
+                    isConflictOrder={selectedOrders.length > 1 ? true : false}
+                    setIsConflictOrder={setIsConflictOrder}
+                    startEndDates={startEndDates}
+                    cars={cars}
+                    isViewOnly={isPast(order.rentalEndDate)}
+                  />
+                </Grid>
+              ))}
+          </Grid>
         </Box>
       </Modal>
 
@@ -867,7 +942,9 @@ export default function BigCalendar({ cars, showLegend = true }) {
       {/* Модальное окно для заказов по дате в шапке */}
       <OrdersByDateModal
         open={headerOrdersModal.open}
-        onClose={() => setHeaderOrdersModal({ ...headerOrdersModal, open: false })}
+        onClose={() =>
+          setHeaderOrdersModal({ ...headerOrdersModal, open: false })
+        }
         date={headerOrdersModal.date}
         startedOrders={startedOrders}
         endedOrders={endedOrders}
@@ -884,21 +961,20 @@ export default function BigCalendar({ cars, showLegend = true }) {
       >
         <Typography sx={{ mb: 3, color: "text.primary" }}>
           Вы хотите сдвинуть заказ с автомобиля{" "}
-          <strong>{confirmModal.oldCar?.model}</strong> ({confirmModal.oldCar?.regNumber})
-          на автомобиль <strong>{confirmModal.newCar?.model}</strong> ({confirmModal.newCar?.regNumber})?
-          </Typography>
+          <strong>{confirmModal.oldCar?.model}</strong> (
+          {confirmModal.oldCar?.regNumber}) на автомобиль{" "}
+          <strong>{confirmModal.newCar?.model}</strong> (
+          {confirmModal.newCar?.regNumber})?
+        </Typography>
 
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-          <CancelButton
-              onClick={handleCloseConfirmModal}
-            label="НЕТ"
-          />
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <CancelButton onClick={handleCloseConfirmModal} label="НЕТ" />
           <ActionButton
             color="success"
-              onClick={handleConfirmMove}
+            onClick={handleConfirmMove}
             label="ДА"
           />
-          </Box>
+        </Box>
       </ModalLayout>
 
       {isEditCarOpen && selectedCarForEdit && (
