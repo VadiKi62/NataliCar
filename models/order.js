@@ -73,6 +73,10 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     required: false, // исправлено на false, чтобы email был необязательным
   },
+  secondDriver: {
+    type: Boolean,
+    default: false,
+  },
   Viber: {
     type: Boolean,
     default: false,
@@ -226,5 +230,15 @@ OrderSchema.post("init", function () {
 });
 
 const Order = mongoose.models?.Order || mongoose.model("Order", OrderSchema);
+
+// HMR/cache safety: ensure secondDriver path exists on cached model schema.
+if (Order?.schema && !Order.schema.path("secondDriver")) {
+  Order.schema.add({
+    secondDriver: {
+      type: Boolean,
+      default: false,
+    },
+  });
+}
 
 export { OrderSchema, Order };

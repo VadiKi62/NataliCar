@@ -616,7 +616,13 @@ export default function OrdersTableSection() {
       const childSeats = order.ChildSeats || 0;
       
       // Call calcTotalPrice via centralized action
-      const data = await calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko, childSeats);
+      const data = await calculateTotalPrice(
+        carNumber,
+        rentalStartDate,
+        rentalEndDate,
+        kacko,
+        childSeats
+      );
       
       if (!data.ok) {
         throw new Error(data.error || "Ошибка пересчета цены");

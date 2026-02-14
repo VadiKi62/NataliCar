@@ -328,6 +328,9 @@ export function getDisabledFields(access) {
   if (!access.canConfirm) {
     disabled.push("confirmed");
   }
+  if (!access.canEdit) {
+    disabled.push("secondDriver");
+  }
   if (!access.canSeeClientPII || !access.canEditClientPII) {
     disabled.push(
       "customerName",

@@ -86,6 +86,7 @@ const BookingModal = ({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [secondDriver, setSecondDriver] = useState(false);
   const [viber, setViber] = useState(false);
   const [whatsapp, setWhatsapp] = useState(false);
   const [telegram, setTelegram] = useState(false);
@@ -118,7 +119,7 @@ const BookingModal = ({
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Получение стоимости с сервера при изменении дат
-  const fetchTotalPrice = useCallback(async () => {
+  const fetchTotalPrice = useCallback(async (signal) => {
     if (!car?.carNumber || !presetDates?.startDate || !presetDates?.endDate) {
       setDaysAndTotal({ days: 0, totalPrice: 0 });
       return;
@@ -136,13 +137,18 @@ const BookingModal = ({
         normalizedStartDate.format("YYYY-MM-DD"),
         normalizedEndDate.format("YYYY-MM-DD"),
         insurance,
-        childSeats
+        childSeats,
+        { signal }
       );
+      if (signal?.aborted) return;
       setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
-    } catch {
+    } catch (error) {
+      if (error?.name === "AbortError" || signal?.aborted) return;
       setDaysAndTotal({ days: 0, totalPrice: 0 });
     } finally {
-      setCalcLoading(false);
+      if (!signal?.aborted) {
+        setCalcLoading(false);
+      }
     }
   }, [
     car?.carNumber,
@@ -153,7 +159,11 @@ const BookingModal = ({
   ]);
 
   useEffect(() => {
-    fetchTotalPrice();
+    const abortController = new AbortController();
+    fetchTotalPrice(abortController.signal);
+    return () => {
+      abortController.abort();
+    };
   }, [fetchTotalPrice]);
 
   // Лог: даты бронирования, отображаемые в BookingModal (start/end + времена)
@@ -463,6 +473,7 @@ const BookingModal = ({
         customerName: name || "",
         phone: phone || "",
         email: email ? email : "",
+        secondDriver: Boolean(secondDriver),
         Viber: viber,
         Whatsapp: whatsapp,
         Telegram: telegram,
@@ -529,6 +540,7 @@ const BookingModal = ({
     setName("");
     setEmail("");
     setPhone("");
+    setSecondDriver(false);
     setViber(false);
     setWhatsapp(false);
     setTelegram(false);
@@ -1088,44 +1100,95 @@ const BookingModal = ({
                       display: "flex",
                       alignItems: "center",
                       gap: 2,
-                      mt: 1,
+                      mt: 0.25,
                       mb: 0.5,
-                      flexWrap: "wrap",
+                      flexWrap: "nowrap",
+                      overflowX: "auto",
                     }}
                   >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={viber}
-                          onChange={(e) => setViber(e.target.checked)}
-                        />
-                      }
-                      sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                      label="Viber"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={whatsapp}
-                          onChange={(e) => setWhatsapp(e.target.checked)}
-                        />
-                      }
-                      sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                      label="WhatsApp"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={telegram}
-                          onChange={(e) => setTelegram(e.target.checked)}
-                        />
-                      }
-                      sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                      label="Telegram"
-                    />
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minWidth: "fit-content",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0,
+                        flexWrap: "nowrap",
+                        "& .MuiFormControlLabel-root": {
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                          m: 0,
+                          mr: 0.125,
+                          columnGap: 0,
+                        },
+                        "& .MuiCheckbox-root": {
+                          p: "1px",
+                        },
+                      }}
+                    >
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={viber}
+                            onChange={(e) => setViber(e.target.checked)}
+                          />
+                        }
+                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        label="Viber"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={whatsapp}
+                            onChange={(e) => setWhatsapp(e.target.checked)}
+                          />
+                        }
+                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        label="WhatsApp"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={telegram}
+                            onChange={(e) => setTelegram(e.target.checked)}
+                          />
+                        }
+                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        label="Telegram"
+                      />
+                    </Box>
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minWidth: "fit-content",
+                        display: "flex",
+                        alignItems: "center",
+                        "& .MuiFormControlLabel-root": {
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                          m: 0,
+                          columnGap: 0,
+                        },
+                        "& .MuiCheckbox-root": {
+                          p: "1px",
+                        },
+                      }}
+                    >
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={secondDriver}
+                            onChange={(e) => setSecondDriver(e.target.checked)}
+                          />
+                        }
+                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        label={t("order.secondDriver")}
+                      />
+                    </Box>
                   </Box>
                 </Box>
                 {/* Поле «Согласие с условиями аренды» — пока закомментировано

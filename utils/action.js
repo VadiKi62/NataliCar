@@ -940,6 +940,9 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
  */
 export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko = "TPL", childSeats = 0, options = {}) {
   try {
+    const normalizedOptions =
+      options && typeof options === "object" && !Array.isArray(options) ? options : {};
+
     const fetchOptions = {
       method: "POST",
       headers: {
@@ -956,8 +959,8 @@ export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndD
     };
 
     // Add AbortSignal if provided
-    if (options.signal) {
-      fetchOptions.signal = options.signal;
+    if (normalizedOptions.signal) {
+      fetchOptions.signal = normalizedOptions.signal;
     }
 
     const response = await fetch(getApiUrl(`/api/order/calcTotalPrice`), fetchOptions);

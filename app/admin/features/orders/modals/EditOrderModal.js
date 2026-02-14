@@ -1050,17 +1050,17 @@ const EditOrderModal = ({
                 />
               </FormControl>
               {/* Телефон и email — вертикально на мобильных */}
-              <Box sx={{ 
-                display: "flex", 
-                flexDirection: { xs: "column", sm: "row" },
-                gap: { xs: 0.5, sm: 2 }, 
-                mb: 0 
-              }}>
-                <Box sx={{ flex: 1 }}>
-                  <FormControl
-                    fullWidth
-                    margin="dense"
-                    sx={{ minHeight: 36 }}
+                <Box sx={{ 
+                  display: "flex", 
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: { xs: 0.5, sm: 2 }, 
+                  mb: 0 
+                }}>
+                  <Box sx={{ flex: 1 }}>
+                    <FormControl
+                      fullWidth
+                      margin="dense"
+                      sx={{ minHeight: 36 }}
                   >
                     <TextField
                       fullWidth
@@ -1077,62 +1077,15 @@ const EditOrderModal = ({
                         if (permissions.viewOnly || !access?.canEditClientPII) return;
                         updateField("phone", e.target.value);
                       }}
-                      disabled={permissions.viewOnly || !access?.canEditClientPII}
-                      helperText={!access?.canEditClientPII ? access?.reasons?.clientPII : undefined}
-                    />
-                  </FormControl>
-                  <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5, flexWrap: "wrap" }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={Boolean(editedOrder.Viber)}
-                          onChange={(e) => {
-                            if (permissions.viewOnly || !access?.canEditClientPII) return;
-                            updateField("Viber", e.target.checked);
-                          }}
-                          disabled={permissions.viewOnly || !access?.canEditClientPII}
-                        />
-                      }
-                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                      label="Viber"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={Boolean(editedOrder.Whatsapp)}
-                          onChange={(e) => {
-                            if (permissions.viewOnly || !access?.canEditClientPII) return;
-                            updateField("Whatsapp", e.target.checked);
-                          }}
-                          disabled={permissions.viewOnly || !access?.canEditClientPII}
-                        />
-                      }
-                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                      label="WhatsApp"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={Boolean(editedOrder.Telegram)}
-                          onChange={(e) => {
-                            if (permissions.viewOnly || !access?.canEditClientPII) return;
-                            updateField("Telegram", e.target.checked);
-                          }}
-                          disabled={permissions.viewOnly || !access?.canEditClientPII}
-                        />
-                      }
-                      sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                      label="Telegram"
-                    />
+                        disabled={permissions.viewOnly || !access?.canEditClientPII}
+                        helperText={!access?.canEditClientPII ? access?.reasons?.clientPII : undefined}
+                      />
+                    </FormControl>
                   </Box>
-                </Box>
-                <FormControl
-                  fullWidth
-                  margin="dense"
-                  sx={{ flex: 1, minHeight: 36 }}
+                  <FormControl
+                    fullWidth
+                    margin="dense"
+                    sx={{ flex: 1, minHeight: 36 }}
                 >
                   <TextField
                     fullWidth
@@ -1163,7 +1116,137 @@ const EditOrderModal = ({
                   />
                 </FormControl>
               </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  mt: 0.25,
+                  mb: 0.5,
+                  flexWrap: "nowrap",
+                  overflowX: "auto",
+                }}
+              >
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: "fit-content",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0,
+                    flexWrap: "nowrap",
+                    "& .MuiFormControlLabel-root": {
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
+                      m: 0,
+                      mr: 0.125,
+                      columnGap: 0,
+                    },
+                    "& .MuiCheckbox-root": {
+                      p: "1px",
+                    },
+                  }}
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={Boolean(editedOrder.Viber)}
+                        onChange={(e) => {
+                          if (permissions.viewOnly || !access?.canEditClientPII) return;
+                          updateField("Viber", e.target.checked);
+                        }}
+                        disabled={permissions.viewOnly || !access?.canEditClientPII}
+                      />
+                    }
+                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                    label="Viber"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={Boolean(editedOrder.Whatsapp)}
+                        onChange={(e) => {
+                          if (permissions.viewOnly || !access?.canEditClientPII) return;
+                          updateField("Whatsapp", e.target.checked);
+                        }}
+                        disabled={permissions.viewOnly || !access?.canEditClientPII}
+                      />
+                    }
+                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                    label="WhatsApp"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={Boolean(editedOrder.Telegram)}
+                        onChange={(e) => {
+                          if (permissions.viewOnly || !access?.canEditClientPII) return;
+                          updateField("Telegram", e.target.checked);
+                        }}
+                        disabled={permissions.viewOnly || !access?.canEditClientPII}
+                      />
+                    }
+                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                    label="Telegram"
+                  />
+                </Box>
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: "fit-content",
+                    display: "flex",
+                    alignItems: "center",
+                    "& .MuiFormControlLabel-root": {
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
+                      m: 0,
+                      columnGap: 0,
+                    },
+                    "& .MuiCheckbox-root": {
+                      p: "1px",
+                    },
+                  }}
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={Boolean(editedOrder.secondDriver)}
+                        onChange={(e) => {
+                          if (permissions.viewOnly || !permissions.fieldPermissions.secondDriver) return;
+                          updateField("secondDriver", e.target.checked);
+                        }}
+                        disabled={permissions.viewOnly || !permissions.fieldPermissions.secondDriver}
+                      />
+                    }
+                    sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                    label={t("order.secondDriver")}
+                  />
+                </Box>
+              </Box>
             </Box>
+            )}
+
+            {!access?.canSeeClientPII && (
+              <Box sx={{ mb: 0.5, mt: 0.5 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={Boolean(editedOrder.secondDriver)}
+                      onChange={(e) => {
+                        if (permissions.viewOnly || !permissions.fieldPermissions.secondDriver) return;
+                        updateField("secondDriver", e.target.checked);
+                      }}
+                      disabled={permissions.viewOnly || !permissions.fieldPermissions.secondDriver}
+                    />
+                  }
+                  sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                  label={t("order.secondDriver")}
+                />
+              </Box>
             )}
 
             {/* Кнопки действий — адаптивное расположение */}

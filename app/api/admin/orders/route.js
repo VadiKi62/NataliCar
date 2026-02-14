@@ -56,6 +56,7 @@ async function handler(request) {
       customerName: order.customerName,
       phone: order.phone,
       email: order.email || "",
+      secondDriver: order.secondDriver ?? false,
       Viber: order.Viber ?? false,
       Whatsapp: order.Whatsapp ?? false,
       Telegram: order.Telegram ?? false,

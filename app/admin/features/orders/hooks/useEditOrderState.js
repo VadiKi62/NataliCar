@@ -688,6 +688,9 @@ export function useEditOrderState({
         // Use ?? to handle null/undefined as empty string
         payload.email = editedOrder.email ?? "";
       }
+      if (fieldPermissions.secondDriver !== false) {
+        payload.secondDriver = Boolean(editedOrder.secondDriver);
+      }
       if (fieldPermissions.Viber !== false) {
         payload.Viber = Boolean(editedOrder.Viber);
       }
@@ -756,11 +759,12 @@ export function useEditOrderState({
       if (process.env.NODE_ENV === "development") {
         console.log("[useEditOrderState] Save payload:", {
           customerName: payload.customerName,
-          phone: payload.phone,
-          email: payload.email,
-          Viber: payload.Viber,
-          Whatsapp: payload.Whatsapp,
-          Telegram: payload.Telegram,
+            phone: payload.phone,
+            email: payload.email,
+            secondDriver: payload.secondDriver,
+            Viber: payload.Viber,
+            Whatsapp: payload.Whatsapp,
+            Telegram: payload.Telegram,
           flightNumber: payload.flightNumber,
           totalPrice: payload.totalPrice,
           numberOfDays: payload.numberOfDays,
@@ -769,6 +773,7 @@ export function useEditOrderState({
             customerName: "customerName" in payload,
             phone: "phone" in payload,
             email: "email" in payload,
+            secondDriver: "secondDriver" in payload,
             Viber: "Viber" in payload,
             Whatsapp: "Whatsapp" in payload,
             Telegram: "Telegram" in payload,
@@ -778,6 +783,7 @@ export function useEditOrderState({
             customerName: fieldPermissions.customerName,
             phone: fieldPermissions.phone,
             email: fieldPermissions.email,
+            secondDriver: fieldPermissions.secondDriver,
             Viber: fieldPermissions.Viber,
             Whatsapp: fieldPermissions.Whatsapp,
             Telegram: fieldPermissions.Telegram,
@@ -787,6 +793,7 @@ export function useEditOrderState({
             customerName: editedOrder.customerName,
             phone: editedOrder.phone,
             email: editedOrder.email,
+            secondDriver: editedOrder.secondDriver,
             Viber: editedOrder.Viber,
             Whatsapp: editedOrder.Whatsapp,
             Telegram: editedOrder.Telegram,
@@ -824,6 +831,7 @@ export function useEditOrderState({
               customerName: updatedOrder.customerName,
               phone: updatedOrder.phone,
               email: updatedOrder.email,
+              secondDriver: updatedOrder.secondDriver,
               Viber: updatedOrder.Viber,
               Whatsapp: updatedOrder.Whatsapp,
               Telegram: updatedOrder.Telegram,
@@ -834,6 +842,9 @@ export function useEditOrderState({
                 customerName: updatedOrder.customerName === (payload.customerName ?? order.customerName),
                 phone: updatedOrder.phone === (payload.phone ?? order.phone),
                 email: updatedOrder.email === (payload.email ?? order.email),
+                secondDriver:
+                  updatedOrder.secondDriver ===
+                  (payload.secondDriver ?? order.secondDriver),
                 Viber: updatedOrder.Viber === (payload.Viber ?? order.Viber),
                 Whatsapp: updatedOrder.Whatsapp === (payload.Whatsapp ?? order.Whatsapp),
                 Telegram: updatedOrder.Telegram === (payload.Telegram ?? order.Telegram),

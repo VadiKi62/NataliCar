@@ -10,6 +10,7 @@
     "clean": "rm -rf .next",
     "migrate:my-order": "node scripts/migrate_my_order_field.js",
     "migrate:childSeats": "node scripts/migrate_childSeats_to_ChildSeats.js",
+    "migrate:secondDriver": "node scripts/migrate_secondDriver_field.js",
     "test": "jest",
     "test:timezone": "jest athensTime.roundtrip --verbose",
     "test:confirmation": "jest analyzeConfirmationConflicts --verbose",

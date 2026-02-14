@@ -32,6 +32,18 @@ function toBusinessStartOfDay(value) {
   return dayjs(value).tz(BUSINESS_TZ).startOf("day");
 }
 
+function toBooleanField(value, fallback = false) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") return true;
+    if (normalized === "false" || normalized === "0" || normalized === "") return false;
+  }
+  return Boolean(value);
+}
+
 async function postOrderAddHandler(request) {
   try {
     await connectToDB();
@@ -41,6 +53,7 @@ async function postOrderAddHandler(request) {
       customerName,
       phone,
       email,
+      secondDriver,
       rentalStartDate,
       rentalEndDate,
       timeIn,
@@ -173,6 +186,8 @@ async function postOrderAddHandler(request) {
       }
     }
 
+    const normalizedSecondDriver = toBooleanField(secondDriver, false);
+
     // Calculate the number of rental days and total price using the new algorithm
     const { total, days } = await existingCar.calculateTotalRentalPricePerDay(
       startDate,
@@ -219,6 +234,9 @@ async function postOrderAddHandler(request) {
       createdByRole,
       createdByAdminId,
     });
+
+    // HMR/cache safety: persist secondDriver even if cached schema was stale.
+    newOrder.set("secondDriver", normalizedSecondDriver, { strict: false });
 
     if (nonConfirmedDates.length > 0) {
       newOrder.hasConflictDates = [

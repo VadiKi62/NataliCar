@@ -70,7 +70,10 @@ export async function POST(request) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    console.log("API calcTotalPrice params:", { kacko, childSeats });
+    console.log("API calcTotalPrice params:", {
+      kacko,
+      childSeats,
+    });
     const { total, days } = await car.calculateTotalRentalPricePerDay(
       normalizedStartDate,
       normalizedEndDate,

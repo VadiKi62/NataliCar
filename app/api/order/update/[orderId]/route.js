@@ -30,6 +30,28 @@ function getBusinessDaySpan(start, end) {
   return Math.max(0, endDay.diff(startDay, "day"));
 }
 
+function toBooleanField(value, fallback = false) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") return true;
+    if (normalized === "false" || normalized === "0" || normalized === "") return false;
+  }
+  return Boolean(value);
+}
+
+function setSecondDriverField(orderDoc, value) {
+  const normalized = toBooleanField(value, false);
+  if (orderDoc && typeof orderDoc.set === "function") {
+    orderDoc.set("secondDriver", normalized, { strict: false });
+  } else if (orderDoc) {
+    orderDoc.secondDriver = normalized;
+  }
+  return normalized;
+}
+
 // Restored from pre-refactor conflict logic: ИСПРАВЛЕННАЯ функция проверки конфликтов
 function checkConflictsFixed(allOrders, newStart, newEnd) {
   const conflictingOrders = [];
@@ -192,6 +214,7 @@ export const PATCH = async (request, { params }) => {
       payload.customerName !== undefined ||
       payload.phone !== undefined ||
       payload.email !== undefined ||
+      payload.secondDriver !== undefined ||
       payload.Viber !== undefined ||
       payload.Whatsapp !== undefined ||
       payload.Telegram !== undefined ||
@@ -511,7 +534,10 @@ export const PATCH = async (request, { params }) => {
             
             // Check if dates or price-affecting fields changed (not just time)
             const datesChanged202 = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
-            const priceAffectingFieldsChanged202 = payload.insurance !== undefined || payload.ChildSeats !== undefined || payload.car !== undefined;
+            const priceAffectingFieldsChanged202 =
+              payload.insurance !== undefined ||
+              payload.ChildSeats !== undefined ||
+              payload.car !== undefined;
             
             // Recalculate totalPrice if rental parameters changed
             // This happens REGARDLESS of OverridePrice (totalPrice is always accurate)
@@ -573,6 +599,8 @@ export const PATCH = async (request, { params }) => {
                 order.customerName = payload.customerName;
               if (payload.phone !== undefined) order.phone = payload.phone;
               if (payload.email !== undefined) order.email = payload.email;
+              if (payload.secondDriver !== undefined)
+                setSecondDriverField(order, payload.secondDriver);
               if (payload.Viber !== undefined) order.Viber = payload.Viber;
               if (payload.Whatsapp !== undefined) order.Whatsapp = payload.Whatsapp;
               if (payload.Telegram !== undefined) order.Telegram = payload.Telegram;
@@ -619,7 +647,10 @@ export const PATCH = async (request, { params }) => {
 
       // Check if dates or price-affecting fields changed (not just time)
       const datesChanged = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
-      const priceAffectingFieldsChanged = payload.insurance !== undefined || payload.ChildSeats !== undefined || payload.car !== undefined;
+      const priceAffectingFieldsChanged =
+        payload.insurance !== undefined ||
+        payload.ChildSeats !== undefined ||
+        payload.car !== undefined;
 
       // ============================================
       // PRICE ARCHITECTURE LOGIC
@@ -694,6 +725,8 @@ export const PATCH = async (request, { params }) => {
           order.customerName = payload.customerName;
         if (payload.phone !== undefined) order.phone = payload.phone;
         if (payload.email !== undefined) order.email = payload.email;
+        if (payload.secondDriver !== undefined)
+          setSecondDriverField(order, payload.secondDriver);
         if (payload.Viber !== undefined) order.Viber = payload.Viber;
         if (payload.Whatsapp !== undefined) order.Whatsapp = payload.Whatsapp;
         if (payload.Telegram !== undefined) order.Telegram = payload.Telegram;
@@ -716,6 +749,7 @@ export const PATCH = async (request, { params }) => {
           customerName: order.customerName,
           phone: order.phone,
           email: order.email,
+          secondDriver: order.secondDriver,
           car: order.car,
           carModel: order.carModel,
           carNumber: order.carNumber,
@@ -771,6 +805,8 @@ export const PATCH = async (request, { params }) => {
         order.customerName = payload.customerName;
       if (payload.phone !== undefined) order.phone = payload.phone;
       if (payload.email !== undefined) order.email = payload.email;
+      if (payload.secondDriver !== undefined)
+        setSecondDriverField(order, payload.secondDriver);
       if (payload.Viber !== undefined) order.Viber = payload.Viber;
       if (payload.Whatsapp !== undefined) order.Whatsapp = payload.Whatsapp;
       if (payload.Telegram !== undefined) order.Telegram = payload.Telegram;

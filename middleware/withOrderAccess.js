@@ -163,6 +163,10 @@ export function checkFieldAccess(access, fieldsToUpdate) {
     else if (["totalPrice", "OverridePrice"].includes(field)) {
       if (!access.canEditPricing) deniedFields.push(field);
     }
+    // Опция бронирования (не PII): доступна только при общем праве редактирования заказа
+    else if (["secondDriver"].includes(field)) {
+      if (!access.canEdit) deniedFields.push(field);
+    }
     // Подтверждение
     else if (["confirmed"].includes(field)) {
       if (!access.canConfirm) deniedFields.push(field);

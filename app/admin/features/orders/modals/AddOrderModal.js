@@ -77,6 +77,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     customerName: "",
     phone: "",
     email: "",
+    secondDriver: false,
     Viber: false,
     Whatsapp: false,
     Telegram: false,
@@ -96,6 +97,8 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
 
   // Получение количества дней и общей стоимости через calculateTotalPrice из utils/action
   useEffect(() => {
+    const abortController = new AbortController();
+
     const fetchTotalPrice = async () => {
       if (!car?.carNumber || !bookDates?.start || !bookDates?.end) {
         setDaysAndTotal({ days: 0, totalPrice: 0 });
@@ -108,16 +111,27 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           bookDates.start,
           bookDates.end,
           orderDetails.insurance,
-          orderDetails.ChildSeats
+          orderDetails.ChildSeats,
+          {
+            signal: abortController.signal,
+          }
         );
+        if (abortController.signal.aborted) return;
         setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
-      } catch {
+      } catch (error) {
+        if (error?.name === "AbortError" || abortController.signal.aborted) return;
         setDaysAndTotal({ days: 0, totalPrice: 0 });
       } finally {
-        setCalcLoading(false);
+        if (!abortController.signal.aborted) {
+          setCalcLoading(false);
+        }
       }
     };
     fetchTotalPrice();
+
+    return () => {
+      abortController.abort();
+    };
   }, [
     car?.carNumber,
     bookDates?.start,
@@ -327,6 +341,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       customerName: orderDetails.customerName,
       phone: orderDetails.phone,
       email: orderDetails.email,
+      secondDriver: Boolean(orderDetails.secondDriver),
       Viber: orderDetails.Viber,
       Whatsapp: orderDetails.Whatsapp,
       Telegram: orderDetails.Telegram,
@@ -678,40 +693,101 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           sx={{ mb: 1, flex: 1, minHeight: 36}}
         />
         </Box>
-        <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5, flexWrap: "wrap" }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={Boolean(orderDetails.Viber)}
-                onChange={(e) => handleFieldChange("Viber", e.target.checked)}
-              />
-            }
-            sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-            label="Viber"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={Boolean(orderDetails.Whatsapp)}
-                onChange={(e) => handleFieldChange("Whatsapp", e.target.checked)}
-              />
-            }
-            sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-            label="WhatsApp"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={Boolean(orderDetails.Telegram)}
-                onChange={(e) => handleFieldChange("Telegram", e.target.checked)}
-              />
-            }
-            sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-            label="Telegram"
-          />
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            mt: 0.25,
+            mb: 0.5,
+            flexWrap: "nowrap",
+            overflowX: "auto",
+          }}
+        >
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: "fit-content",
+              display: "flex",
+              alignItems: "center",
+              gap: 0,
+              flexWrap: "nowrap",
+              "& .MuiFormControlLabel-root": {
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+                m: 0,
+                mr: 0.125,
+                columnGap: 0,
+              },
+              "& .MuiCheckbox-root": {
+                p: "1px",
+              },
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={Boolean(orderDetails.Viber)}
+                  onChange={(e) => handleFieldChange("Viber", e.target.checked)}
+                />
+              }
+              sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+              label="Viber"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={Boolean(orderDetails.Whatsapp)}
+                  onChange={(e) => handleFieldChange("Whatsapp", e.target.checked)}
+                />
+              }
+              sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+              label="WhatsApp"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={Boolean(orderDetails.Telegram)}
+                  onChange={(e) => handleFieldChange("Telegram", e.target.checked)}
+                />
+              }
+              sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+              label="Telegram"
+            />
+          </Box>
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: "fit-content",
+              display: "flex",
+              alignItems: "center",
+              "& .MuiFormControlLabel-root": {
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+                m: 0,
+                columnGap: 0,
+              },
+              "& .MuiCheckbox-root": {
+                p: "1px",
+              },
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={Boolean(orderDetails.secondDriver)}
+                  onChange={(e) =>
+                    handleFieldChange("secondDriver", e.target.checked)
+                  }
+                />
+              }
+              sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+              label={t("order.secondDriver")}
+            />
+          </Box>
         </Box>
         </Box>
       </Box>
