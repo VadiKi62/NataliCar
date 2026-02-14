@@ -842,12 +842,21 @@ export async function getConfirmedOrders(orderIds) {
  */
 export async function fetchCompany(companyId, options = {}) {
   try {
-    const response = await fetch(getApiUrl(`/api/company/${companyId}`), {
+    const skipCache = Boolean(options.skipCache);
+    const cacheBuster = skipCache ? `?ts=${Date.now()}` : "";
+    const response = await fetch(getApiUrl(`/api/company/${companyId}${cacheBuster}`), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        ...(skipCache
+          ? {
+              "Cache-Control":
+                "no-cache, no-store, max-age=0, must-revalidate",
+              Pragma: "no-cache",
+            }
+          : {}),
       },
-      ...(options.skipCache
+      ...(skipCache
         ? { cache: "no-store" }
         : { next: { revalidate: 3600 } }),
     });

@@ -331,8 +331,20 @@ export const MainContextProvider = ({
   }, []);
 
   // Функция для обновления компании в контексте
-  const updateCompanyInContext = useCallback(async (companyId) => {
+  const updateCompanyInContext = useCallback(async (companyId, updatedCompany = null) => {
     try {
+      if (updatedCompany && typeof updatedCompany === "object") {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[MainContext] Updating company from mutation response", {
+            oldBufferTime: company?.bufferTime,
+            newBufferTime: updatedCompany?.bufferTime,
+          });
+        }
+        setCompany(updatedCompany);
+        companyDataRef.current = updatedCompany;
+        return { success: true, data: updatedCompany };
+      }
+
       const { fetchCompany } = await import("@utils/action");
       const freshCompany = await fetchCompany(companyId, { skipCache: true });
       if (process.env.NODE_ENV === "development") {

@@ -77,7 +77,11 @@ export default function BufferSettingsModal({ open, onClose }) {
       setSuccess(true);
       
       // Обновляем компанию в контексте
-      await updateCompanyInContext(company._id);
+      if (result.data) {
+        await updateCompanyInContext(company._id, result.data);
+      } else {
+        await updateCompanyInContext(company._id);
+      }
       
       // Закрываем модальное окно через 1.5 секунды
       setTimeout(() => {
