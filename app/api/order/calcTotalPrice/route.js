@@ -1,6 +1,37 @@
 import { connectToDB } from "@utils/database";
 import { Car } from "@models/car";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BUSINESS_TZ = "Europe/Athens";
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function normalizeToBusinessDate(value) {
+  if (value == null) return null;
+
+  if (dayjs.isDayjs(value)) {
+    return value.tz(BUSINESS_TZ).format("YYYY-MM-DD");
+  }
+
+  if (value instanceof Date) {
+    return dayjs(value).tz(BUSINESS_TZ).format("YYYY-MM-DD");
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (DATE_ONLY_PATTERN.test(trimmed)) return trimmed;
+    const parsed = dayjs(trimmed).tz(BUSINESS_TZ);
+    return parsed.isValid() ? parsed.format("YYYY-MM-DD") : null;
+  }
+
+  const parsed = dayjs(value).tz(BUSINESS_TZ);
+  return parsed.isValid() ? parsed.format("YYYY-MM-DD") : null;
+}
 
 export async function POST(request) {
   // Логируем параметры для диагностики
@@ -15,14 +46,18 @@ export async function POST(request) {
       kacko = "TPL",
       childSeats = 0,
     } = debugBody;
+    const normalizedStartDate = normalizeToBusinessDate(rentalStartDate);
+    const normalizedEndDate = normalizeToBusinessDate(rentalEndDate);
     console.log("[API calcTotalPrice] Получены параметры:", {
       carNumber,
       rentalStartDate,
       rentalEndDate,
+      normalizedStartDate,
+      normalizedEndDate,
       kacko,
       childSeats,
     });
-    if (!carNumber || !rentalStartDate || !rentalEndDate) {
+    if (!carNumber || !normalizedStartDate || !normalizedEndDate) {
       return new Response(JSON.stringify({ message: "Missing parameters" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -37,8 +72,8 @@ export async function POST(request) {
     }
     console.log("API calcTotalPrice params:", { kacko, childSeats });
     const { total, days } = await car.calculateTotalRentalPricePerDay(
-      dayjs(rentalStartDate),
-      dayjs(rentalEndDate),
+      normalizedStartDate,
+      normalizedEndDate,
       kacko,
       childSeats
     );

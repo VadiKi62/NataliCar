@@ -18,6 +18,18 @@ import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+const BUSINESS_TZ = "Europe/Athens";
+
+function toBusinessStartOfDay(value) {
+  return dayjs(value).tz(BUSINESS_TZ).startOf("day");
+}
+
+function getBusinessDaySpan(start, end) {
+  const startDay = toBusinessStartOfDay(start);
+  const endDay = toBusinessStartOfDay(end);
+  return Math.max(0, endDay.diff(startDay, "day"));
+}
+
 // Restored from pre-refactor conflict logic: ИСПРАВЛЕННАЯ функция проверки конфликтов
 function checkConflictsFixed(allOrders, newStart, newEnd) {
   const conflictingOrders = [];
@@ -132,12 +144,6 @@ async function timeAndDate(startDate, endDate, startTime, endTime) {
     start: dayjs(startTime),
     end: dayjs(endTime),
   };
-}
-
-function toParseTime(rentalDate, day) {
-  const hour = day.hour();
-  const minute = day.minute();
-  return dayjs(rentalDate).hour(hour).minute(minute);
 }
 
 export const PATCH = async (request, { params }) => {
@@ -485,11 +491,8 @@ export const PATCH = async (request, { params }) => {
             );
           case 202:
             // Restored from pre-refactor conflict logic: Update with pending conflicts (warning, but proceed)
-            const rentalDays202 = Math.ceil(
-              (end - start) / (1000 * 60 * 60 * 24)
-            );
             let totalPrice202 = order.totalPrice; // 🔧 FIX: Preserve existing price by default
-            let days202 = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+            let days202 = getBusinessDaySpan(start, end);
             
             // ============================================
             // PRICE ARCHITECTURE LOGIC (202 status with conflicts)
@@ -535,16 +538,16 @@ export const PATCH = async (request, { params }) => {
             // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
             // Restored from pre-refactor conflict logic: Update order fields
-            order.rentalStartDate = start.toDate();
-            order.rentalEndDate = end.toDate();
+            order.rentalStartDate = toBusinessStartOfDay(start).toDate();
+            order.rentalEndDate = toBusinessStartOfDay(end).toDate();
             order.numberOfDays = days202;
             
             // Always update totalPrice (it's the calculated price)
             // OverridePrice is handled separately above
             order.totalPrice = totalPrice202;
             
-            order.timeIn = toParseTime(order.rentalStartDate, start);
-            order.timeOut = toParseTime(order.rentalEndDate, end);
+            order.timeIn = start.toDate();
+            order.timeOut = end.toDate();
             // Restored from pre-refactor conflict logic: Use || operator for placeIn/placeOut to preserve existing values
             order.placeIn = payload.placeIn !== undefined ? payload.placeIn : order.placeIn;
             order.placeOut = payload.placeOut !== undefined ? payload.placeOut : order.placeOut;
@@ -611,9 +614,8 @@ export const PATCH = async (request, { params }) => {
       }
 
       // Restored from pre-refactor conflict logic: No conflicts - proceed with update
-      const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
       let totalPrice = order.totalPrice; // 🔧 FIX: Preserve existing price by default
-      let days = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+      let days = getBusinessDaySpan(start, end);
 
       // Check if dates or price-affecting fields changed (not just time)
       const datesChanged = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
@@ -663,15 +665,15 @@ export const PATCH = async (request, { params }) => {
       // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
       // Restored from pre-refactor conflict logic: Update order fields
-      order.rentalStartDate = start.toDate();
-      order.rentalEndDate = end.toDate();
+      order.rentalStartDate = toBusinessStartOfDay(start).toDate();
+      order.rentalEndDate = toBusinessStartOfDay(end).toDate();
       order.numberOfDays = days;
       
       // Always update totalPrice (it's the calculated price)
       // OverridePrice is handled separately above
       order.totalPrice = totalPrice;
-      order.timeIn = toParseTime(order.rentalStartDate, start);
-      order.timeOut = toParseTime(order.rentalEndDate, end);
+      order.timeIn = start.toDate();
+      order.timeOut = end.toDate();
       // Restored from pre-refactor conflict logic: Use || operator to preserve existing values
       order.placeIn = payload.placeIn !== undefined ? payload.placeIn : order.placeIn;
       order.placeOut = payload.placeOut !== undefined ? payload.placeOut : order.placeOut;
@@ -833,4 +835,3 @@ export const PATCH = async (request, { params }) => {
     );
   }
 };
-

@@ -26,6 +26,12 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isBetween);
 
+const BUSINESS_TZ = "Europe/Athens";
+
+function toBusinessStartOfDay(value) {
+  return dayjs(value).tz(BUSINESS_TZ).startOf("day");
+}
+
 async function postOrderAddHandler(request) {
   try {
     await connectToDB();
@@ -73,8 +79,27 @@ async function postOrderAddHandler(request) {
     // Явно присваиваем email пустую строку, если он не передан или undefined/null
     const safeEmail = typeof email === "string" ? email : "";
 
+    // Canonical dates come from actual pickup/return moments when available.
+    // This prevents browser timezone from shifting rental dates during submit.
+    const startDateSource = timeIn || rentalStartDate;
+    const endDateSource = timeOut || rentalEndDate;
+    const startDate = toBusinessStartOfDay(startDateSource);
+    const endDate = toBusinessStartOfDay(endDateSource);
+
+    if (!startDate.isValid() || !endDate.isValid()) {
+      return new Response(
+        JSON.stringify({
+          message: "Invalid rental dates",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // status 405 for startdate = enddate - order NOT created
-    if (dayjs(rentalStartDate).isSame(dayjs(rentalEndDate), "day")) {
+    if (startDate.isSame(endDate, "day")) {
       return new Response(
         JSON.stringify({
           message: "Start and End dates could't be at the same date",
@@ -110,8 +135,8 @@ async function postOrderAddHandler(request) {
 
     const { status, data } = checkConflicts(
       existingOrders,
-      rentalStartDate,
-      rentalEndDate,
+      startDate.toDate(),
+      endDate.toDate(),
       timeIn,
       timeOut
     );
@@ -149,8 +174,6 @@ async function postOrderAddHandler(request) {
     }
 
     // Calculate the number of rental days and total price using the new algorithm
-    const startDate = dayjs(rentalStartDate);
-    const endDate = dayjs(rentalEndDate);
     const { total, days } = await existingCar.calculateTotalRentalPricePerDay(
       startDate,
       endDate,
@@ -170,7 +193,7 @@ async function postOrderAddHandler(request) {
       carNumber: carNumber,
       customerName,
       phone,
-      email: typeof email === "string" ? email : "",
+      email: safeEmail,
       rentalStartDate: startDate.toDate(),
       rentalEndDate: endDate.toDate(),
       car: existingCar._id,

@@ -39,6 +39,7 @@ import {
   toServerUTC,
   formatTimeHHMM,
   formatDateYYYYMMDD,
+  athensStartOfDay,
   athensNow,
 } from "@/domain/time/athensTime";
 // 🎯 Утилита для проверки возможности подтверждения заказа; формат сообщения (UI строит текст из данных)
@@ -321,8 +322,12 @@ const EditOrderModal = ({
       if (freshOrder) {
         const transformedOrder = {
           ...freshOrder,
-          rentalStartDate: fromServerUTC(freshOrder.rentalStartDate),
-          rentalEndDate: fromServerUTC(freshOrder.rentalEndDate),
+          rentalStartDate: athensStartOfDay(
+            formatDateYYYYMMDD(fromServerUTC(freshOrder.rentalStartDate))
+          ),
+          rentalEndDate: athensStartOfDay(
+            formatDateYYYYMMDD(fromServerUTC(freshOrder.rentalEndDate))
+          ),
           timeIn: fromServerUTC(freshOrder.timeIn),
           timeOut: fromServerUTC(freshOrder.timeOut),
           OverridePrice: freshOrder.OverridePrice !== undefined ? freshOrder.OverridePrice : null,

@@ -190,13 +190,12 @@ OrderSchema.pre("save", async function (next) {
   // Always use ChildSeats for calculations
   const childSeatsValue = this.ChildSeats ?? this.childSeats ?? 0;
   
-  const rentalStart = new Date(this.rentalStartDate);
-  const rentalEnd = new Date(this.rentalEndDate);
+  const rentalStartAthens = dayjs(this.rentalStartDate).tz(timeZone).startOf("day");
+  const rentalEndAthens = dayjs(this.rentalEndDate).tz(timeZone).startOf("day");
 
-  // Calculate the number of days
-  const timeDiff = rentalEnd.getTime() - rentalStart.getTime();
-  const numberOfDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-  this.numberOfDays = numberOfDays;
+  // Count rental days as calendar-day difference in business timezone.
+  const numberOfDays = rentalEndAthens.diff(rentalStartAthens, "day");
+  this.numberOfDays = Math.max(0, numberOfDays);
 
   // Fetch car details and calculate price based on the number of days
   // 🔧 FIX: Use imported Car model instead of mongoose.model() to avoid registration errors
@@ -207,12 +206,13 @@ OrderSchema.pre("save", async function (next) {
     this.carModel = car.model;
 
     // Новый алгоритм расчёта итоговой цены
-    this.totalPrice = await car.calculateTotalRentalPricePerDay(
+    const { total } = await car.calculateTotalRentalPricePerDay(
       this.rentalStartDate,
       this.rentalEndDate,
       this.insurance,
       childSeatsValue
     );
+    this.totalPrice = total;
   }
 
   next();

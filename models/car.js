@@ -3,7 +3,43 @@ import { seasons } from "@utils/companyData";
 import { CAR_CLASSES, TRANSMISSION_TYPES, FUEL_TYPES } from "./enums";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 dayjs.extend(isBetween);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BUSINESS_TZ = "Europe/Athens";
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseDateInBusinessTz(value) {
+  if (value == null) return null;
+
+  if (dayjs.isDayjs(value)) {
+    return value.tz(BUSINESS_TZ);
+  }
+
+  if (value instanceof Date) {
+    return dayjs(value).tz(BUSINESS_TZ);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (DATE_ONLY_PATTERN.test(trimmed)) {
+      return dayjs.tz(trimmed, "YYYY-MM-DD", BUSINESS_TZ);
+    }
+    return dayjs(trimmed).tz(BUSINESS_TZ);
+  }
+
+  return dayjs(value).tz(BUSINESS_TZ);
+}
+
+function toBusinessStartOfDay(value) {
+  const parsed = parseDateInBusinessTz(value);
+  if (!parsed || !parsed.isValid()) return null;
+  return parsed.startOf("day");
+}
 
 const pricingTierSchema = new Schema({
   days: {
@@ -215,9 +251,15 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
     PriceKacko: this.PriceKacko,
     PriceChildSeats: this.PriceChildSeats,
   });
-  const dayjsStart = dayjs(startDate).startOf("day");
-  const dayjsEnd = dayjs(endDate).startOf("day");
+  const dayjsStart = toBusinessStartOfDay(startDate);
+  const dayjsEnd = toBusinessStartOfDay(endDate);
+  if (!dayjsStart || !dayjsEnd) {
+    throw new Error("Invalid rental start/end date for price calculation");
+  }
   const days = dayjsEnd.diff(dayjsStart, "day");
+  if (days <= 0) {
+    return { total: 0, days: 0 };
+  }
   let total = 0;
   let logs = [];
 
@@ -244,16 +286,18 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
     try {
       const discountSetting = await DiscountSetting.findOne();
       if (discountSetting) {
-        const startDiscount = dayjs(discountSetting.startDate);
-        const endDiscount = dayjs(discountSetting.endDate);
-        if (
-          currentDate.isSame(startDiscount, "day") ||
-          currentDate.isSame(endDiscount, "day") ||
-          (currentDate.isAfter(startDiscount, "day") &&
-            currentDate.isBefore(endDiscount, "day"))
-        ) {
-          discount = discountSetting.discount || 0;
-          discountActive = true;
+        const startDiscount = toBusinessStartOfDay(discountSetting.startDate);
+        const endDiscount = toBusinessStartOfDay(discountSetting.endDate);
+        if (startDiscount && endDiscount) {
+          if (
+            currentDate.isSame(startDiscount, "day") ||
+            currentDate.isSame(endDiscount, "day") ||
+            (currentDate.isAfter(startDiscount, "day") &&
+              currentDate.isBefore(endDiscount, "day"))
+          ) {
+            discount = discountSetting.discount || 0;
+            discountActive = true;
+          }
         }
       }
     } catch (err) {

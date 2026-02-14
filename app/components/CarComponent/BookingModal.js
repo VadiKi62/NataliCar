@@ -123,12 +123,18 @@ const BookingModal = ({
       setDaysAndTotal({ days: 0, totalPrice: 0 });
       return;
     }
+    const normalizedStartDate = dayjs(presetDates.startDate).tz(TIME_ZONE);
+    const normalizedEndDate = dayjs(presetDates.endDate).tz(TIME_ZONE);
+    if (!normalizedStartDate.isValid() || !normalizedEndDate.isValid()) {
+      setDaysAndTotal({ days: 0, totalPrice: 0 });
+      return;
+    }
     setCalcLoading(true);
     try {
       const result = await calculateTotalPrice(
         car.carNumber,
-        presetDates.startDate,
-        presetDates.endDate,
+        normalizedStartDate.format("YYYY-MM-DD"),
+        normalizedEndDate.format("YYYY-MM-DD"),
         insurance,
         childSeats
       );
@@ -434,10 +440,10 @@ const BookingModal = ({
     try {
       // 🎯 Используем athensTime utilities для timezone-корректного создания времени
       const startDateStr = presetDates?.startDate
-        ? dayjs(presetDates.startDate).format("YYYY-MM-DD")
+        ? dayjs(presetDates.startDate).tz(TIME_ZONE).format("YYYY-MM-DD")
         : null;
       const endDateStr = presetDates?.endDate
-        ? dayjs(presetDates.endDate).format("YYYY-MM-DD")
+        ? dayjs(presetDates.endDate).tz(TIME_ZONE).format("YYYY-MM-DD")
         : null;
 
       // Извлекаем HH:mm и создаём заново в Athens БЕЗ конвертации из таймзоны браузера

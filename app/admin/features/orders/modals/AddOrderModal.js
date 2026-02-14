@@ -153,70 +153,87 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   });
 
   // --- ВАЖНО: автоматическое заполнение даты и franchiseOrder при открытии модального окна ---
-  useEffect(() => {
-    if (date && open) {
-      // Если date — это диапазон, используем оба значения, иначе +1 день к start
-      let startDate = null;
-      let endDate = null;
-      if (Array.isArray(date) && date.length === 2) {
-        startDate = normalizeDate(date[0]);
-        endDate = normalizeDate(date[1]);
-      } else {
-        startDate = normalizeDate(date);
-        endDate = normalizeDate(dayjs(date).add(1, "day"));
-      }
-      // Если стартовая дата в прошлом — заменяем на сегодня и корректируем конец
-      const todayStr = dayjs().format("YYYY-MM-DD");
-      if (startDate && dayjs(startDate).isBefore(dayjs(), "day")) {
-        startDate = todayStr;
-        if (
-          !endDate ||
-          dayjs(endDate).isSameOrBefore(dayjs(startDate), "day")
-        ) {
-          endDate = dayjs(startDate).add(1, "day").format("YYYY-MM-DD");
-        }
-      }
-      setBookedDates({
-        start: startDate,
-        end: endDate,
-      });
+  const getInitialBookDates = useCallback(() => {
+    if (!date) return { start: null, end: null };
+
+    let startDate = null;
+    let endDate = null;
+    if (Array.isArray(date) && date.length === 2) {
+      startDate = normalizeDate(date[0]);
+      endDate = normalizeDate(date[1]);
+    } else {
+      startDate = normalizeDate(date);
+      endDate = normalizeDate(dayjs(date).add(1, "day"));
     }
-    // Если модалка открыта и franchiseOrder не задан, подставить car.franchise
-    if (
-      open &&
-      car &&
-      (orderDetails.franchiseOrder === undefined ||
-        orderDetails.franchiseOrder === null ||
-        orderDetails.franchiseOrder === "")
-    ) {
-      setOrderDetails((prev) => ({
+
+    const todayStr = dayjs().format("YYYY-MM-DD");
+    if (startDate && dayjs(startDate).isBefore(dayjs(), "day")) {
+      startDate = todayStr;
+      if (!endDate || dayjs(endDate).isSameOrBefore(dayjs(startDate), "day")) {
+        endDate = dayjs(startDate).add(1, "day").format("YYYY-MM-DD");
+      }
+    }
+
+    return {
+      start: startDate,
+      end: endDate,
+    };
+  }, [date]);
+
+  useEffect(() => {
+    if (!open || !date) return;
+    setBookedDates(getInitialBookDates());
+  }, [open, date, getInitialBookDates]);
+
+  useEffect(() => {
+    if (!open || !car) return;
+
+    setOrderDetails((prev) => {
+      if (
+        prev.franchiseOrder !== undefined &&
+        prev.franchiseOrder !== null &&
+        prev.franchiseOrder !== ""
+      ) {
+        return prev;
+      }
+      return {
         ...prev,
         franchiseOrder: car.franchise ?? 0,
-      }));
-    }
-    // Если модалка открыта и insurance не задан, подставить TPL
-    if (
-      open &&
-      (orderDetails.insurance === undefined ||
-        orderDetails.insurance === null ||
-        orderDetails.insurance === "")
-    ) {
-      setOrderDetails((prev) => ({
+      };
+    });
+  }, [open, car]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setOrderDetails((prev) => {
+      if (
+        prev.insurance !== undefined &&
+        prev.insurance !== null &&
+        prev.insurance !== ""
+      ) {
+        return prev;
+      }
+      return {
         ...prev,
         insurance: "TPL",
-      }));
-    }
-    // Если модалка открыта и orderNumber не задан, сгенерировать его
-    if (
-      open &&
-      (!orderDetails.orderNumber || orderDetails.orderNumber === "")
-    ) {
-      setOrderDetails((prev) => ({
+      };
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setOrderDetails((prev) => {
+      if (prev.orderNumber && prev.orderNumber !== "") {
+        return prev;
+      }
+      return {
         ...prev,
         orderNumber: generateOrderNumber(),
-      }));
-    }
-  }, [date, open, car, orderDetails.franchiseOrder, orderDetails.insurance, orderDetails.orderNumber]);
+      };
+    });
+  }, [open]);
 
   // Оптимизированный обработчик изменения полей
   const handleFieldChange = useCallback((field, value) => {
@@ -232,6 +249,33 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       confirmed: !prev.confirmed,
     }));
   }, []);
+
+  const parseTimeInput = useCallback((value, baseDate, fallbackTime) => {
+    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value || "");
+    if (!match) return fallbackTime;
+
+    const [, hourStr, minuteStr] = match;
+    const base = baseDate ? dayjs(baseDate) : dayjs();
+    return base
+      .hour(Number(hourStr))
+      .minute(Number(minuteStr))
+      .second(0)
+      .millisecond(0);
+  }, []);
+
+  const handleStartTimeChange = useCallback(
+    (value) => {
+      setStartTime((prev) => parseTimeInput(value, bookDates.start, prev));
+    },
+    [bookDates.start, parseTimeInput]
+  );
+
+  const handleEndTimeChange = useCallback(
+    (value) => {
+      setEndTime((prev) => parseTimeInput(value, bookDates.end, prev));
+    },
+    [bookDates.end, parseTimeInput]
+  );
 
 
   const handleBookingComplete = async () => {
@@ -463,13 +507,13 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           <BookingTimeField
             label={t("order.pickupTime")}
             value={startTime.format("HH:mm")}
-            onChange={(e) => setStartTime(dayjs(e.target.value, "HH:mm"))}
+            onChange={(e) => handleStartTimeChange(e.target.value)}
             sx={{ flex: 1 }}
           />
           <BookingTimeField
             label={t("order.returnTime")}
             value={endTime.format("HH:mm")}
-            onChange={(e) => setEndTime(dayjs(e.target.value, "HH:mm"))}
+            onChange={(e) => handleEndTimeChange(e.target.value)}
             sx={{ flex: 1 }}
           />
         </Box>

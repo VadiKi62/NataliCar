@@ -13,6 +13,18 @@ import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+const BUSINESS_TZ = "Europe/Athens";
+
+function toBusinessStartOfDay(value) {
+  return dayjs(value).tz(BUSINESS_TZ).startOf("day");
+}
+
+function getBusinessDaySpan(start, end) {
+  const startDay = toBusinessStartOfDay(start);
+  const endDay = toBusinessStartOfDay(end);
+  return Math.max(0, endDay.diff(startDay, "day"));
+}
+
 // ИСПРАВЛЕННАЯ функция проверки конфликтов
 function checkConflictsFixed(allOrders, newStart, newEnd) {
   const conflictingOrders = [];
@@ -291,11 +303,8 @@ export const PUT = async (req) => {
           );
         case 202:
           // Update the order and add new pending orderConflicts
-          const rentalDays202 = Math.ceil(
-            (end - start) / (1000 * 60 * 60 * 24)
-          );
           let totalPrice202 = order.totalPrice; // 🔧 FIX: Preserve existing price by default
-          let days202 = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+          let days202 = getBusinessDaySpan(start, end);
           
           // Check if dates or price-affecting fields changed (not just time)
           const datesChanged202 = rentalStartDate !== undefined || rentalEndDate !== undefined;
@@ -316,12 +325,12 @@ export const PUT = async (req) => {
           }
           // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
-          order.rentalStartDate = start.toDate();
-          order.rentalEndDate = end.toDate();
+          order.rentalStartDate = toBusinessStartOfDay(start).toDate();
+          order.rentalEndDate = toBusinessStartOfDay(end).toDate();
           order.numberOfDays = days202;
           order.totalPrice = totalPrice202;
-          order.timeIn = toParseTime(order.rentalStartDate, start);
-          order.timeOut = toParseTime(order.rentalEndDate, end);
+          order.timeIn = start.toDate();
+          order.timeOut = end.toDate();
           order.placeIn = placeIn || order.placeIn;
           order.placeOut = placeOut || order.placeOut;
           order.hasConflictDates = [
@@ -354,9 +363,8 @@ export const PUT = async (req) => {
     }
 
     // Recalculate the rental details
-    const rentalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
     let totalPrice = order.totalPrice; // 🔧 FIX: Preserve existing price by default
-    let days = order.numberOfDays; // 🔧 FIX: Preserve existing days by default
+    let days = getBusinessDaySpan(start, end);
     
     // Check if dates or price-affecting fields changed (not just time)
     const datesChanged = rentalStartDate !== undefined || rentalEndDate !== undefined;
@@ -384,12 +392,12 @@ export const PUT = async (req) => {
     // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
     // Update the order
-    order.rentalStartDate = start.toDate();
-    order.rentalEndDate = end.toDate();
+    order.rentalStartDate = toBusinessStartOfDay(start).toDate();
+    order.rentalEndDate = toBusinessStartOfDay(end).toDate();
     order.numberOfDays = days;
     order.totalPrice = totalPrice;
-    order.timeIn = toParseTime(order.rentalStartDate, start);
-    order.timeOut = toParseTime(order.rentalEndDate, end);
+    order.timeIn = start.toDate();
+    order.timeOut = end.toDate();
     order.placeIn = placeIn || order.placeIn;
     order.placeOut = placeOut || order.placeOut;
 
@@ -530,12 +538,4 @@ async function timeAndDate(startDate, endDate, startTime, endTime) {
     start: dayjs(startTime),
     end: dayjs(endTime),
   };
-}
-
-function toParseTime(rentalDate, day) {
-  const hour = day.hour();
-  const minute = day.minute();
-
-  const toReturn = dayjs(rentalDate).hour(hour).minute(minute);
-  return toReturn;
 }
