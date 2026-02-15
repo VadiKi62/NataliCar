@@ -308,6 +308,8 @@
     "daysLabel": "Number of days",
     "childSeatsLabel": "Child seats",
     "insuranceLabel": "Insurance",
+    "secondDriverLabel": "Second driver (5 €/day)",
+    "secondDriverEnabled": "Yes",
     "pickupLocationLabel": "Pick-up location",
     "returnLocationLabel": "Return location",
     "pickupTimeLabel": "Pick-up time",

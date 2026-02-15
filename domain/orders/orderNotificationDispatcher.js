@@ -60,6 +60,7 @@ import dayjs from "dayjs";
  * @property {string} [customerName] - Customer name (if PII allowed)
  * @property {string} [phone] - Customer phone (if PII allowed)
  * @property {string} [email] - Customer email (if PII allowed)
+ * @property {boolean} [secondDriver] - Second driver selected
  * @property {boolean} [Viber] - Prefer Viber contact
  * @property {boolean} [Whatsapp] - Prefer Whatsapp contact
  * @property {boolean} [Telegram] - Prefer Telegram contact
@@ -483,6 +484,7 @@ export async function notifyOrderAction({
     customerName: order.customerName,
     phone: order.phone,
     email: order.email ?? "",
+    secondDriver: order.secondDriver === true,
     Viber: order.Viber === true,
     Whatsapp: order.Whatsapp === true,
     Telegram: order.Telegram === true,

@@ -308,6 +308,8 @@
     "daysLabel": "Количество дней",
     "childSeatsLabel": "Детские кресла",
     "insuranceLabel": "Страховка",
+    "secondDriverLabel": "Второй водитель (5 €/день)",
+    "secondDriverEnabled": "Да",
     "pickupLocationLabel": "Место получения",
     "returnLocationLabel": "Место возврата",
     "pickupTimeLabel": "Время получения",

@@ -41,6 +41,8 @@ export function renderCustomerOrderConfirmationEmail(payload) {
   const numberOfDays = payload.numberOfDays != null ? String(payload.numberOfDays) : "";
   const childSeats = payload.ChildSeats != null ? String(payload.ChildSeats) : "0";
   const insurance = (payload.insurance && String(payload.insurance).trim()) ? payload.insurance : "";
+  const secondDriverEnabled = payload.secondDriver === true;
+  const secondDriverText = t.secondDriverEnabled || "Yes";
   const placeIn = (payload.placeIn && String(payload.placeIn).trim()) ? payload.placeIn : "";
   const placeOut = (payload.placeOut && String(payload.placeOut).trim()) ? payload.placeOut : "";
   const timeInStr = payload.timeIn ? formatTime(payload.timeIn) : "";
@@ -60,6 +62,8 @@ export function renderCustomerOrderConfirmationEmail(payload) {
     numberOfDays,
     childSeats,
     insurance,
+    secondDriverEnabled,
+    secondDriverText,
     placeIn,
     placeOut,
     timeInStr,
@@ -94,6 +98,9 @@ export function renderCustomerOrderConfirmationEmail(payload) {
     numberOfDays ? `${t.daysLabel || "Number of days"}: ${numberOfDays}` : "",
     childSeats !== "0" ? `${t.childSeatsLabel || "Child seats"}: ${childSeats}` : "",
     insurance ? `${t.insuranceLabel || "Insurance"}: ${insurance}` : "",
+    secondDriverEnabled
+      ? `${t.secondDriverLabel || "Second driver"}: ${secondDriverText}`
+      : "",
     placeIn ? `${t.pickupLocationLabel || "Pick-up location"}: ${placeIn}` : "",
     placeOut ? `${t.returnLocationLabel || "Return location"}: ${placeOut}` : "",
     flightNumber ? `${t.flightNumberLabel || "Flight number"}: ${flightNumber}` : "",

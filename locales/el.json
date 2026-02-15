@@ -310,6 +310,8 @@
     "daysLabel": "Αριθμός ημερών",
     "childSeatsLabel": "Παιδικά καθίσματα",
     "insuranceLabel": "Ασφάλιση",
+    "secondDriverLabel": "Δεύτερος οδηγός (5 €/ημέρα)",
+    "secondDriverEnabled": "Ναι",
     "pickupLocationLabel": "Τοποθεσία παραλαβής",
     "returnLocationLabel": "Τοποθεσία επιστροφής",
     "pickupTimeLabel": "Ώρα παραλαβής",
