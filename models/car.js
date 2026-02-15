@@ -241,13 +241,15 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
   startDate,
   endDate,
   kacko = "TPL",
-  childSeats = 0
+  childSeats = 0,
+  secondDriver = false
 ) {
   console.log("[DEBUG] calculateTotalRentalPricePerDay called with:", {
     startDate,
     endDate,
     kacko,
     childSeats,
+    secondDriver,
     PriceKacko: this.PriceKacko,
     PriceChildSeats: this.PriceChildSeats,
   });
@@ -323,10 +325,15 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
     });
     total += finalPrice;
   }
+  const baseRentalTotal = total;
+  let kaskoTotal = 0;
+  let childSeatsTotal = 0;
+  let secondDriverTotal = 0;
+
   // Добавляем стоимость КАСКО, если выбрано CDW
   if (kacko === "CDW") {
     const kaskoPerDay = this.PriceKacko || 0;
-    const kaskoTotal = kaskoPerDay * days;
+    kaskoTotal = kaskoPerDay * days;
     total += kaskoTotal;
     console.log(
       `[ALGO] КАСКО выбрано: Цена за день = ${kaskoPerDay}, дней = ${days}, всего за КАСКО = ${kaskoTotal}`
@@ -342,7 +349,7 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
   );
   if (childSeats && childSeats > 0) {
     const childSeatPerDay = this.PriceChildSeats || 0;
-    const childSeatsTotal = childSeatPerDay * childSeats * days;
+    childSeatsTotal = childSeatPerDay * childSeats * days;
     total += childSeatsTotal;
     console.log(
       `[ALGO] Детские кресла: Цена за день = ${childSeatPerDay}, количество кресел = ${childSeats}, дней = ${days}, всего за кресла = ${childSeatsTotal}`
@@ -352,6 +359,31 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
       `[ALGO] Детские кресла не выбраны (childSeats = ${childSeats})`
     );
   }
+  const normalizedSecondDriver =
+    typeof secondDriver === "string"
+      ? secondDriver.trim().toLowerCase()
+      : secondDriver;
+  const secondDriverEnabled =
+    normalizedSecondDriver === true ||
+    normalizedSecondDriver === 1 ||
+    normalizedSecondDriver === "true" ||
+    normalizedSecondDriver === "1";
+  if (secondDriverEnabled) {
+    secondDriverTotal = 5 * days;
+    total += secondDriverTotal;
+    console.log(
+      `[ALGO] Второй водитель: Цена за день = 5, дней = ${days}, всего = ${secondDriverTotal}`
+    );
+  } else {
+    console.log("[ALGO] Второй водитель не выбран");
+  }
+  console.log("[ALGO] Breakdown расчёта:", {
+    baseRentalTotal,
+    kaskoTotal,
+    childSeatsTotal,
+    secondDriverTotal,
+    total,
+  });
   console.log(`[DEBUG] Итоговая цена после всех расчётов:`, total);
   console.log("[ALGO] Расчёт по дням:", logs);
   console.log("[ALGO] Итоговая цена заказа (с КАСКО и креслами):", total);
@@ -359,4 +391,11 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
 };
 
 const Car = models?.Car || model("Car", CarSchema);
+
+// HMR/cache safety: ensure latest pricing method is applied on cached model too.
+if (Car?.schema?.methods) {
+  Car.schema.methods.calculateTotalRentalPricePerDay =
+    CarSchema.methods.calculateTotalRentalPricePerDay;
+}
+
 export { CarSchema, Car };

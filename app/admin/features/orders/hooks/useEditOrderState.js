@@ -19,7 +19,7 @@
  * Price calculation rules:
  * - Server (`/calcTotalPrice`) is the ONLY calculator
  * - Manual price override sets `isManualTotalPrice = true`
- * - Any change in: car, rentalStartDate, rentalEndDate, insurance, childSeats
+ * - Any change in: car, rentalStartDate, rentalEndDate, insurance, childSeats, secondDriver
  * 
  *   resets `isManualTotalPrice = false`
  * 
@@ -119,6 +119,7 @@ export function useEditOrderState({
 
     const adjustedOrder = {
       ...order,
+      secondDriver: Boolean(order.secondDriver),
       // ✅ Dates are now Athens dayjs objects (date-only)
       rentalStartDate: startDateAthens,
       rentalEndDate: endDateAthens,
@@ -170,6 +171,10 @@ export function useEditOrderState({
     return Number(editedOrder?.ChildSeats ?? 0);
   }, [editedOrder?.ChildSeats]);
 
+  const normalizedSecondDriver = useMemo(() => {
+    return Boolean(editedOrder?.secondDriver);
+  }, [editedOrder?.secondDriver]);
+
   useEffect(() => {
     // 🔧 FIX: Calculate price on first open if totalPrice is missing or zero
     // This allows admin to see the price even if order.totalPrice is 0 or null
@@ -185,7 +190,8 @@ export function useEditOrderState({
     // - totalPrice MUST ALWAYS reflect the latest calculated price
     
     // Skip calculation on first open (unless price is missing/zero)
-    // BUT: Always allow recalculation if insurance/ChildSeats changed (they reset isFirstOpen in updateField)
+    // BUT: Always allow recalculation if insurance/ChildSeats/secondDriver changed
+    // (they reset isFirstOpen in updateField)
     if (isFirstOpen.current && !shouldCalculateOnFirstOpen) {
       if (process.env.NODE_ENV === "development") {
         console.log("[useEditOrderState] Price calc skipped: isFirstOpen=true and price exists");
@@ -232,6 +238,7 @@ export function useEditOrderState({
             rentalEndDate: endDateStr,
             insurance: normalizedInsurance,
             childSeats: normalizedChildSeats,
+            secondDriver: normalizedSecondDriver,
           });
         }
 
@@ -241,7 +248,10 @@ export function useEditOrderState({
           endDateStr,
           normalizedInsurance, // API expects "kacko"
           normalizedChildSeats, // API expects "childSeats" (lowercase)
-          { signal: abortController.signal }
+          {
+            signal: abortController.signal,
+            secondDriver: normalizedSecondDriver,
+          }
         );
 
         if (data.ok) {
@@ -277,7 +287,8 @@ export function useEditOrderState({
             });
             
             // 🔧 FIX: Reset isFirstOpen after successful calculation
-            // This allows subsequent changes (insurance/ChildSeats) to trigger recalculation
+            // This allows subsequent changes (insurance/ChildSeats/secondDriver)
+            // to trigger recalculation
             if (isFirstOpen.current) {
               isFirstOpen.current = false;
             }
@@ -319,6 +330,7 @@ export function useEditOrderState({
     editedOrder?.rentalEndDate,
     normalizedInsurance, // Memoized normalized insurance
     normalizedChildSeats, // Memoized normalized ChildSeats
+    normalizedSecondDriver, // Memoized normalized secondDriver
     permissions.viewOnly, // Respect viewOnly mode
   ]);
 
@@ -339,13 +351,16 @@ export function useEditOrderState({
       formatDateYYYYMMDD(fromServerUTC(order.rentalEndDate));
     const isInsuranceChanged = editedOrder.insurance !== order.insurance;
     const isChildSeatsChanged = editedOrder.ChildSeats !== order.ChildSeats;
+    const isSecondDriverChanged =
+      Boolean(editedOrder.secondDriver) !== Boolean(order.secondDriver);
 
     if (
       isCarChanged ||
       isStartChanged ||
       isEndChanged ||
       isInsuranceChanged ||
-      isChildSeatsChanged
+      isChildSeatsChanged ||
+      isSecondDriverChanged
     ) {
       setIsManualTotalPrice(false);
       isFirstOpen.current = false;
@@ -359,6 +374,7 @@ export function useEditOrderState({
     editedOrder?.rentalEndDate,
     editedOrder?.insurance,
     editedOrder?.ChildSeats,
+    editedOrder?.secondDriver,
     order,
   ]);
 
@@ -455,7 +471,12 @@ export function useEditOrderState({
     // 🔧 PRICE ARCHITECTURE: Handle price-affecting fields
       // - In AUTO mode: trigger recalculation by resetting isFirstOpen
       // - In MANUAL mode: preserve OverridePrice, but still allow background recalculation
-    if (field === "insurance" || field === "ChildSeats" || field === "car") {
+    if (
+      field === "insurance" ||
+      field === "ChildSeats" ||
+      field === "car" ||
+      field === "secondDriver"
+    ) {
         // Always reset isFirstOpen to allow recalculation
         // The effect will check priceMode and decide whether to recalculate
         isFirstOpen.current = false;

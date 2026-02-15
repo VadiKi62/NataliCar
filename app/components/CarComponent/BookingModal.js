@@ -138,7 +138,7 @@ const BookingModal = ({
         normalizedEndDate.format("YYYY-MM-DD"),
         insurance,
         childSeats,
-        { signal }
+        { signal, secondDriver }
       );
       if (signal?.aborted) return;
       setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
@@ -156,6 +156,7 @@ const BookingModal = ({
     presetDates?.endDate,
     insurance,
     childSeats,
+    secondDriver,
   ]);
 
   useEffect(() => {

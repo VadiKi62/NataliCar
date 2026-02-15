@@ -114,6 +114,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           orderDetails.ChildSeats,
           {
             signal: abortController.signal,
+            secondDriver: Boolean(orderDetails.secondDriver),
           }
         );
         if (abortController.signal.aborted) return;
@@ -138,6 +139,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     bookDates?.end,
     orderDetails.insurance,
     orderDetails.ChildSeats,
+    orderDetails.secondDriver,
   ]);
 
   // Автоматически подставлять вычисленную стоимость в поле totalPrice

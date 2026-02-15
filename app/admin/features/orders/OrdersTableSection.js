@@ -614,6 +614,7 @@ export default function OrdersTableSection() {
       // Get insurance (kacko) and child seats
       const kacko = order.insurance || "TPL";
       const childSeats = order.ChildSeats || 0;
+      const secondDriver = Boolean(order.secondDriver);
       
       // Call calcTotalPrice via centralized action
       const data = await calculateTotalPrice(
@@ -621,7 +622,8 @@ export default function OrdersTableSection() {
         rentalStartDate,
         rentalEndDate,
         kacko,
-        childSeats
+        childSeats,
+        { secondDriver }
       );
       
       if (!data.ok) {

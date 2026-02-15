@@ -214,7 +214,8 @@ OrderSchema.pre("save", async function (next) {
       this.rentalStartDate,
       this.rentalEndDate,
       this.insurance,
-      childSeatsValue
+      childSeatsValue,
+      Boolean(this.secondDriver)
     );
     this.totalPrice = total;
   }

@@ -537,6 +537,7 @@ export const PATCH = async (request, { params }) => {
             const priceAffectingFieldsChanged202 =
               payload.insurance !== undefined ||
               payload.ChildSeats !== undefined ||
+              payload.secondDriver !== undefined ||
               payload.car !== undefined;
             
             // Recalculate totalPrice if rental parameters changed
@@ -548,7 +549,10 @@ export const PATCH = async (request, { params }) => {
                   start,
                   end,
                   payload.insurance ?? order.insurance,
-                  payload.ChildSeats ?? order.ChildSeats
+                  payload.ChildSeats ?? order.ChildSeats,
+                  payload.secondDriver !== undefined
+                    ? toBooleanField(payload.secondDriver, false)
+                    : toBooleanField(order.secondDriver, false)
                 );
                 totalPrice202 = result.total;
                 days202 = result.days;
@@ -650,6 +654,7 @@ export const PATCH = async (request, { params }) => {
       const priceAffectingFieldsChanged =
         payload.insurance !== undefined ||
         payload.ChildSeats !== undefined ||
+        payload.secondDriver !== undefined ||
         payload.car !== undefined;
 
       // ============================================
@@ -679,7 +684,10 @@ export const PATCH = async (request, { params }) => {
             start,
             end,
             payload.insurance ?? order.insurance,
-            payload.ChildSeats ?? order.ChildSeats
+            payload.ChildSeats ?? order.ChildSeats,
+            payload.secondDriver !== undefined
+              ? toBooleanField(payload.secondDriver, false)
+              : toBooleanField(order.secondDriver, false)
           );
           totalPrice = result.total;
           days = result.days;
@@ -805,13 +813,37 @@ export const PATCH = async (request, { params }) => {
         order.customerName = payload.customerName;
       if (payload.phone !== undefined) order.phone = payload.phone;
       if (payload.email !== undefined) order.email = payload.email;
-      if (payload.secondDriver !== undefined)
+      let secondDriverChanged = false;
+      if (payload.secondDriver !== undefined) {
         setSecondDriverField(order, payload.secondDriver);
+        secondDriverChanged = true;
+      }
       if (payload.Viber !== undefined) order.Viber = payload.Viber;
       if (payload.Whatsapp !== undefined) order.Whatsapp = payload.Whatsapp;
       if (payload.Telegram !== undefined) order.Telegram = payload.Telegram;
       if (payload.flightNumber !== undefined)
         order.flightNumber = payload.flightNumber;
+
+      if (secondDriverChanged) {
+        let carDoc;
+        if (order.car && typeof order.car === "object" && order.car._id) {
+          carDoc = order.car;
+        } else {
+          carDoc = await Car.findById(order.car);
+        }
+
+        if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
+          const result = await carDoc.calculateTotalRentalPricePerDay(
+            dayjs(order.rentalStartDate),
+            dayjs(order.rentalEndDate),
+            order.insurance,
+            order.ChildSeats,
+            toBooleanField(order.secondDriver, false)
+          );
+          order.totalPrice = result.total;
+          order.numberOfDays = result.days;
+        }
+      }
 
       const updatedOrder = await order.save();
 

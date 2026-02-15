@@ -317,7 +317,8 @@ export const PUT = async (req) => {
                 start,
                 end,
                 insurance ?? order.insurance,
-                ChildSeats ?? order.ChildSeats
+                ChildSeats ?? order.ChildSeats,
+                Boolean(order.secondDriver)
               );
               totalPrice202 = result.total;
               days202 = result.days;
@@ -383,7 +384,8 @@ export const PUT = async (req) => {
           start,
           end,
           insurance ?? order.insurance,
-          ChildSeats ?? order.ChildSeats
+          ChildSeats ?? order.ChildSeats,
+          Boolean(order.secondDriver)
         );
         totalPrice = result.total;
         days = result.days;

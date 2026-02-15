@@ -936,12 +936,18 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
  * @param {number} childSeats - Number of child seats (default: 0)
  * @param {Object} options - Optional settings
  * @param {AbortSignal} options.signal - AbortController signal for cancellation
+ * @param {boolean} options.secondDriver - Whether second driver is enabled
  * @returns {Promise<{totalPrice: number, days: number, ok: boolean}>}
  */
 export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko = "TPL", childSeats = 0, options = {}) {
   try {
     const normalizedOptions =
       options && typeof options === "object" && !Array.isArray(options) ? options : {};
+    const normalizedSecondDriver =
+      normalizedOptions.secondDriver === true ||
+      normalizedOptions.secondDriver === 1 ||
+      (typeof normalizedOptions.secondDriver === "string" &&
+        ["true", "1"].includes(normalizedOptions.secondDriver.trim().toLowerCase()));
 
     const fetchOptions = {
       method: "POST",
@@ -954,6 +960,7 @@ export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndD
         rentalEndDate,
         kacko,
         childSeats,
+        secondDriver: normalizedSecondDriver,
       }),
       cache: "no-store",
     };

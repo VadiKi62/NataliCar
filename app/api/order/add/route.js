@@ -193,7 +193,8 @@ async function postOrderAddHandler(request) {
       startDate,
       endDate,
       insurance,
-      ChildSeats
+      ChildSeats,
+      normalizedSecondDriver
     );
 
     // Используем totalPrice из клиента ТОЛЬКО если он > 0, иначе используем рассчитанный на бэкенде

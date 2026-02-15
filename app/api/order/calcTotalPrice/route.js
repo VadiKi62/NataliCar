@@ -33,6 +33,18 @@ function normalizeToBusinessDate(value) {
   return parsed.isValid() ? parsed.format("YYYY-MM-DD") : null;
 }
 
+function toBooleanField(value, fallback = false) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") return true;
+    if (normalized === "false" || normalized === "0" || normalized === "") return false;
+  }
+  return Boolean(value);
+}
+
 export async function POST(request) {
   // Логируем параметры для диагностики
   let debugBody;
@@ -45,9 +57,11 @@ export async function POST(request) {
       rentalEndDate,
       kacko = "TPL",
       childSeats = 0,
+      secondDriver = false,
     } = debugBody;
     const normalizedStartDate = normalizeToBusinessDate(rentalStartDate);
     const normalizedEndDate = normalizeToBusinessDate(rentalEndDate);
+    const normalizedSecondDriver = toBooleanField(secondDriver, false);
     console.log("[API calcTotalPrice] Получены параметры:", {
       carNumber,
       rentalStartDate,
@@ -56,6 +70,7 @@ export async function POST(request) {
       normalizedEndDate,
       kacko,
       childSeats,
+      secondDriver: normalizedSecondDriver,
     });
     if (!carNumber || !normalizedStartDate || !normalizedEndDate) {
       return new Response(JSON.stringify({ message: "Missing parameters" }), {
@@ -73,12 +88,14 @@ export async function POST(request) {
     console.log("API calcTotalPrice params:", {
       kacko,
       childSeats,
+      secondDriver: normalizedSecondDriver,
     });
     const { total, days } = await car.calculateTotalRentalPricePerDay(
       normalizedStartDate,
       normalizedEndDate,
       kacko,
-      childSeats
+      childSeats,
+      normalizedSecondDriver
     );
     return new Response(JSON.stringify({ totalPrice: total, days }), {
       status: 200,
