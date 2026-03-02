@@ -10,21 +10,33 @@
 import { useState, useEffect } from "react";
 import { getLegalDoc } from "@utils/action";
 
-export default function LegalPageContent({ docType, jur = "EU" }) {
+export default function LegalPageContent({ docType, jur = "EU", forcedLang = null }) {
   const [lang, setLang] = useState(null); // null = not yet determined
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Read language from localStorage on mount (client-side only)
+  // Route locale has priority. For unsupported document locales, fallback to English.
   useEffect(() => {
-    const savedLang = localStorage.getItem("selectedLanguage");
-    if (savedLang && ["en", "el", "ru"].includes(savedLang)) {
-      setLang(savedLang);
-    } else {
-      setLang("en");
+    const supportedDocLangs = ["en", "el", "ru"];
+    const normalizedForcedLang =
+      typeof forcedLang === "string" ? forcedLang.toLowerCase().split("-")[0] : null;
+
+    if (normalizedForcedLang) {
+      setLang(
+        supportedDocLangs.includes(normalizedForcedLang) ? normalizedForcedLang : "en"
+      );
+      return;
     }
-  }, []);
+
+    const savedLang = localStorage.getItem("selectedLanguage");
+    if (savedLang && supportedDocLangs.includes(savedLang)) {
+      setLang(savedLang);
+      return;
+    }
+
+    setLang("en");
+  }, [forcedLang]);
 
   // Fetch document when language is determined
   useEffect(() => {

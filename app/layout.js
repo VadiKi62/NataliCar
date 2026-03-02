@@ -5,16 +5,22 @@ import LoaderWrapper from "./components/Loader/LoaderWrapper";
 import Script from "next/script";
 import { getSeoConfig } from "@config/seo";
 import { getPrimaryKeywords } from "@config/seoKeywords";
+import {
+  getDefaultLocale,
+  getSupportedLocales,
+} from "@domain/locationSeo/locationSeoService";
 
 // Use fallback data for global layout metadata (layout loads before pages)
 const seoConfig = getSeoConfig();
+const supportedLocales = getSupportedLocales();
+const defaultLocale = getDefaultLocale();
 
 // SEO: Multilingual keywords for better indexing in target markets
 // EN (international), RU (CIS tourists), DE (DACH region), SR (Balkans), EL (local)
 const multilangKeywords = getPrimaryKeywords(8);
-const languageAlternates = seoConfig.supportedLocales?.reduce(
-  (acc, lang) => ({ ...acc, [lang]: seoConfig.baseUrl }),
-  { "x-default": seoConfig.baseUrl }
+const languageAlternates = supportedLocales.reduce(
+  (acc, lang) => ({ ...acc, [lang]: `${seoConfig.baseUrl}/${lang}` }),
+  { "x-default": `${seoConfig.baseUrl}/${defaultLocale}` }
 );
 const organizationSchema = {
   "@context": "https://schema.org",
@@ -33,7 +39,7 @@ const organizationSchema = {
     contactType: "customer support",
     email: seoConfig.contact.email,
     areaServed: "GR",
-    availableLanguage: ["en", "el", "ru", "de", "sr", "ro", "bg"],
+    availableLanguage: supportedLocales,
   },
 };
 
@@ -49,7 +55,7 @@ export const metadata = {
   creator: seoConfig.siteName,
   publisher: seoConfig.siteName,
   alternates: {
-    canonical: seoConfig.baseUrl,
+    canonical: `${seoConfig.baseUrl}/${defaultLocale}`,
     languages: languageAlternates,
   },
   openGraph: {

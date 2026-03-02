@@ -52,7 +52,7 @@ export const MainContextProvider = ({
 
   const changeLanguage = useCallback(
     (newLang) => {
-      const supportedLngs = ["en", "el", "ru", "de", "bg", "ro", "sr"];
+      const supportedLngs = ["en", "el", "ru", "uk", "de", "bg", "ro", "sr"];
       if (supportedLngs.includes(newLang)) {
         i18n.changeLanguage(newLang);
         setLang(newLang);

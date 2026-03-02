@@ -3,7 +3,7 @@
 import { MainContextProvider } from "./Context";
 import { SnackbarProvider } from "notistack";
 import { I18nextProvider } from "react-i18next";
-import { SessionProvider } from "next-auth/react";
+import SessionProviderGate from "@app/components/SessionProviderGate";
 import i18n from "../locales/i18n";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -14,7 +14,7 @@ import { Analytics } from "@app/components/Analytics";
 
 export default function Providers({ children }) {
   return (
-    <SessionProvider>
+    <SessionProviderGate>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
@@ -36,6 +36,6 @@ export default function Providers({ children }) {
           </CookieConsentProvider>
         </ThemeProvider>
       </I18nextProvider>
-    </SessionProvider>
+    </SessionProviderGate>
   );
 }

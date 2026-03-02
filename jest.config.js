@@ -20,6 +20,8 @@ const customJestConfig = {
     "^@locales/(.*)$": "<rootDir>/locales/$1",
     "^@models/(.*)$": "<rootDir>/models/$1",
     "^@app/(.*)$": "<rootDir>/app/$1",
+    "^@domain/(.*)$": "<rootDir>/domain/$1",
+    "^@lib/(.*)$": "<rootDir>/lib/$1",
   },
   testMatch: ["**/__tests__/**/*.test.js", "**/__tests__/**/*.test.ts"],
   collectCoverageFrom: [
@@ -30,4 +32,3 @@ const customJestConfig = {
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 module.exports = createJestConfig(customJestConfig);
-

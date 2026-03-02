@@ -1,6 +1,7 @@
 {
   "header": {
     "main": "Rental",
+    "locations": "Locations",
     "terms": "Terms",
     "contacts": "Contacts",
     "cars": "Cars",

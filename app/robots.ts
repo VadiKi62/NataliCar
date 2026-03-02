@@ -1,5 +1,4 @@
 import { MetadataRoute } from "next";
-import { getSeoConfig } from "@config/seo";
 
 // Always point crawlers to the canonical production domain
 const getProductionBaseUrl = () => {
@@ -16,7 +15,6 @@ const getProductionBaseUrl = () => {
 };
 
 export default function robots(): MetadataRoute.Robots {
-  const seoConfig = getSeoConfig();
   const baseUrl = getProductionBaseUrl();
   
   return {

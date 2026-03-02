@@ -37,8 +37,9 @@ import translationsDe from "./de.json";
 import translationsBg from "./bg.json";
 import translationsRo from "./ro.json";
 import translationsSr from "./sr.json";
+import translationsUk from "./uk.json";
 
-const supportedLngs = ["en", "el", "ru", "de", "bg", "ro", "sr"];
+const supportedLngs = ["en", "el", "ru", "uk", "de", "bg", "ro", "sr"];
 
 const resources = {
   en: { translation: translationsEn },
@@ -48,6 +49,7 @@ const resources = {
   bg: { translation: translationsBg },
   ro: { translation: translationsRo },
   sr: { translation: translationsSr },
+  uk: { translation: translationsUk },
 };
 
 // Функция для определения языка браузера

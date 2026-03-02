@@ -13,6 +13,7 @@ import { MainContextProvider } from "../Context";
 
 import dynamic from "next/dynamic";
 import ScrollButton from "@/app/components/ui/buttons/ScrollButton";
+
 import Navbar from "@app/components/Navbar";
 
 // Lazy load Footer (below fold, can load after initial render)
@@ -37,6 +38,25 @@ function Feed({ children, ...props }) {
   );
 
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Keep i18n language and locale cookie aligned with URL locale prefix.
+  useEffect(() => {
+    const locale = typeof props.locale === "string" ? props.locale.toLowerCase() : null;
+    if (!locale) return;
+
+    const supported = Array.isArray(i?.options?.supportedLngs)
+      ? i.options.supportedLngs
+      : [];
+
+    if (supported.includes(locale)) {
+      i.changeLanguage(locale).catch(() => {});
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("selectedLanguage", locale);
+      document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000`;
+    }
+  }, [props.locale]);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-color-scheme: light)").matches) {

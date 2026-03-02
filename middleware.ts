@@ -1,0 +1,158 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  LOCALE_COOKIE_NAME,
+  type LocationId,
+} from "@domain/locationSeo/locationSeoKeys";
+import {
+  detectBestLocale,
+  getAllLocationsForLocale,
+  getLocationById,
+  getLocationPath,
+  getPathWithoutLocalePrefix,
+  getStaticPagePath,
+  isLocalePrefixedPath,
+  isSupportedLocale,
+  normalizeLocale,
+  withLocalePrefix,
+} from "@domain/locationSeo/locationSeoService";
+
+const PUBLIC_FILE_REGEX = /\.[^/]+$/;
+const EXCLUDED_PREFIXES = ["/api", "/admin", "/_next"];
+const EXCLUDED_PATHS = new Set([
+  "/favicon.ico",
+  "/favicon.png",
+  "/icon.png",
+  "/apple-icon.png",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/login",
+  "/yandex_47737f1ecab05a33.html",
+]);
+
+const legacyLocationByCanonicalSlug = new Map<string, LocationId>(
+  getAllLocationsForLocale("en").map((location) => [location.canonicalSlug, location.id])
+);
+
+function normalizePathname(pathname: string): string {
+  if (!pathname || pathname === "/") return "/";
+  const withLeading = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const withoutTrailing = withLeading.replace(/\/+$/, "");
+  return withoutTrailing || "/";
+}
+
+function shouldSkip(pathname: string): boolean {
+  if (PUBLIC_FILE_REGEX.test(pathname)) return true;
+  if (EXCLUDED_PATHS.has(pathname)) return true;
+  return EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function withSearchParams(pathname: string, request: NextRequest): string {
+  const search = request.nextUrl.search || "";
+  return `${pathname}${search}`;
+}
+
+function buildLegacyLocationRedirect(
+  locale: string,
+  pathWithoutLocale: string
+): string | null {
+  const cleanPath = pathWithoutLocale.replace(/^\//, "");
+  if (!cleanPath || cleanPath.includes("/")) return null;
+
+  const locationId = legacyLocationByCanonicalSlug.get(cleanPath);
+  if (!locationId) return null;
+
+  const location = getLocationById(locale, locationId);
+  if (!location) return null;
+
+  return getLocationPath(locale, location.slug);
+}
+
+function withLocaleCookie(response: NextResponse, locale: string): NextResponse {
+  response.cookies.set(LOCALE_COOKIE_NAME, locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  return response;
+}
+
+export function middleware(request: NextRequest) {
+  const normalizedPathname = normalizePathname(request.nextUrl.pathname);
+
+  if (shouldSkip(normalizedPathname)) {
+    return NextResponse.next();
+  }
+
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE_NAME)?.value || null;
+  const headerLocale = request.headers.get("accept-language");
+  const detectedLocale = detectBestLocale({
+    cookieLocale,
+    acceptLanguageHeader: headerLocale,
+  });
+
+  // Old non-prefixed location URLs -> locale-prefixed /{locale}/locations/{slug}
+  const legacyLocationRedirect = buildLegacyLocationRedirect(
+    detectedLocale,
+    normalizedPathname
+  );
+  if (!isLocalePrefixedPath(normalizedPathname) && legacyLocationRedirect) {
+    const target = withSearchParams(legacyLocationRedirect, request);
+    const url = new URL(target, request.url);
+    return withLocaleCookie(NextResponse.redirect(url, 301), detectedLocale);
+  }
+
+  // /terms -> /{locale}/rental-terms
+  if (!isLocalePrefixedPath(normalizedPathname) && normalizedPathname === "/terms") {
+    const target = withSearchParams(getStaticPagePath(detectedLocale, "rental-terms"), request);
+    const url = new URL(target, request.url);
+    return withLocaleCookie(NextResponse.redirect(url, 301), detectedLocale);
+  }
+
+  // Locale-prefixed request: enforce normalized path + locale cookie.
+  if (isLocalePrefixedPath(normalizedPathname)) {
+    const firstSegment = normalizedPathname.split("/").filter(Boolean)[0];
+    const locale = normalizeLocale(firstSegment || null);
+
+    // /{locale}/car-rental-... -> /{locale}/locations/{slug}
+    const stripped = getPathWithoutLocalePrefix(normalizedPathname);
+    const localizedLegacyLocationRedirect = buildLegacyLocationRedirect(locale, stripped);
+    if (localizedLegacyLocationRedirect) {
+      const target = withSearchParams(localizedLegacyLocationRedirect, request);
+      const url = new URL(target, request.url);
+      return withLocaleCookie(NextResponse.redirect(url, 301), locale);
+    }
+
+    // /{locale}/terms -> /{locale}/rental-terms
+    if (stripped === "/terms") {
+      const target = withSearchParams(getStaticPagePath(locale, "rental-terms"), request);
+      const url = new URL(target, request.url);
+      return withLocaleCookie(NextResponse.redirect(url, 301), locale);
+    }
+
+    // Normalize unsupported /{xx}/... locale prefixes to detected locale.
+    if (!isSupportedLocale(firstSegment || null)) {
+      const nextPath = withLocalePrefix(detectedLocale, stripped);
+      const target = withSearchParams(nextPath, request);
+      const url = new URL(target, request.url);
+      return withLocaleCookie(NextResponse.redirect(url, 301), detectedLocale);
+    }
+
+    if (request.cookies.get(LOCALE_COOKIE_NAME)?.value !== locale) {
+      return withLocaleCookie(NextResponse.next(), locale);
+    }
+
+    return NextResponse.next();
+  }
+
+  // Non-prefixed request -> locale-prefixed canonical URL.
+  const localizedPath = withLocalePrefix(detectedLocale, normalizedPathname);
+  const target = withSearchParams(localizedPath, request);
+  const url = new URL(target, request.url);
+
+  return withLocaleCookie(NextResponse.redirect(url, 301), detectedLocale);
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.svg$).*)"],
+};

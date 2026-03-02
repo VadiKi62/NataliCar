@@ -10,6 +10,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { useMainContext } from "@app/Context";
+import { withLocalePrefix } from "@domain/locationSeo/locationSeoService";
 
 // Lazy-load icons (Footer is below fold)
 const DirectionsIcon = dynamic(() => import("@mui/icons-material/Directions"), { ssr: false });
@@ -109,7 +110,7 @@ const CreditLink = styled(MuiLink)(({ theme }) => ({
 // ============================================================
 
 function Footer() {
-  const { company } = useMainContext();
+  const { company, lang } = useMainContext();
   const currentYear = new Date().getFullYear();
   const { t } = useTranslation();
   const router = useRouter();
@@ -127,6 +128,8 @@ function Footer() {
     const destinationURL = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lon}`;
     router.push(destinationURL);
   };
+
+  const localeLink = (path) => withLocalePrefix(lang || "en", path);
 
   return (
     <Section>
@@ -204,19 +207,19 @@ function Footer() {
         flexWrap="wrap"
         sx={{ mt: 4 }}
       >
-        <LegalLink href="/privacy-policy">
+        <LegalLink href={localeLink("/privacy-policy")}>
           {t("footer.privacyPolicy", { defaultValue: "Privacy" })}
         </LegalLink>
         <span>·</span>
-        <LegalLink href="/terms-of-service">
+        <LegalLink href={localeLink("/terms-of-service")}>
           {t("footer.termsOfService", { defaultValue: "Terms" })}
         </LegalLink>
         <span>·</span>
-        <LegalLink href="/cookie-policy">
+        <LegalLink href={localeLink("/cookie-policy")}>
           {t("footer.cookiePolicy", { defaultValue: "Cookies" })}
         </LegalLink>
         <span>·</span>
-        <LegalLink href="/rental-terms">
+        <LegalLink href={localeLink("/rental-terms")}>
           {t("footer.rentalTerms", { defaultValue: "Rental" })}
         </LegalLink>
       </Stack>

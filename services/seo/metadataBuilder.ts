@@ -1,0 +1,151 @@
+import type { Metadata } from "next";
+import { getSeoConfig } from "@config/seo";
+import {
+  buildCarSeoText,
+  getCarAlternates,
+  getHubAlternates,
+  getHubSeo,
+  getLocationAlternatesById,
+  getLocationPath,
+  getLocaleRootPath,
+  getStaticPagePath,
+  getStaticPageSeo,
+  normalizeLocale,
+} from "@domain/locationSeo/locationSeoService";
+import type { StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
+import type { LocationSeoResolved } from "@domain/locationSeo/types";
+import { buildHreflangAlternates } from "./hreflangBuilder";
+import { toAbsoluteUrl } from "./urlBuilder";
+
+const OG_LOCALE_MAP: Record<string, string> = {
+  en: "en_US",
+  ru: "ru_RU",
+  uk: "uk_UA",
+  el: "el_GR",
+  de: "de_DE",
+  bg: "bg_BG",
+  ro: "ro_RO",
+  sr: "sr_RS",
+};
+
+function getOpenGraphLocale(locale: string): string {
+  return OG_LOCALE_MAP[locale] || OG_LOCALE_MAP.en;
+}
+
+function buildBaseMetadata(input: {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  alternatePathsByLocale: Record<string, string>;
+  locale: string;
+}): Metadata {
+  const seoConfig = getSeoConfig();
+  const hreflangAlternates = buildHreflangAlternates(input.alternatePathsByLocale);
+  const canonicalUrl = toAbsoluteUrl(input.canonicalPath);
+
+  return {
+    title: input.title,
+    description: input.description,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: hreflangAlternates,
+    },
+    openGraph: {
+      title: input.title,
+      description: input.description,
+      url: canonicalUrl,
+      locale: getOpenGraphLocale(input.locale),
+      type: "website",
+      siteName: seoConfig.siteName,
+      images: [
+        {
+          url: `${seoConfig.baseUrl}/favicon.png`,
+          width: 1200,
+          height: 630,
+          alt: seoConfig.siteName,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: input.title,
+      description: input.description,
+      images: [`${seoConfig.baseUrl}/favicon.png`],
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
+
+export function buildHubMetadata(localeCandidate: string | undefined | null): Metadata {
+  const locale = normalizeLocale(localeCandidate);
+  const hubSeo = getHubSeo(locale);
+  const canonicalPath = getLocaleRootPath(locale);
+
+  return buildBaseMetadata({
+    title: hubSeo.seoTitle,
+    description: hubSeo.seoDescription,
+    canonicalPath,
+    alternatePathsByLocale: getHubAlternates(),
+    locale,
+  });
+}
+
+export function buildLocationMetadata(location: LocationSeoResolved): Metadata {
+  const canonicalPath = getLocationPath(location.locale, location.slug);
+
+  return buildBaseMetadata({
+    title: location.seoTitle,
+    description: location.seoDescription,
+    canonicalPath,
+    alternatePathsByLocale: getLocationAlternatesById(location.id),
+    locale: location.locale,
+  });
+}
+
+export function buildCarMetadata(input: {
+  localeCandidate: string | undefined | null;
+  carSlug: string;
+  carModel: string;
+  locationName: string;
+}): Metadata {
+  const locale = normalizeLocale(input.localeCandidate);
+  const canonicalPath = `/${locale}/cars/${encodeURIComponent(input.carSlug)}`;
+  const carSeo = buildCarSeoText(locale, {
+    carModel: input.carModel,
+    locationName: input.locationName,
+  });
+
+  return buildBaseMetadata({
+    title: carSeo.seoTitle,
+    description: carSeo.seoDescription,
+    canonicalPath,
+    alternatePathsByLocale: getCarAlternates(input.carSlug),
+    locale,
+  });
+}
+
+export function buildStaticPageMetadata(
+  localeCandidate: string | undefined | null,
+  pageKey: StaticPageKey
+): Metadata {
+  const locale = normalizeLocale(localeCandidate);
+  const pageSeo = getStaticPageSeo(locale, pageKey);
+
+  const alternatesByLocale = Object.fromEntries(
+    Object.keys(getHubAlternates()).map((supportedLocale) => [
+      supportedLocale,
+      getStaticPagePath(supportedLocale, pageKey),
+    ])
+  );
+
+  return buildBaseMetadata({
+    title: pageSeo.seoTitle,
+    description: pageSeo.seoDescription,
+    canonicalPath: getStaticPagePath(locale, pageKey),
+    alternatePathsByLocale: alternatesByLocale,
+    locale,
+  });
+}

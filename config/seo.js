@@ -52,6 +52,7 @@ const getBaseUrl = () => {
 export const multilingualDescriptions = {
   en: "Rent a car in Halkidiki, Greece with Natali Cars. Affordable car hire with flexible pickup and return options. Best car rental service in Halkidiki, Nea Kallikratia, Kassandra, Sithonia.",
   ru: "Аренда авто в Халкидики, Греция — Натали Карс. Прокат машин без депозита. Гибкие условия получения и возврата. Лучший прокат авто в Халкидики, Неа Каликратия, Кассандра, Ситония.",
+  uk: "Оренда авто в Халкідіках, Греція — Natali Cars. Прозорі умови, гнучка видача та повернення, підтримка для маршрутів Халкідіки, Ситонії та Кассандри.",
   de: "Mietwagen in Chalkidiki, Griechenland bei Natali Cars. Günstige Autovermietung mit flexiblen Abhol- und Rückgabeoptionen. Bester Mietwagenservice in Chalkidiki, Nea Kallikratia, Kassandra, Sithonia.",
   sr: "Rent a car u Halkidikiju, Grčka — Natali Cars. Povoljno iznajmljivanje auta bez depozita. Fleksibilni uslovi preuzimanja i vraćanja. Najbolji rent a car u Halkidikiju, Nea Kalikratija, Kasandra, Sitonija.",
   ro: "Închirieri auto în Halkidiki, Grecia — Natali Cars. Rent a car ieftin fără depozit. Condiții flexibile de preluare și returnare. Cel mai bun serviciu de închiriere auto în Halkidiki, Nea Kallikratia, Kassandra, Sithonia.",
@@ -65,6 +66,7 @@ export const multilingualDescriptions = {
 export const multilingualTitles = {
   en: "Natali Cars - Car Rental in Halkidiki, Greece",
   ru: "Натали Карс - Аренда авто в Халкидики, Греция",
+  uk: "Natali Cars - Оренда авто в Халкідіках, Греція",
   de: "Natali Cars - Mietwagen in Chalkidiki, Griechenland",
   sr: "Natali Cars - Rent a car Halkidiki, Grčka",
   ro: "Natali Cars - Închirieri auto Halkidiki, Grecia",
@@ -85,7 +87,7 @@ export function getSeoConfig(dbCompanyData = null) {
     siteName: companyData?.name || fallbackCompanyData.name || "Natali Cars",
     baseUrl: getBaseUrl(),
     defaultLocale: "en",
-    supportedLocales: ["en", "ru", "de", "sr", "ro", "bg", "el"],
+    supportedLocales: ["en", "ru", "uk", "de", "sr", "ro", "bg", "el"],
     primaryLocation: "Halkidiki, Greece",
     titleTemplate: "%s | Natali Cars - Car Rental in Halkidiki",
     defaultTitle: "Natali Cars - Car Rental in Halkidiki, Greece",
@@ -110,7 +112,28 @@ export function getSeoConfig(dbCompanyData = null) {
       lat: companyData?.coords?.lat || fallbackCompanyData.coords?.lat || "40.311273589340836",
       lon: companyData?.coords?.lon || fallbackCompanyData.coords?.lon || "23.06426516796098",
     },
+    // Optional hero image for homepage SEO block (URL; leave null to hide image)
+    heroImageUrl: process.env.NEXT_PUBLIC_HERO_IMAGE_URL || null,
+    /**
+     * Hero carousel images: array of image URLs.
+     * Set NEXT_PUBLIC_HERO_IMAGES to a JSON array string, e.g. '["/hero1.jpg","/hero2.jpg"]'.
+     * Invalid or non-string entries are filtered out. Returns [] if unset or invalid.
+     */
+    heroImages: getHeroImages(),
   };
+}
+
+function getHeroImages() {
+  const raw =
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_HERO_IMAGES) || "";
+  if (!raw || typeof raw !== "string") return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => typeof item === "string" && item.trim().length > 0);
+  } catch {
+    return [];
+  }
 }
 
 // Export default config for backward compatibility (uses fallback data)

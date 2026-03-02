@@ -10,20 +10,33 @@
 import { useState, useEffect } from "react";
 import { terms } from "@app/data/terms";
 
-export default function RentalTermsContent() {
+export default function RentalTermsContent({ forcedLang = null }) {
   const [lang, setLang] = useState(null); // null = not yet determined
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Read language from localStorage on mount (client-side only)
+  // Route locale has priority. Rental terms currently support en/el/ru.
   useEffect(() => {
+    const supportedTermsLangs = ["en", "el", "ru"];
+    const normalizedForcedLang =
+      typeof forcedLang === "string" ? forcedLang.toLowerCase().split("-")[0] : null;
+
+    if (normalizedForcedLang) {
+      setLang(
+        supportedTermsLangs.includes(normalizedForcedLang) ? normalizedForcedLang : "en"
+      );
+      setIsHydrated(true);
+      return;
+    }
+
     const savedLang = localStorage.getItem("selectedLanguage");
-    if (savedLang && ["en", "el", "ru"].includes(savedLang)) {
+    if (savedLang && supportedTermsLangs.includes(savedLang)) {
       setLang(savedLang);
     } else {
       setLang("en");
     }
+
     setIsHydrated(true);
-  }, []);
+  }, [forcedLang]);
 
   // Show loading until hydration is complete to prevent mismatch
   if (!isHydrated) {

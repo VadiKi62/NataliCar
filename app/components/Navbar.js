@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { styled } from "@mui/system";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { animateScroll as scroll } from "react-scroll";
 import {
   AppBar,
@@ -18,6 +19,7 @@ import {
   ListItemText,
   IconButton,
   Popover,
+  Menu,
   MenuItem,
   TextField,
   Chip,
@@ -36,11 +38,18 @@ import {
   Slider,
 } from "@mui/material";
 import dynamic from "next/dynamic";
+import {
+  switchPathLocale,
+  withLocalePrefix,
+} from "@domain/locationSeo/locationSeoService";
+import { useNavLocations } from "@app/context/NavLocationsContext";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 const LANG_LABELS = {
   en: "English",
   el: "Ελληνικά",
   ru: "Русский",
+  uk: "Українська",
   de: "Deutsch",
   bg: "Български",
   ro: "Română",
@@ -126,8 +135,9 @@ export default function NavBar({
   isCarInfo = false,
   setIsCarInfo = null,
 }) {
-  // Получаем информацию о сессии (для админки)
-  const { data: session } = useSession();
+  // Получаем информацию о сессии (для админки). Guard for SSG / no SessionProvider yet.
+  const sessionValue = useSession();
+  const session = sessionValue?.data ?? null;
   const adminRole = isAdmin && session?.user?.role !== undefined 
     ? session.user.role 
     : null; // ROLE.ADMIN = 1, ROLE.SUPERADMIN = 2
@@ -184,13 +194,18 @@ export default function NavBar({
   };
   const headerRef = useRef(null);
   const [languageAnchor, setLanguageAnchor] = useState(null);
+  const [locationsAnchor, setLocationsAnchor] = useState(null);
+  const locationsButtonRef = useRef(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { hubLinks, navLocationsDescription } = useNavLocations();
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [selectedDiscount, setSelectedDiscount] = useState(0);
   const [discountStartDate, setDiscountStartDate] = useState(null);
   const [discountEndDate, setDiscountEndDate] = useState(null);
 
   const { i18n, t } = useTranslation();
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Загружаем скидку для ВСЕХ пользователей (чтобы показать активную скидку)
   // Сохранение скидки доступно только админам (см. handleSaveDiscount)
@@ -220,6 +235,7 @@ export default function NavBar({
     // Язык определяется и сохраняется через общий i18n + Context.
   }, [isAdmin, i18n]);
 
+
   const {
     scrolled,
     setSelectedClass,
@@ -233,6 +249,12 @@ export default function NavBar({
     changeLanguage, // Добавляем функцию смены языка
     company,
   } = useMainContext();
+
+  const localeLink = (path) => (isAdmin ? path : withLocalePrefix(lang || "en", path));
+  const homeHref = localeLink("/");
+  const rentalTermsHref = localeLink("/rental-terms");
+  const contactsHref = localeLink("/contacts");
+  const termsAliasHref = localeLink("/terms");
 
   // Получаем название компании из Context с fallback
   const companyName = company?.name || "NATALI CARS";
@@ -256,8 +278,22 @@ export default function NavBar({
     setLanguageAnchor(null);
   };
 
+  const handleLocationsOpen = (event) => {
+    setLocationsAnchor(locationsButtonRef.current || event?.currentTarget);
+  };
+
+  const handleLocationsClose = () => {
+    setLocationsAnchor(null);
+  };
+
   const handleLanguageSelect = (selectedLanguage) => {
     changeLanguage(selectedLanguage); // Используем новую функцию, которая автоматически сохраняет в localStorage
+    if (typeof document !== "undefined") {
+      document.cookie = `NEXT_LOCALE=${selectedLanguage}; path=/; max-age=31536000`;
+    }
+    if (!isAdmin && pathname) {
+      router.push(switchPathLocale(pathname, selectedLanguage));
+    }
     handleLanguageClose();
   };
 
@@ -601,7 +637,7 @@ export default function NavBar({
               >
                 {!isAdmin && (
                   <>
-                    <Link href="/">
+                    <Link href={homeHref}>
                       <Typography
                         sx={{
                           fontStretch: "extra-condensed",
@@ -611,7 +647,33 @@ export default function NavBar({
                         {t("header.main")}
                       </Typography>
                     </Link>
-                    <Link href="/rental-terms">
+                    <Button
+                      ref={locationsButtonRef}
+                      type="button"
+                      aria-haspopup="true"
+                      aria-expanded={Boolean(locationsAnchor)}
+                      aria-label={t("header.locations") || "Locations"}
+                      aria-controls={locationsAnchor ? "locations-menu" : undefined}
+                      id={locationsAnchor ? "locations-button" : undefined}
+                      onClick={hubLinks?.length ? handleLocationsOpen : undefined}
+                      sx={{
+                        minWidth: 0,
+                        px: { md: 0.8, lg: 1.5 },
+                        color: "inherit",
+                        textTransform: "uppercase",
+                        fontStretch: "extra-condensed",
+                        "&:hover": { backgroundColor: "transparent" },
+                      }}
+                    >
+                      <Typography
+                        component="span"
+                        sx={{ fontStretch: "extra-condensed", textTransform: "uppercase" }}
+                      >
+                        {t("header.locations") || "Locations"}
+                      </Typography>
+                      <KeyboardArrowDownIcon sx={{ fontSize: 18, ml: 0.25 }} />
+                    </Button>
+                    <Link href={rentalTermsHref}>
                       <Typography
                         sx={{
                           fontStretch: "extra-condensed",
@@ -621,7 +683,7 @@ export default function NavBar({
                         {t("header.terms")}
                       </Typography>
                     </Link>
-                    <Link href="/contacts">
+                    <Link href={contactsHref}>
                       <Typography
                         sx={{
                           fontStretch: "extra-condensed",
@@ -685,7 +747,7 @@ export default function NavBar({
             </Stack>
 
             <Box sx={{ position: "relative", display: "inline-flex" }}>
-              <Link href="/">
+              <Link href={homeHref}>
                 <Logo
                   sx={{
                     fontSize: "clamp(12px, calc(0.79rem + 1vw), 32px)", lineHeight: 1,
@@ -728,6 +790,71 @@ export default function NavBar({
 
         </Toolbar>
 
+        <Menu
+          id="locations-menu"
+          anchorEl={locationsAnchor}
+          open={Boolean(locationsAnchor)}
+          onClose={handleLocationsClose}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+          transformOrigin={{ vertical: "top", horizontal: "left" }}
+          slotProps={{
+            paper: {
+              sx: {
+                mt: 1.5,
+                minWidth: 320,
+                maxWidth: 420,
+                borderRadius: 2,
+                overflow: "hidden",
+              },
+            },
+          }}
+          MenuListProps={{
+            "aria-labelledby": "locations-button",
+            disablePadding: true,
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "row", minHeight: 160 }}>
+            <Box
+              sx={{
+                flex: "0 0 48%",
+                p: 2,
+                borderRight: 1,
+                borderColor: "divider",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="body2" sx={{ lineHeight: 1.5, color: "text.secondary" }}>
+                {navLocationsDescription}
+              </Typography>
+            </Box>
+            <Box sx={{ flex: "1 1 auto", py: 1.5, px: 1 }}>
+              <Typography
+                variant="overline"
+                sx={{ px: 1.5, color: "text.secondary", fontWeight: 600 }}
+              >
+                {t("header.locations") || "Locations"}
+              </Typography>
+              <List dense disablePadding>
+                {hubLinks?.map((link) => (
+                  <ListItem key={link.href} disablePadding>
+                    <Link
+                      href={link.href}
+                      onClick={handleLocationsClose}
+                      style={{ textDecoration: "none", color: "inherit", width: "100%", padding: "6px 12px" }}
+                    >
+                      <ListItemText
+                        primary={link.label}
+                        primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
+                      />
+                    </Link>
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          </Box>
+        </Menu>
+
         <LanguagePopover
           open={Boolean(languageAnchor)}
           anchorEl={languageAnchor}
@@ -749,6 +876,9 @@ export default function NavBar({
           </MenuItem>
           <MenuItem onClick={() => handleLanguageSelect("ru")}>
             Русский
+          </MenuItem>
+          <MenuItem onClick={() => handleLanguageSelect("uk")}>
+            Українська
           </MenuItem>
           <MenuItem onClick={() => handleLanguageSelect("de")}>
             Deutsch
@@ -871,7 +1001,7 @@ export default function NavBar({
             justifyContent="space-between"
             alignItems="center"
           >
-            <Link href="/">
+            <Link href={homeHref}>
               <Logo>
                 {companyName}
                 {isAdmin && " ADMIN"}
@@ -884,13 +1014,28 @@ export default function NavBar({
           <List>
             {!isAdmin ? (
               <>
-                <ListItem button component={Link} href="/">
+                <ListItem button component={Link} href={homeHref}>
                   <ListItemText primary={t("header.main")} />
                 </ListItem>
-                <ListItem button component={Link} href="/terms">
+                {hubLinks?.length > 0 && (
+                  <>
+                    <ListItem sx={{ pt: 1, pb: 0 }}>
+                      <ListItemText
+                        primary={t("header.locations") || "Locations"}
+                        primaryTypographyProps={{ variant: "overline", color: "text.secondary" }}
+                      />
+                    </ListItem>
+                    {hubLinks.map((link) => (
+                      <ListItem key={link.href} button component={Link} href={link.href} onClick={() => setDrawerOpen(false)}>
+                        <ListItemText primary={link.label} inset />
+                      </ListItem>
+                    ))}
+                  </>
+                )}
+                <ListItem button component={Link} href={termsAliasHref}>
                   <ListItemText primary={t("header.terms")} />
                 </ListItem>
-                <ListItem button component={Link} href="/contacts">
+                <ListItem button component={Link} href={contactsHref}>
                   <ListItemText primary={t("header.contacts")} />
                 </ListItem>
               </>
