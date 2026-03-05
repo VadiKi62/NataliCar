@@ -88,6 +88,32 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     });
   }
 
+  const locationsIndexAlternates = buildHreflangAlternates(
+    Object.fromEntries(supportedLocales.map((l) => [l, `/${l}/locations`]))
+  );
+  for (const locale of supportedLocales) {
+    entries.push({
+      url: toAbsoluteUrl(`/${locale}/locations`),
+      lastModified: nowIso,
+      changeFrequency: "weekly",
+      priority: locale === defaultLocale ? 0.85 : 0.8,
+      alternates: { languages: locationsIndexAlternates },
+    });
+  }
+
+  const carsIndexAlternates = buildHreflangAlternates(
+    Object.fromEntries(supportedLocales.map((l) => [l, `/${l}/cars`]))
+  );
+  for (const locale of supportedLocales) {
+    entries.push({
+      url: toAbsoluteUrl(`/${locale}/cars`),
+      lastModified: nowIso,
+      changeFrequency: "weekly",
+      priority: locale === defaultLocale ? 0.8 : 0.75,
+      alternates: { languages: carsIndexAlternates },
+    });
+  }
+
   const staticPages = [
     STATIC_PAGE_KEYS.CONTACTS,
     STATIC_PAGE_KEYS.PRIVACY_POLICY,
