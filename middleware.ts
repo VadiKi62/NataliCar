@@ -56,7 +56,25 @@ function buildLegacyLocationRedirect(
   pathWithoutLocale: string
 ): string | null {
   const cleanPath = pathWithoutLocale.replace(/^\//, "");
-  if (!cleanPath || cleanPath.includes("/")) return null;
+  if (!cleanPath) return null;
+
+  // /locations/{canonical-slug} → /{locale}/locations/{locale-slug}
+  // Only redirect when the slug differs (canonical → locale-specific)
+  const locationsMatch = cleanPath.match(/^locations\/(.+)$/);
+  if (locationsMatch) {
+    const slug = locationsMatch[1];
+    const locationId = legacyLocationByCanonicalSlug.get(slug);
+    if (locationId) {
+      const location = getLocationById(locale, locationId);
+      if (location && location.slug !== slug) {
+        return getLocationPath(locale, location.slug);
+      }
+    }
+    return null;
+  }
+
+  // /car-rental-xxx (flat canonical slug without /locations/ prefix)
+  if (cleanPath.includes("/")) return null;
 
   const locationId = legacyLocationByCanonicalSlug.get(cleanPath);
   if (!locationId) return null;

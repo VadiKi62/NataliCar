@@ -65,6 +65,8 @@ export interface LinkSeoContent {
   mainHubLabel: string;
   /** Template for city page CTA: "Search cars in {locationName}" → homepage with pickup param */
   locationSearchCtaLabel: string;
+  /** Hero CTA button on location pages: "Find your car" → main page */
+  locationHeroCtaLabel: string;
   pickupGuidanceTitle: string;
   nearbyPlacesTitle: string;
   localFaqTitle: string;

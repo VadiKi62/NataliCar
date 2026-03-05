@@ -242,7 +242,7 @@ export function getAllLocationsForLocale(
   return locationSeoRepo.map((item) => buildLocationSeoRecord(locale, item));
 }
 
-/** The 5 hub locations for the navbar dropdown (Thessaloniki, Airport, Halkidiki, Sithonia, Kassandra). */
+/** Hub locations for the navbar Locations dropdown. */
 export function getHubLocationsForNav(
   localeCandidate: string | undefined | null
 ): LocationSeoResolved[] {
@@ -269,6 +269,40 @@ export function getLocationByLocaleAndSlug(
   if (!slugCandidate) return null;
   const locale = normalizeLocale(localeCandidate);
   const repoItem = locationSeoRepo.find((item) => item.slugByLocale[locale] === slugCandidate);
+  if (!repoItem) return null;
+  return buildLocationSeoRecord(locale, repoItem);
+}
+
+/**
+ * Find a location by canonical slug (language-independent).
+ * Returns the resolved record for the requested locale, or null.
+ */
+export function getLocationByCanonicalSlug(
+  localeCandidate: string | undefined | null,
+  canonicalSlugCandidate: string | undefined | null
+): LocationSeoResolved | null {
+  if (!canonicalSlugCandidate) return null;
+  const locale = normalizeLocale(localeCandidate);
+  const repoItem = locationSeoRepo.find((item) => item.canonicalSlug === canonicalSlugCandidate);
+  if (!repoItem) return null;
+  return buildLocationSeoRecord(locale, repoItem);
+}
+
+/**
+ * Try to find a location by any locale's slug (cross-locale fallback).
+ * Returns the resolved record for the requested locale, or null.
+ */
+export function getLocationByAnySlug(
+  localeCandidate: string | undefined | null,
+  slugCandidate: string | undefined | null
+): LocationSeoResolved | null {
+  if (!slugCandidate) return null;
+  const locale = normalizeLocale(localeCandidate);
+  const repoItem = locationSeoRepo.find(
+    (item) =>
+      item.canonicalSlug === slugCandidate ||
+      Object.values(item.slugByLocale).includes(slugCandidate)
+  );
   if (!repoItem) return null;
   return buildLocationSeoRecord(locale, repoItem);
 }
@@ -403,6 +437,28 @@ export function switchPathLocale(
   pathname: string,
   nextLocaleCandidate: string | undefined | null
 ): string {
+  const nextLocale = normalizeLocale(nextLocaleCandidate);
+  const stripped = getPathWithoutLocalePrefix(pathname);
+  const segments = stripped.split("/").filter(Boolean);
+
+  // /{locale}/locations/{slug} → resolve slug to next locale
+  if (
+    segments.length === 2 &&
+    segments[0] === LOCATION_ROUTE_SEGMENT
+  ) {
+    const currentSlug = segments[1];
+    // Find repo item by any locale slug
+    const repoItem = locationSeoRepo.find(
+      (item) =>
+        item.canonicalSlug === currentSlug ||
+        Object.values(item.slugByLocale).includes(currentSlug)
+    );
+    if (repoItem) {
+      const nextSlug = repoItem.slugByLocale[nextLocale];
+      return `/${nextLocale}/${LOCATION_ROUTE_SEGMENT}/${nextSlug}`;
+    }
+  }
+
   return withLocalePrefix(nextLocaleCandidate, pathname);
 }
 

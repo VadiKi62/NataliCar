@@ -1,43 +1,26 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
 import JsonLdScript from "@app/components/seo/JsonLdScript";
+import SeoHeroSliderCard from "@app/components/seo/SeoHeroSliderCard";
 import {
   buildHubAndLocationLinks,
-  getCarPath,
-  getHomepageSearchUrl,
   getLocaleDictionary,
   getLocationByLocaleAndSlug,
+  getLocationByAnySlug,
+  getLocationPath,
   getLocationRouteParams,
-  getLocationSearchCtaLabel,
   isSupportedLocale,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
-import { fetchAllCars } from "@utils/action";
 import { buildAutoRentalJsonLd } from "@/services/seo/jsonLdBuilder";
 import { buildLocationMetadata } from "@/services/seo/metadataBuilder";
 import {
   SeoFaqBlock,
   SeoIntroBlock,
-  SeoLinksBlock,
-  SeoLocationCtaBlock,
   SeoNearbyPlacesBlock,
   SeoPickupGuidanceBlock,
-  SeoSingleLinkBlock,
 } from "@app/components/seo/SeoContentBlocks";
-
-function getPublicCars(cars) {
-  return (cars || [])
-    .filter(
-      (car) =>
-        car?.slug &&
-        String(car.slug).trim() &&
-        car?.isActive !== false &&
-        car?.isHidden !== true &&
-        !car?.deletedAt
-    )
-    .sort((a, b) => String(a.model || "").localeCompare(String(b.model || "")));
-}
 
 export const dynamic = "force-dynamic";
 
@@ -47,14 +30,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }) {
   const locale = normalizeLocale(params.locale);
-  const location = getLocationByLocaleAndSlug(locale, params.slug);
+  const location =
+    getLocationByLocaleAndSlug(locale, params.slug) ||
+    getLocationByAnySlug(locale, params.slug);
 
   if (!location) {
     return {
-      robots: {
-        index: false,
-        follow: false,
-      },
+      robots: { index: false, follow: false },
     };
   }
 
@@ -67,14 +49,17 @@ export default async function LocationSeoPage({ params }) {
     notFound();
   }
 
-  const location = getLocationByLocaleAndSlug(locale, params.slug);
+  let location = getLocationByLocaleAndSlug(locale, params.slug);
+
   if (!location) {
+    const fallback = getLocationByAnySlug(locale, params.slug);
+    if (fallback) {
+      redirect(getLocationPath(locale, fallback.slug));
+    }
     notFound();
   }
 
   const dictionary = getLocaleDictionary(locale);
-  const cars = await fetchAllCars();
-  const publicCars = getPublicCars(cars);
 
   const locationJsonLd = buildAutoRentalJsonLd({
     localeCandidate: locale,
@@ -82,17 +67,24 @@ export default async function LocationSeoPage({ params }) {
     location,
   });
 
-  const carLinks = publicCars.slice(0, 20).map((car) => ({
-    href: getCarPath(locale, String(car.slug).trim()),
-    label: car.model || car.slug,
-  }));
-
   const locationLinks = buildHubAndLocationLinks(locale, location);
   const links = dictionary.links;
-  const showCityCta = location.locationType === "city";
+
+  const heroImages = ["/car-rental-thessaloniki-airport.png"];
+  const ctaHref = locationLinks.hubPath;
+  const ctaLabel = links.locationHeroCtaLabel;
 
   return (
     <Feed locale={locale} isMain={false}>
+      <SeoHeroSliderCard
+        title={location.h1}
+        paragraphs={location.introText ? [location.introText] : []}
+        imageUrls={heroImages}
+        imageAlt={location.slug}
+        ctaHref={ctaHref}
+        ctaLabel={ctaLabel}
+        fullBleedUnderNav
+      />
       <Box
         component="main"
         sx={{
@@ -106,24 +98,6 @@ export default async function LocationSeoPage({ params }) {
         <Box sx={{ maxWidth: 980, mx: "auto" }}>
           <JsonLdScript id={`location-jsonld-${location.id}-${locale}`} data={locationJsonLd} />
           <SeoIntroBlock title={location.h1} introText={location.introText} />
-          {showCityCta ? (
-            <SeoLocationCtaBlock
-              href={getHomepageSearchUrl(locale, location.canonicalSlug)}
-              label={getLocationSearchCtaLabel(locale, location.shortName)}
-            />
-          ) : null}
-          <SeoSingleLinkBlock
-            title={links.mainHubLabel}
-            href={locationLinks.hubPath}
-            label={links.locationToHubLabel}
-          />
-          {locationLinks.parent ? (
-            <SeoSingleLinkBlock
-              title={links.locationToParentLabel}
-              href={locationLinks.parent.path}
-              label={locationLinks.parent.label}
-            />
-          ) : null}
           <SeoPickupGuidanceBlock
             title={links.pickupGuidanceTitle}
             pickupGuidance={location.pickupGuidance}
@@ -133,18 +107,6 @@ export default async function LocationSeoPage({ params }) {
             nearbyPlaces={location.nearbyPlaces}
           />
           <SeoFaqBlock title={links.localFaqTitle} faq={location.faq} />
-          <SeoLinksBlock
-            title={links.locationToCarsTitle}
-            links={carLinks}
-          />
-          <SeoLinksBlock
-            title={links.locationToChildrenTitle}
-            links={locationLinks.children}
-          />
-          <SeoLinksBlock
-            title={links.locationToSiblingTitle}
-            links={locationLinks.siblings}
-          />
         </Box>
       </Box>
     </Feed>

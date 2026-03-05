@@ -39,6 +39,8 @@ import {
 } from "@mui/material";
 import dynamic from "next/dynamic";
 import {
+  isSupportedLocale,
+  normalizeLocale,
   switchPathLocale,
   withLocalePrefix,
 } from "@domain/locationSeo/locationSeoService";
@@ -250,7 +252,15 @@ export default function NavBar({
     company,
   } = useMainContext();
 
-  const localeLink = (path) => (isAdmin ? path : withLocalePrefix(lang || "en", path));
+  // Локаль из URL имеет приоритет, чтобы отображаемый язык и ссылки всегда совпадали с страницей
+  const pathSegments = pathname?.split("/").filter(Boolean) || [];
+  const urlLocale =
+    pathSegments[0] && isSupportedLocale(pathSegments[0])
+      ? normalizeLocale(pathSegments[0])
+      : null;
+  const effectiveLocale = urlLocale || lang || "en";
+
+  const localeLink = (path) => (isAdmin ? path : withLocalePrefix(effectiveLocale, path));
   const homeHref = localeLink("/");
   const rentalTermsHref = localeLink("/rental-terms");
   const contactsHref = localeLink("/contacts");
@@ -598,7 +608,7 @@ export default function NavBar({
                     fontSize: "0.85rem",
                   }}
                 >
-                  {LANG_LABELS[lang] || lang}
+                  {LANG_LABELS[effectiveLocale] || effectiveLocale}
                 </Typography>
               </LanguageSwitcher>
 

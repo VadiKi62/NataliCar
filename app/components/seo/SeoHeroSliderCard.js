@@ -3,13 +3,23 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Typography, Stack } from "@mui/material";
 import Image from "next/image";
+import Link from "next/link";
+import ActionButton from "@/app/components/ui/buttons/ActionButton";
 
 const AUTO_MS = 6000;
+
+// Matches Feed mainPt so hero sits under nav with no white stripe
+const HERO_TOP_PADDING = { xs: "110px", md: "90px" };
+const HERO_NEGATIVE_MARGIN = { xs: "-110px", md: "-90px" };
 
 export default function SeoHeroSliderCard({
   title,
   paragraphs = [],
   imageUrls = [],
+  imageAlt = "",
+  ctaHref,
+  ctaLabel,
+  fullBleedUnderNav = false,
 }) {
   const images =
     Array.isArray(imageUrls) && imageUrls.length > 0
@@ -37,6 +47,7 @@ export default function SeoHeroSliderCard({
         width: "100%",
         minHeight: { xs: 420, md: 520 },
         overflow: "hidden",
+        ...(fullBleedUnderNav && { mt: HERO_NEGATIVE_MARGIN }),
       }}
     >
       {/* SLIDES */}
@@ -52,7 +63,7 @@ export default function SeoHeroSliderCard({
         >
           <Image
             src={src}
-            alt=""
+            alt={imageAlt}
             fill
             priority={i === 0}
             style={{ objectFit: "cover" }}
@@ -60,12 +71,12 @@ export default function SeoHeroSliderCard({
         </Box>
       ))}
 
-      {/* OVERLAY */}
+      {/* OVERLAY: dark gradient from right so white text is readable */}
       <Box
         sx={(theme) => ({
           position: "absolute",
           inset: 0,
-          background: `linear-gradient(90deg, 
+          background: `linear-gradient(270deg, 
             ${theme.palette.common.black}CC 0%, 
             ${theme.palette.common.black}88 40%, 
             transparent 75%)`,
@@ -82,9 +93,12 @@ export default function SeoHeroSliderCard({
           px: 3,
           py: { xs: 6, md: 10 },
           color: "common.white",
+          display: "flex",
+          justifyContent: "flex-end",
+          ...(fullBleedUnderNav && { pt: HERO_TOP_PADDING }),
         }}
       >
-        <Box sx={{ maxWidth: 680 }}>
+        <Box sx={{ maxWidth: 680, textAlign: "right" }}>
           <Typography
             component="h1"
             variant="h2"
@@ -92,6 +106,7 @@ export default function SeoHeroSliderCard({
               fontWeight: 700,
               lineHeight: 1.2,
               mb: 2,
+              color: "common.white",
             }}
           >
             {title}
@@ -102,14 +117,27 @@ export default function SeoHeroSliderCard({
               key={i}
               variant="body1"
               sx={{
-                opacity: 0.9,
+                opacity: 0.92,
                 lineHeight: 1.7,
                 mb: 1.5,
+                color: "common.white",
               }}
             >
               {p}
             </Typography>
           ))}
+          {ctaHref && ctaLabel && (
+            <Box sx={{ mt: 3 }}>
+              <ActionButton
+                component={Link}
+                href={ctaHref}
+                label={ctaLabel}
+                color="primary"
+                variant="contained"
+                size="large"
+              />
+            </Box>
+          )}
         </Box>
       </Box>
 

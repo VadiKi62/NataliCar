@@ -49,13 +49,14 @@ export const LOCATION_IDS = {
   OLYMPIADA: "olympiada",
 } as const;
 
-/** IDs of the 5 hub locations shown in the navbar dropdown (Thessaloniki, Airport, Halkidiki, Sithonia, Kassandra). */
+/** IDs of the hub locations shown in the navbar Locations dropdown. */
 export const HUB_NAV_LOCATION_IDS = [
   LOCATION_IDS.THESSALONIKI,
   LOCATION_IDS.THESSALONIKI_AIRPORT,
   LOCATION_IDS.HALKIDIKI,
   LOCATION_IDS.SITHONIA,
   LOCATION_IDS.KASSANDRA,
+  LOCATION_IDS.NEA_KALLIKRATIA,
 ] as const;
 
 export const LOCATION_CONTENT_KEYS = {

@@ -56,6 +56,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       carsListTitle: "Browse Car Models",
       mainHubLabel: "Main Car Rental Hub",
       locationSearchCtaLabel: "Search cars in {locationName}",
+      locationHeroCtaLabel: "Find your car",
       pickupGuidanceTitle: "Pickup guidance",
       nearbyPlacesTitle: "Nearby places",
       localFaqTitle: "Local FAQ",
@@ -118,6 +119,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       carsListTitle: "Список моделей",
       mainHubLabel: "Главный хаб проката",
       locationSearchCtaLabel: "Поиск авто в {locationName}",
+      locationHeroCtaLabel: "Подобрать авто",
       pickupGuidanceTitle: "Инструкция по выдаче",
       nearbyPlacesTitle: "Рядом",
       localFaqTitle: "Частые вопросы",
@@ -180,6 +182,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       carsListTitle: "Список моделей",
       mainHubLabel: "Головний хаб оренди",
       locationSearchCtaLabel: "Пошук авто в {locationName}",
+      locationHeroCtaLabel: "Знайти авто",
       pickupGuidanceTitle: "Інструкція з отримання",
       nearbyPlacesTitle: "Поруч",
       localFaqTitle: "Часті питання",
@@ -242,6 +245,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       carsListTitle: "Λίστα μοντέλων",
       mainHubLabel: "Κεντρικό hub ενοικίασης",
       locationSearchCtaLabel: "Αναζήτηση αυτοκινήτων στην {locationName}",
+      locationHeroCtaLabel: "Βρείτε το αυτοκίνητό σας",
       pickupGuidanceTitle: "Οδηγίες παραλαβής",
       nearbyPlacesTitle: "Κοντινά σημεία",
       localFaqTitle: "Συχνές ερωτήσεις",
@@ -278,7 +282,32 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
   },
 };
 
-export const localeSeoDictionary = expandLocaleRecord(localeSeoDictionaryRaw);
+const locationHeroCtaLabelOverrides: Partial<Record<SupportedLocale, string>> = {
+  de: "Finden Sie Ihr Auto",
+  bg: "Намерете своя автомобил",
+  ro: "Găsiți mașina dvs.",
+  sr: "Pronađite svoj automobil",
+};
+
+const localeSeoDictionaryExpanded = expandLocaleRecord(localeSeoDictionaryRaw);
+
+// Patch fallback-only locales with translated hero CTA labels.
+// expandLocaleRecord shares the same object reference for fallback locales,
+// so we must clone the links object before mutating to avoid corrupting "en".
+for (const locale of SUPPORTED_LOCALES) {
+  const label = locationHeroCtaLabelOverrides[locale];
+  if (label) {
+    localeSeoDictionaryExpanded[locale] = {
+      ...localeSeoDictionaryExpanded[locale],
+      links: {
+        ...localeSeoDictionaryExpanded[locale].links,
+        locationHeroCtaLabel: label,
+      },
+    };
+  }
+}
+
+export const localeSeoDictionary = localeSeoDictionaryExpanded;
 
 const locationContentByKeyRaw: Record<
   LocationContentKey,
@@ -345,12 +374,12 @@ const locationContentByKeyRaw: Record<
   [LOCATION_CONTENT_KEYS.THESSALONIKI_AIRPORT]: {
     en: {
       shortName: "Thessaloniki Airport",
-      h1: "Car Rental at Thessaloniki Airport",
+      h1: "Car Rental at Thessaloniki Airport (SKG)",
       seoTitle: "Car Rental at Thessaloniki Airport (SKG) | Natali Cars",
       seoDescription:
         "Book airport car rental at Thessaloniki (SKG) with handover-ready pickup, direct customer support, and coastal transfer coverage.",
       introText:
-        "This airport location page is optimized for travelers arriving at SKG and looking for immediate pickup to Halkidiki, Sithonia, or Kassandra.",
+        "The Thessaloniki Airport (SKG) page is intended for travelers arriving in Northern Greece who want to continue their journey directly from the airport. Thessaloniki Airport is the main gateway to Halkidiki, and from here it's an easy drive toward the region's beaches, seaside villages, and resorts. Starting your trip from SKG makes it simple to reach destinations across Sithonia, Kassandra, and the wider Halkidiki area.",
       areaServed: ["SKG Airport", "Perea", "Nea Kallikratia"],
       pickupLocation: "Thessaloniki Airport Pickup Point",
       offerName: "Airport Pickup Rental Offer",
@@ -359,12 +388,12 @@ const locationContentByKeyRaw: Record<
     },
     ru: {
       shortName: "Аэропорт Салоники",
-      h1: "Прокат авто в аэропорту Салоники",
+      h1: "Прокат авто в аэропорту Салоники (SKG)",
       seoTitle: "Прокат авто в аэропорту Салоники (SKG) | Natali Cars",
       seoDescription:
         "Арендуйте авто в аэропорту Салоники (SKG) с быстрой выдачей, прямой поддержкой и удобным выездом в Халкидики.",
       introText:
-        "SEO-страница аэропорта SKG ориентирована на туристов, которым нужна выдача сразу по прилету и маршрут к морю без задержек.",
+        "Страница аэропорта Салоники (SKG) предназначена для путешественников, прибывающих на север Греции и планирующих продолжить поездку прямо из аэропорта. Аэропорт Салоники является главными воротами на Халкидики, и отсюда удобно отправиться к пляжам, курортам и прибрежным деревням региона. Начав путешествие из SKG, легко добраться до направлений по всей Ситонии, Кассандре и другим частям Халкидики.",
       areaServed: ["Аэропорт SKG", "Перея", "Неа Каликратия"],
       pickupLocation: "Точка выдачи в аэропорту Салоники",
       offerName: "Предложение проката с выдачей в аэропорту",
@@ -373,12 +402,12 @@ const locationContentByKeyRaw: Record<
     },
     uk: {
       shortName: "Аеропорт Салоніки",
-      h1: "Оренда авто в аеропорту Салоніки",
+      h1: "Оренда авто в аеропорту Салоніки (SKG)",
       seoTitle: "Оренда авто в аеропорту Салоніки (SKG) | Natali Cars",
       seoDescription:
         "Орендуйте авто в аеропорту Салоніки (SKG) з швидкою передачею, прямою підтримкою та зручним виїздом до Халкідік.",
       introText:
-        "SEO-сторінка аеропорту SKG орієнтована на мандрівників, яким потрібне авто одразу після прильоту.",
+        "Сторінка аеропорту Салоніки (SKG) призначена для мандрівників, які прилітають на північ Греції та планують продовжити подорож безпосередньо з аеропорту. Аеропорт Салоніки є головними воротами до Халкідікі, звідки легко дістатися до пляжів, курортів і прибережних містечок регіону. Почавши подорож зі SKG, зручно доїхати до напрямків на Ситонії, Кассандрі та інших частинах Халкідікі.",
       areaServed: ["Аеропорт SKG", "Перея", "Неа Каллікратія"],
       pickupLocation: "Точка отримання в аеропорту Салоніки",
       offerName: "Пропозиція оренди з отриманням в аеропорту",
@@ -387,17 +416,73 @@ const locationContentByKeyRaw: Record<
     },
     el: {
       shortName: "Αεροδρόμιο Θεσσαλονίκης",
-      h1: "Ενοικίαση αυτοκινήτου στο αεροδρόμιο Θεσσαλονίκης",
+      h1: "Ενοικίαση αυτοκινήτου στο αεροδρόμιο Θεσσαλονίκης (SKG)",
       seoTitle: "Ενοικίαση αυτοκινήτου στο αεροδρόμιο Θεσσαλονίκης (SKG) | Natali Cars",
       seoDescription:
         "Κλείστε αυτοκίνητο στο αεροδρόμιο Θεσσαλονίκης (SKG) με γρήγορη παράδοση, άμεση υποστήριξη και εύκολη μετάβαση στη Χαλκιδική.",
       introText:
-        "Η σελίδα αεροδρομίου SKG είναι βελτιστοποιημένη για αφίξεις που χρειάζονται άμεση παραλαβή και διαδρομή προς παραθαλάσσιες περιοχές.",
+        "Η σελίδα του αεροδρομίου Θεσσαλονίκης (SKG) απευθύνεται σε ταξιδιώτες που φτάνουν στη Βόρεια Ελλάδα και θέλουν να συνεχίσουν το ταξίδι τους απευθείας από το αεροδρόμιο. Το αεροδρόμιο Θεσσαλονίκης αποτελεί την κύρια πύλη προς τη Χαλκιδική και από εδώ η διαδρομή προς τις παραλίες, τα θέρετρα και τα παραθαλάσσια χωριά της περιοχής είναι εύκολη. Ξεκινώντας από το SKG μπορείτε να φτάσετε γρήγορα σε προορισμούς σε όλη τη Σιθωνία, την Κασσάνδρα και την ευρύτερη Χαλκιδική.",
       areaServed: ["Αεροδρόμιο SKG", "Περαία", "Νέα Καλλικράτεια"],
       pickupLocation: "Σημείο παραλαβής στο αεροδρόμιο Θεσσαλονίκης",
       offerName: "Προσφορά ενοικίασης με παραλαβή στο αεροδρόμιο",
       offerDescription:
         "Άμεση παραλαβή μετά την άφιξη και έτοιμη διαδρομή προς θέρετρα Χαλκιδικής.",
+    },
+    de: {
+      shortName: "Flughafen Thessaloniki",
+      h1: "Mietwagen am Flughafen Thessaloniki (SKG)",
+      seoTitle: "Mietwagen am Flughafen Thessaloniki (SKG) | Natali Cars",
+      seoDescription:
+        "Buchen Sie einen Mietwagen am Flughafen Thessaloniki (SKG) mit Abholung, direktem Kundenservice und Transfer an die Küste.",
+      introText:
+        "Die Seite zum Flughafen Thessaloniki (SKG) richtet sich an Reisende, die in Nordgriechenland ankommen und ihre Reise direkt vom Flughafen aus fortsetzen möchten. Der Flughafen Thessaloniki ist das wichtigste Tor nach Chalkidiki, und von hier aus erreicht man schnell die Strände, Küstenorte und Resorts der Region. Wenn Sie Ihre Reise vom SKG aus beginnen, gelangen Sie bequem zu Zielen in Sithonia, Kassandra und anderen Teilen von Chalkidiki.",
+      areaServed: ["Flughafen SKG", "Perea", "Nea Kallikratia"],
+      pickupLocation: "Abholpunkt Flughafen Thessaloniki",
+      offerName: "Angebot Mietwagen Flughafen",
+      offerDescription:
+        "Schnelle Übergabe am Flughafen und direkte Fahrt zu den Resorts in Chalkidiki.",
+    },
+    bg: {
+      shortName: "Летище Солун",
+      h1: "Под наем на кола на летище Солун (SKG)",
+      seoTitle: "Под наем на кола на летище Солун (SKG) | Natali Cars",
+      seoDescription:
+        "Наем на кола на летище Солун (SKG) с бърза получаване, пряка поддръжка и удобен трансфер до Халкидики.",
+      introText:
+        "Страницата за летище Солун (SKG) е предназначена за пътници, които пристигат в Северна Гърция и искат да продължат пътуването си директно от летището. Летище Солун е основната врата към Халкидики и оттук лесно се стига до плажовете, курортите и крайбрежните селища на региона. Започвайки пътуването си от SKG, можете бързо да достигнете до дестинации в Ситония, Касандра и останалите части на Халкидики.",
+      areaServed: ["Летище SKG", "Перея", "Неа Каликратия"],
+      pickupLocation: "Място за получаване летище Солун",
+      offerName: "Оферта наем на кола летище",
+      offerDescription:
+        "Бързо получаване след пристигане и маршрут до курорти в Халкидики.",
+    },
+    ro: {
+      shortName: "Aeroport Salonic",
+      h1: "Închirieri auto la aeroportul Salonic (SKG)",
+      seoTitle: "Închirieri auto la aeroportul Salonic (SKG) | Natali Cars",
+      seoDescription:
+        "Închiriați mașină la aeroportul Salonic (SKG) cu preluare rapidă, suport direct și transfer la coastă.",
+      introText:
+        "Pagina aeroportului Salonic (SKG) este destinată călătorilor care sosesc în nordul Greciei și doresc să își continue călătoria direct de la aeroport. Aeroportul Salonic este principala poartă către Halkidiki, iar de aici se ajunge ușor către plajele, stațiunile și satele de coastă ale regiunii. Începând călătoria din SKG, puteți ajunge rapid în destinații din Sithonia, Kassandra și din întreaga zonă Halkidiki.",
+      areaServed: ["Aeroport SKG", "Perea", "Nea Kallikratia"],
+      pickupLocation: "Punct de preluare aeroport Salonic",
+      offerName: "Ofertă închirieri aeroport",
+      offerDescription:
+        "Preluare rapidă la aeroport și traseu gata pentru stațiunile din Halkidiki.",
+    },
+    sr: {
+      shortName: "Аеродром Солун",
+      h1: "Изнајмљивање аута на аеродрому Солун (SKG)",
+      seoTitle: "Изнајмљивање аута на аеродрому Солун (SKG) | Natali Cars",
+      seoDescription:
+        "Изнајмите ауто на аеродрому Солун (SKG) са брзим преузимањем, директном подршком и трансфером до обале.",
+      introText:
+        "Stranica aerodroma Solun (SKG) namenjena je putnicima koji dolaze u severnu Grčku i žele da nastave putovanje direktno sa aerodroma. Aerodrom Solun predstavlja glavnu kapiju ka Halkidikiju, a odavde je lako stići do plaža, letovališta i primorskih mesta regiona. Ako putovanje započnete sa SKG, jednostavno možete doći do destinacija širom Sitonije, Kasandre i ostatka Halkidikija.",
+      areaServed: ["Аеродром SKG", "Переја", "Неа Каликратија"],
+      pickupLocation: "Место преузимања аеродром Солун",
+      offerName: "Понуда изнајмљивања аеродром",
+      offerDescription:
+        "Брзо преузимање на аеродрому и маршрут до летовалишта у Халкидикију.",
     },
   },
   [LOCATION_CONTENT_KEYS.HALKIDIKI]: {
@@ -595,6 +680,153 @@ const locationContentByKeyRaw: Record<
         { question: "Can I get a car delivered to my hotel in Nea Kallikratia?", answer: "Yes. We coordinate pickup at or near your hotel or rental; confirm the address when booking." },
         { question: "Is Nea Kallikratia a good base for exploring Halkidiki?", answer: "Yes. It sits on the main route into the peninsula, so Sithonia and Kassandra are easily reachable by car." },
         { question: "What if I arrive from Thessaloniki Airport?", answer: "Book with pickup at the airport or arrange a later handover in Nea Kallikratia after you reach your accommodation." },
+      ],
+    },
+    ru: {
+      shortName: "Неа Калликратия",
+      h1: "Прокат авто в Неа Калликратии",
+      seoTitle: "Прокат авто в Неа Калликратии, Халкидики | Natali Cars",
+      seoDescription:
+        "Аренда авто в Неа Калликратии с удобной выдачей у пляжа и главной дороги. Идеально для отдыха на побережье и поездок по Халкидикам.",
+      introText:
+        "Неа Калликратия — популярный прибрежный город на пути в Халкидики. Эта страница поможет организовать прокат авто с выдачей у вашего жилья.",
+      areaServed: ["Пляж Неа Калликратия", "Центр Неа Калликратии"],
+      pickupLocation: "Точка выдачи в Неа Калликратии",
+      offerName: "Прокат авто в Неа Калликратии",
+      offerDescription: "Выдача у пляжа для Неа Калликратии и ближайших курортов.",
+      pickupGuidance:
+        "Выдачу в Неа Калликратии обычно организуют у вашего жилья или у договорной точки на прибрежной трассе. Уточните место при бронировании для удобной передачи авто.",
+      nearbyPlaces: ["Салоники (город)", "Неа Муданья (порт)", "Полуостров Ситония"],
+      faq: [
+        { question: "Можно ли доставить авто к отелю в Неа Калликратии?", answer: "Да. Мы организуем выдачу у отеля или апартаментов; укажите адрес при бронировании." },
+        { question: "Удобна ли Неа Калликратия как база для поездок по Халкидикам?", answer: "Да. Город на основной трассе в полуостров, до Ситонии и Кассандры легко доехать на авто." },
+        { question: "Что если я прилетаю в аэропорт Салоник?", answer: "Забронируйте выдачу в аэропорту или договоритесь о передаче в Неа Калликратии после заселения." },
+      ],
+    },
+    uk: {
+      shortName: "Неа Каллікратія",
+      h1: "Оренда авто в Неа Каллікратії",
+      seoTitle: "Оренда авто в Неа Каллікратії, Халкідіки | Natali Cars",
+      seoDescription:
+        "Оренда авто в Неа Каллікратії з зручною видачею біля пляжу та головної дороги. Ідеально для відпочинку на узбережжі та поїздок по Халкідіках.",
+      introText:
+        "Неа Каллікратія — популярне прибережне місто на шляху в Халкідіки. Ця сторінка допоможе організувати оренду авто з видачею біля вашого помешкання.",
+      areaServed: ["Пляж Неа Каллікратія", "Центр Неа Каллікратії"],
+      pickupLocation: "Точка отримання в Неа Каллікратії",
+      offerName: "Оренда авто в Неа Каллікратії",
+      offerDescription: "Видача біля пляжу для Неа Каллікратії та найближчих курортів.",
+      pickupGuidance:
+        "Видачу в Неа Каллікратії зазвичай організовують біля помешкання або узгодженої точки на прибережній трасі. Уточніть місце при бронюванні для зручної передачі авто.",
+      nearbyPlaces: ["Салоніки (місто)", "Неа Муданія (порт)", "Півострів Сітонія"],
+      faq: [
+        { question: "Чи можна доставити авто до готелю в Неа Каллікратії?", answer: "Так. Ми організуємо видачу біля готелю або апартаментів; вкажіть адресу при бронюванні." },
+        { question: "Чи зручна Неа Каллікратія як база для поїздок по Халкідіках?", answer: "Так. Місто на основній трасі півострова, до Сітонії та Кассандри легко доїхати авто." },
+        { question: "Що якщо я прилітаю в аеропорт Салонік?", answer: "Забронюйте видачу в аеропорту або домовте передачу в Неа Каллікратії після заселення." },
+      ],
+    },
+    el: {
+      shortName: "Νέα Καλλικράτεια",
+      h1: "Ενοικίαση αυτοκινήτου στη Νέα Καλλικράτεια",
+      seoTitle: "Ενοικίαση αυτοκινήτου στη Νέα Καλλικράτεια, Χαλκιδική | Natali Cars",
+      seoDescription:
+        "Ενοικιάστε αυτοκίνητο στη Νέα Καλλικράτεια με βολική παραλαβή κοντά στην παραλία και τον κεντρικό δρόμο. Ιδανικό για παραθαλάσσια διαμονή και εκδρομές στη Χαλκιδική.",
+      introText:
+        "Η Νέα Καλλικράτεια είναι δημοφιλής παραθαλάσσια πόλη στο δρόμο προς τη Χαλκιδική. Αυτή η σελίδα σας βοηθά να οργανώσετε ενοικίαση αυτοκινήτου με παραλαβή κατάλληλη για το κατάλυμά σας.",
+      areaServed: ["Παραλία Νέας Καλλικράτειας", "Κέντρο Νέας Καλλικράτειας"],
+      pickupLocation: "Σημείο παραλαβής Νέα Καλλικράτεια",
+      offerName: "Ενοικίαση αυτοκινήτου Νέα Καλλικράτεια",
+      offerDescription: "Παραλαβή κοντά στην παραλία για Νέα Καλλικράτεια και κοντινά θέρετρα.",
+      pickupGuidance:
+        "Η παραλαβή στη Νέα Καλλικράτεια συνήθως κανονίζεται κοντά στο κατάλυμά σας ή σε συμφωνημένο σημείο στον παραλιακό δρόμο. Επιβεβαιώστε το ακριβές σημείο κατά την κράτηση.",
+      nearbyPlaces: ["Θεσσαλονίκη (πόλη)", "Νέα Μουδανιά (λιμάνι)", "Χερσόνησος Σιθωνία"],
+      faq: [
+        { question: "Μπορώ να παραλάβω αυτοκίνητο στο ξενοδοχείο μου στη Νέα Καλλικράτεια;", answer: "Ναι. Συντονίζουμε παραλαβή στο ξενοδοχείο ή τα διαμερίσματά σας· επιβεβαιώστε τη διεύθυνση κατά την κράτηση." },
+        { question: "Είναι η Νέα Καλλικράτεια καλή βάση για εξερεύνηση της Χαλκιδικής;", answer: "Ναι. Βρίσκεται στον κύριο δρόμο της χερσονήσου· η Σιθωνία και η Κασσάνδρα είναι εύκολα προσβάσιμες με αυτοκίνητο." },
+        { question: "Τι γίνεται αν φτάσω από το αεροδρόμιο Θεσσαλονίκης;", answer: "Κλείστε με παραλαβή στο αεροδρόμιο ή κανονίστε μεταγενέστερη παράδοση στη Νέα Καλλικράτεια μετά την άφιξή σας." },
+      ],
+    },
+    de: {
+      shortName: "Nea Kallikratia",
+      h1: "Mietwagen in Nea Kallikratia",
+      seoTitle: "Mietwagen in Nea Kallikratia, Chalkidiki | Natali Cars",
+      seoDescription:
+        "Mieten Sie ein Auto in Nea Kallikratia mit Abholung am Strand und an der Hauptstraße. Ideal für den Küstenurlaub und Ausflüge in die Chalkidiki.",
+      introText:
+        "Nea Kallikratia ist ein beliebter Küstenort auf dem Weg in die Chalkidiki. Diese Seite hilft Ihnen, einen Mietwagen mit Abholung passend zu Ihrer Unterkunft zu buchen.",
+      areaServed: ["Strand Nea Kallikratia", "Zentrum Nea Kallikratia"],
+      pickupLocation: "Abholpunkt Nea Kallikratia",
+      offerName: "Mietwagen Nea Kallikratia",
+      offerDescription: "Strandnahe Abholung für Nea Kallikratia und nahe gelegene Küstenorte.",
+      pickupGuidance:
+        "Die Abholung in Nea Kallikratia erfolgt in der Regel in der Nähe Ihrer Unterkunft oder an einem vereinbarten Punkt an der Küstenstraße. Bestätigen Sie den genauen Ort bei der Buchung.",
+      nearbyPlaces: ["Thessaloniki (Stadt)", "Nea Moudania (Hafen)", "Halbinsel Sithonia"],
+      faq: [
+        { question: "Kann ich ein Auto zu meinem Hotel in Nea Kallikratia geliefert bekommen?", answer: "Ja. Wir koordinieren die Abholung am oder in der Nähe Ihres Hotels oder Ihrer Ferienwohnung; bestätigen Sie die Adresse bei der Buchung." },
+        { question: "Eignet sich Nea Kallikratia als Basis für die Chalkidiki?", answer: "Ja. Der Ort liegt an der Hauptroute zur Halbinsel; Sithonia und Kassandra sind mit dem Auto gut erreichbar." },
+        { question: "Was, wenn ich vom Flughafen Thessaloniki anreise?", answer: "Buchen Sie mit Abholung am Flughafen oder vereinbaren Sie eine spätere Übergabe in Nea Kallikratia nach Ihrer Ankunft." },
+      ],
+    },
+    bg: {
+      shortName: "Неа Каликратия",
+      h1: "Под наем на кола в Неа Каликратия",
+      seoTitle: "Под наем на кола в Неа Каликратия, Халкидики | Natali Cars",
+      seoDescription:
+        "Наем на кола в Неа Каликратия с удобна получаване до плажа и главния път. Идеално за престой на брега и разходки из Халкидики.",
+      introText:
+        "Неа Каликратия е популярен крайбрежен град по пътя към Халкидики. Тази страница ви помага да организирате наем на кола с получаване подходящо за вашето настаняване.",
+      areaServed: ["Плаж Неа Каликратия", "Център Неа Каликратия"],
+      pickupLocation: "Място за получаване Неа Каликратия",
+      offerName: "Наем на кола Неа Каликратия",
+      offerDescription: "Получаване до плажа за Неа Каликратия и близки курорти.",
+      pickupGuidance:
+        "Получаването в Неа Каликратия обикновено се организира близо до настаняването ви или до договорена точка на крайбрежния път. Потвърдете точното място при резервация.",
+      nearbyPlaces: ["Солун (град)", "Неа Мудания (пристанище)", "Полуостров Ситония"],
+      faq: [
+        { question: "Мога ли да получа кола до хотела в Неа Каликратия?", answer: "Да. Координаираме получаване в или близо до хотела/апартамента; потвърдете адреса при резервация." },
+        { question: "Подходяща ли е Неа Каликратия като база за Халкидики?", answer: "Да. Градът е на главния път към полуострова; Ситония и Касандра са лесно достъпни с кола." },
+        { question: "Ако пристигна от летище Солун?", answer: "Резервирайте с получаване на летището или уговорете по-късна предаване в Неа Каликратия след пристигане." },
+      ],
+    },
+    ro: {
+      shortName: "Nea Kallikratia",
+      h1: "Închirieri auto în Nea Kallikratia",
+      seoTitle: "Închirieri auto în Nea Kallikratia, Halkidiki | Natali Cars",
+      seoDescription:
+        "Închiriați mașină în Nea Kallikratia cu preluare convenabilă lângă plajă și drumul principal. Ideal pentru sejur la mare și excursii în Halkidiki.",
+      introText:
+        "Nea Kallikratia este un oraș litoral popular pe drumul spre Halkidiki. Această pagină vă ajută să organizați închiriere auto cu preluare potrivită cazării dumneavoastră.",
+      areaServed: ["Plaja Nea Kallikratia", "Centrul Nea Kallikratia"],
+      pickupLocation: "Punct de preluare Nea Kallikratia",
+      offerName: "Închirieri auto Nea Kallikratia",
+      offerDescription: "Preluare lângă plajă pentru Nea Kallikratia și stațiuni apropiate.",
+      pickupGuidance:
+        "Preluarea în Nea Kallikratia se organizează de obicei lângă cazare sau la un punct convenit pe drumul litoral. Confirmați locația exactă la rezervare.",
+      nearbyPlaces: ["Thessaloniki (oraș)", "Nea Moudania (port)", "Peninsula Sithonia"],
+      faq: [
+        { question: "Pot primi mașina la hotel în Nea Kallikratia?", answer: "Da. Coordonăm preluarea la sau lângă hotel/apartament; confirmați adresa la rezervare." },
+        { question: "Este Nea Kallikratia o bază bună pentru Halkidiki?", answer: "Da. Se află pe traseul principal al peninsulei; Sithonia și Kassandra sunt ușor accesibile cu mașina." },
+        { question: "Dacă sosesc de la aeroportul Thessaloniki?", answer: "Rezervați cu preluare la aeroport sau stabiliți o predare ulterioară în Nea Kallikratia după sosire." },
+      ],
+    },
+    sr: {
+      shortName: "Неа Каликратија",
+      h1: "Изнајмљивање аута у Неа Каликратији",
+      seoTitle: "Изнајмљивање аута у Неа Каликратији, Халкидики | Natali Cars",
+      seoDescription:
+        "Изнајмите ауто у Неа Каликратији са погодном преузимањем код плаже и главног пута. Идеално за одмор на обали и излете по Халкидикију.",
+      introText:
+        "Неа Каликратија је популарно приобално место на путу ка Халкидикију. Ова страница вам помаже да организујете изнајмљивање аута са преузимањем прилагођеним вашем смештају.",
+      areaServed: ["Плажа Неа Каликратија", "Центар Неа Каликратија"],
+      pickupLocation: "Место преузимања Неа Каликратија",
+      offerName: "Изнајмљивање аута Неа Каликратија",
+      offerDescription: "Преузимање код плаже за Неа Каликратију и оближње курорте.",
+      pickupGuidance:
+        "Преузимање у Неа Каликратији обично се организује близу смештаја или на договореној тачки на обалском путу. Потврдите тачно место при резервацији.",
+      nearbyPlaces: ["Солун (град)", "Неа Муданија (лука)", "Полуострво Ситонија"],
+      faq: [
+        { question: "Могу ли добити ауто испоручено до хотела у Неа Каликратији?", answer: "Да. Координишемо преузимање у или близу хотела/апартмана; потврдите адресу при резервацији." },
+        { question: "Да ли је Неа Каликратија добра база за истраживање Халкидикија?", answer: "Да. Налази се на главном путу полуострва; Ситонија и Касандра су лако доступне аутом." },
+        { question: "Шта ако стигнем са аеродрома Солун?", answer: "Резервишите са преузимањем на аеродрому или договорите каснију предају у Неа Каликратији након доласка." },
       ],
     },
   },
