@@ -45,7 +45,7 @@ export default function SeoHeroSliderCard({
       sx={{
         position: "relative",
         width: "100%",
-        minHeight: { xs: 420, md: 520 },
+        minHeight: { xs: 480, md: 600 },
         overflow: "hidden",
         ...(fullBleedUnderNav && { mt: HERO_NEGATIVE_MARGIN }),
       }}
