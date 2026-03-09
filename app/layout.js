@@ -3,12 +3,15 @@ import "antd/dist/reset.css";
 import Providers from "./providers";
 import LoaderWrapper from "./components/Loader/LoaderWrapper";
 import Script from "next/script";
+import { headers } from "next/headers";
 import { getSeoConfig } from "@config/seo";
 import { getPrimaryKeywords } from "@config/seoKeywords";
 import {
   getDefaultLocale,
+  normalizeLocale,
   getSupportedLocales,
 } from "@domain/locationSeo/locationSeoService";
+import { LOCALE_REQUEST_HEADER_NAME } from "@domain/locationSeo/locationSeoKeys";
 
 // Use fallback data for global layout metadata (layout loads before pages)
 const seoConfig = getSeoConfig();
@@ -107,9 +110,12 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const requestHeaders = await headers();
+  const locale = normalizeLocale(requestHeaders.get(LOCALE_REQUEST_HEADER_NAME) || defaultLocale);
+
   return (
-    <html lang="en" translate="no">
+    <html lang={locale} translate="no">
       <head>
         <meta name="color-scheme" content="light only" />
         <meta name="supported-color-schemes" content="light" />

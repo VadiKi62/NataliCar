@@ -14,6 +14,7 @@ export const SUPPORTED_LOCALES = [
 export const REQUIRED_CONTENT_LOCALES = ["en", "ru", "uk", "el"] as const;
 
 export const LOCALE_COOKIE_NAME = "NEXT_LOCALE" as const;
+export const LOCALE_REQUEST_HEADER_NAME = "x-site-locale" as const;
 
 export const LOCATION_ROUTE_SEGMENT = "locations" as const;
 export const CARS_ROUTE_SEGMENT = "cars" as const;

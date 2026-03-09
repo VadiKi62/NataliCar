@@ -280,11 +280,73 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       },
     },
   },
+  bg: {
+    hub: {
+      h1: "Коли под наем в Халкидики и Солун",
+      seoTitle: "Коли под наем в Халкидики, Солун и летището | Natali Cars",
+      seoDescription:
+        "Резервирайте кола под наем в Халкидики, град Солун и летище Солун с удобни места за получаване, прозрачни цени и директна поддръжка.",
+      introText:
+        "Natali Cars предлага коли под наем в основните райони на Халкидики и Солун чрез една система за резервации и локализирани SEO страници.",
+    },
+    car: {
+      seoTitleTemplate: "Наем на {carModel} в Халкидики и Солун | Natali Cars",
+      seoDescriptionTemplate:
+        "Наемете {carModel} с получаване в {locationName}. Прозрачни цени, директна поддръжка и гъвкаво предаване от Natali Cars.",
+      introTemplate:
+        "Изберете {carModel} и организирайте получаване в {locationName}. Страницата е локализирана за регионално SEO и е свързана с локационните hub страници.",
+    },
+    links: {
+      hubToLocationsTitle: "Разгледайте локациите за коли под наем",
+      locationToCarsTitle: "Налични автомобили за тази локация",
+      locationToHubLabel: "Обратно към основния hub",
+      locationToParentLabel: "Обратно към родителската локация",
+      locationToChildrenTitle: "Подлокации",
+      locationToSiblingTitle: "Алтернативни близки локации",
+      carsToLocationsTitle: "Популярни места за получаване",
+      carsToHubLabel: "Обратно към основния hub",
+      carsListTitle: "Разгледайте моделите автомобили",
+      mainHubLabel: "Основен hub за коли под наем",
+      locationSearchCtaLabel: "Търсене на автомобили в {locationName}",
+      locationHeroCtaLabel: "Намерете своя автомобил",
+      pickupGuidanceTitle: "Информация за получаване",
+      nearbyPlacesTitle: "Близки места",
+      localFaqTitle: "Често задавани въпроси",
+      navLocationsDropdownDescription:
+        "Получаване и връщане в Солун, летището и на полуостров Халкидики. Изберете район за подробности и търсене на автомобил.",
+    },
+    staticPages: {
+      [STATIC_PAGE_KEYS.CONTACTS]: {
+        seoTitle: "Контакти Natali Cars | Поддръжка за коли под наем",
+        seoDescription:
+          "Свържете се с Natali Cars за въпроси относно резервации, получаване на автомобил и поддръжка за коли под наем в Халкидики и Солун.",
+      },
+      [STATIC_PAGE_KEYS.PRIVACY_POLICY]: {
+        seoTitle: "Политика за поверителност | Natali Cars",
+        seoDescription:
+          "Вижте как Natali Cars обработва и защитава личните данни при резервации и комуникация с клиенти.",
+      },
+      [STATIC_PAGE_KEYS.TERMS_OF_SERVICE]: {
+        seoTitle: "Условия за ползване | Natali Cars",
+        seoDescription:
+          "Прегледайте условията за ползване на Natali Cars, задълженията при резервация и отговорностите по договора за наем.",
+      },
+      [STATIC_PAGE_KEYS.COOKIE_POLICY]: {
+        seoTitle: "Политика за бисквитки | Natali Cars",
+        seoDescription:
+          "Научете какви бисквитки използва Natali Cars и как те подпомагат резервациите, анализа и работата на сайта.",
+      },
+      [STATIC_PAGE_KEYS.RENTAL_TERMS]: {
+        seoTitle: "Условия за наем | Natali Cars",
+        seoDescription:
+          "Прегледайте условията за наем на Natali Cars, застрахователното покритие и правилата за предаване на автомобила преди резервация.",
+      },
+    },
+  },
 };
 
 const locationHeroCtaLabelOverrides: Partial<Record<SupportedLocale, string>> = {
   de: "Finden Sie Ihr Auto",
-  bg: "Намерете своя автомобил",
   ro: "Găsiți mașina dvs.",
   sr: "Pronađite svoj automobil",
 };

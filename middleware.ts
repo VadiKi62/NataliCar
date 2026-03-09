@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   LOCALE_COOKIE_NAME,
+  LOCALE_REQUEST_HEADER_NAME,
   type LocationId,
 } from "@domain/locationSeo/locationSeoKeys";
 import {
@@ -95,6 +96,17 @@ function withLocaleCookie(response: NextResponse, locale: string): NextResponse 
   return response;
 }
 
+function nextWithLocaleHeader(request: NextRequest, locale: string): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(LOCALE_REQUEST_HEADER_NAME, locale);
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+}
+
 export function middleware(request: NextRequest) {
   const normalizedPathname = normalizePathname(request.nextUrl.pathname);
 
@@ -157,10 +169,10 @@ export function middleware(request: NextRequest) {
     }
 
     if (request.cookies.get(LOCALE_COOKIE_NAME)?.value !== locale) {
-      return withLocaleCookie(NextResponse.next(), locale);
+      return withLocaleCookie(nextWithLocaleHeader(request, locale), locale);
     }
 
-    return NextResponse.next();
+    return nextWithLocaleHeader(request, locale);
   }
 
   // Non-prefixed request -> locale-prefixed canonical URL.
