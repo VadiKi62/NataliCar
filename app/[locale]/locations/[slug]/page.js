@@ -13,7 +13,12 @@ import {
   isSupportedLocale,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
+import { LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
 import { buildAutoRentalJsonLd } from "@/services/seo/jsonLdBuilder";
+import {
+  getAirportPrioritySeo,
+  isPriorityAirportLocation,
+} from "@/services/seo/airportPrioritySeo";
 import { buildLocationMetadata } from "@/services/seo/metadataBuilder";
 import {
   SeoFaqBlock,
@@ -69,16 +74,27 @@ export default async function LocationSeoPage({ params }) {
 
   const locationLinks = buildHubAndLocationLinks(locale, location);
   const links = dictionary.links;
+  const prioritySeo = isPriorityAirportLocation(location)
+    ? getAirportPrioritySeo(locale)
+    : null;
+  const prioritizedTitle = prioritySeo?.h1 || location.h1;
+  const prioritizedIntroText = prioritySeo?.introText || location.introText;
 
-  const heroImages = ["/car-rental-thessaloniki-airport.png"];
+  const locationHeroImage =
+    location.id === LOCATION_IDS.NEA_KALLIKRATIA
+      ? "/car-rental-neakallikratia.png"
+      : location.id === LOCATION_IDS.HALKIDIKI
+        ? "/car-rental-halkidiki.png"
+      : "/car-rental-thessaloniki-airport.png";
+  const heroImages = [locationHeroImage];
   const ctaHref = locationLinks.hubPath;
   const ctaLabel = links.locationHeroCtaLabel;
 
   return (
     <Feed locale={locale} isMain={false}>
       <SeoHeroSliderCard
-        title={location.h1}
-        paragraphs={location.introText ? [location.introText] : []}
+        title={prioritizedTitle}
+        paragraphs={prioritizedIntroText ? [prioritizedIntroText] : []}
         imageUrls={heroImages}
         imageAlt={location.slug}
         ctaHref={ctaHref}
@@ -97,7 +113,7 @@ export default async function LocationSeoPage({ params }) {
       >
         <Box sx={{ maxWidth: 980, mx: "auto" }}>
           <JsonLdScript id={`location-jsonld-${location.id}-${locale}`} data={locationJsonLd} />
-          <SeoIntroBlock title={location.h1} introText={location.introText} />
+          <SeoIntroBlock title={prioritizedTitle} introText={prioritizedIntroText} />
           <SeoPickupGuidanceBlock
             title={links.pickupGuidanceTitle}
             pickupGuidance={location.pickupGuidance}

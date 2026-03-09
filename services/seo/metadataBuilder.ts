@@ -14,6 +14,7 @@ import {
 } from "@domain/locationSeo/locationSeoService";
 import type { StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
 import type { LocationSeoResolved } from "@domain/locationSeo/types";
+import { getAirportPrioritySeo, isPriorityAirportLocation } from "./airportPrioritySeo";
 import { buildHreflangAlternates } from "./hreflangBuilder";
 import { toAbsoluteUrl } from "./urlBuilder";
 
@@ -95,10 +96,15 @@ export function buildHubMetadata(localeCandidate: string | undefined | null): Me
 
 export function buildLocationMetadata(location: LocationSeoResolved): Metadata {
   const canonicalPath = getLocationPath(location.locale, location.slug);
+  const prioritySeo = isPriorityAirportLocation(location)
+    ? getAirportPrioritySeo(location.locale)
+    : null;
+  const title = prioritySeo?.seoTitle || location.seoTitle;
+  const description = prioritySeo?.seoDescription || location.seoDescription;
 
   return buildBaseMetadata({
-    title: location.seoTitle,
-    description: location.seoDescription,
+    title,
+    description,
     canonicalPath,
     alternatePathsByLocale: getLocationAlternatesById(location.id),
     locale: location.locale,

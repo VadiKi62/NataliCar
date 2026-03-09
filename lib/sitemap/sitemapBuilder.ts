@@ -8,7 +8,7 @@ import {
   getStaticPagePath,
   getSupportedLocales,
 } from "@domain/locationSeo/locationSeoService";
-import { STATIC_PAGE_KEYS, type StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
+import { LOCATION_IDS, STATIC_PAGE_KEYS, type StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
 import { buildHreflangAlternates } from "@/services/seo/hreflangBuilder";
 import { toAbsoluteUrl } from "@/services/seo/urlBuilder";
 
@@ -43,6 +43,17 @@ function buildLocaleStaticAlternates(pageKey: StaticPageKey): Record<string, str
     getSupportedLocales().map((locale) => [locale, getStaticPagePath(locale, pageKey)])
   );
   return buildHreflangAlternates(alternatesByLocale);
+}
+
+function getLocationPriority(
+  locationId: string,
+  _locale: string,
+  defaultLocale: string
+): number {
+  if (locationId === LOCATION_IDS.THESSALONIKI_AIRPORT) {
+    return 1;
+  }
+  return _locale === defaultLocale ? 0.85 : 0.8;
 }
 
 export function validateSitemapEntries(entries: MetadataRoute.Sitemap) {
@@ -151,7 +162,7 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
         url: toAbsoluteUrl(`/${locale}/locations/${localizedLocation.slug}`),
         lastModified: nowIso,
         changeFrequency: "weekly",
-        priority: locale === defaultLocale ? 0.85 : 0.8,
+        priority: getLocationPriority(location.id, locale, defaultLocale),
         alternates: {
           languages: alternates,
         },
