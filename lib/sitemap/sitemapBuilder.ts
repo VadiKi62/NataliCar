@@ -112,18 +112,7 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     });
   }
 
-  const carsIndexAlternates = buildHreflangAlternates(
-    Object.fromEntries(supportedLocales.map((l) => [l, `/${l}/cars`]))
-  );
-  for (const locale of supportedLocales) {
-    entries.push({
-      url: toAbsoluteUrl(`/${locale}/cars`),
-      lastModified: nowIso,
-      changeFrequency: "weekly",
-      priority: locale === defaultLocale ? 0.8 : 0.75,
-      alternates: { languages: carsIndexAlternates },
-    });
-  }
+  // NOTE: /{locale}/cars is a redirect to /{locale}; keep redirect URLs out of sitemap.
 
   const staticPages = [
     STATIC_PAGE_KEYS.CONTACTS,

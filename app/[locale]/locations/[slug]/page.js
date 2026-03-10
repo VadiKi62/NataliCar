@@ -85,6 +85,8 @@ export default async function LocationSeoPage({ params }) {
       ? "/car-rental-neakallikratia.png"
       : location.id === LOCATION_IDS.HALKIDIKI
         ? "/car-rental-halkidiki.png"
+      : location.id === LOCATION_IDS.THESSALONIKI
+        ? "/car-rental-thessaloniki.png"
       : "/car-rental-thessaloniki-airport.png";
   const heroImages = [locationHeroImage];
   const ctaHref = locationLinks.hubPath;

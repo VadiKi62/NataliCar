@@ -9,11 +9,11 @@ import {
   isSupportedLocale,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
-import { buildHubMetadata } from "@/services/seo/metadataBuilder";
+import { buildLocationsIndexMetadata } from "@/services/seo/metadataBuilder";
 import { SeoIntroBlock, SeoLinksBlock } from "@app/components/seo/SeoContentBlocks";
 
 export async function generateMetadata({ params }) {
-  return buildHubMetadata(params.locale);
+  return buildLocationsIndexMetadata(params.locale);
 }
 
 export default function LocalizedLocationsIndexPage({ params }) {

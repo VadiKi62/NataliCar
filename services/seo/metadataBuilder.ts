@@ -8,6 +8,7 @@ import {
   getLocationAlternatesById,
   getLocationPath,
   getLocaleRootPath,
+  getSupportedLocales,
   getStaticPagePath,
   getStaticPageSeo,
   normalizeLocale,
@@ -90,6 +91,28 @@ export function buildHubMetadata(localeCandidate: string | undefined | null): Me
     description: hubSeo.seoDescription,
     canonicalPath,
     alternatePathsByLocale: getHubAlternates(),
+    locale,
+  });
+}
+
+export function buildLocationsIndexMetadata(
+  localeCandidate: string | undefined | null
+): Metadata {
+  const locale = normalizeLocale(localeCandidate);
+  const hubSeo = getHubSeo(locale);
+  const canonicalPath = `/${locale}/locations`;
+  const alternatePathsByLocale = Object.fromEntries(
+    getSupportedLocales().map((supportedLocale) => [
+      supportedLocale,
+      `/${supportedLocale}/locations`,
+    ])
+  );
+
+  return buildBaseMetadata({
+    title: hubSeo.seoTitle,
+    description: hubSeo.seoDescription,
+    canonicalPath,
+    alternatePathsByLocale,
     locale,
   });
 }

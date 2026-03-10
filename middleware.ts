@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   LOCALE_COOKIE_NAME,
   LOCALE_REQUEST_HEADER_NAME,
+  LOCATION_IDS,
   type LocationId,
 } from "@domain/locationSeo/locationSeoKeys";
 import {
@@ -120,6 +121,20 @@ export function middleware(request: NextRequest) {
     cookieLocale,
     acceptLanguageHeader: headerLocale,
   });
+
+  // Root URL -> localized Thessaloniki Airport location page.
+  if (!isLocalePrefixedPath(normalizedPathname) && normalizedPathname === "/") {
+    const airportLocation = getLocationById(
+      detectedLocale,
+      LOCATION_IDS.THESSALONIKI_AIRPORT
+    );
+    const airportPath = airportLocation
+      ? getLocationPath(detectedLocale, airportLocation.slug)
+      : withLocalePrefix(detectedLocale, normalizedPathname);
+    const target = withSearchParams(airportPath, request);
+    const url = new URL(target, request.url);
+    return withLocaleCookie(NextResponse.redirect(url, 301), detectedLocale);
+  }
 
   // Old non-prefixed location URLs -> locale-prefixed /{locale}/locations/{slug}
   const legacyLocationRedirect = buildLegacyLocationRedirect(

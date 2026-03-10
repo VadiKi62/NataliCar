@@ -262,7 +262,13 @@ const EditOrderModal = ({
 
   // Сегодня (Athens timezone) для ограничения выбора начала аренды
   const todayStr = athensNow().format("YYYY-MM-DD");
-  const locations = company.locations.map((loc) => loc.name);
+  const locations = [
+    "Airport",
+    "Thessaloniki",
+    "Nea Kalikratia",
+    "Halkidiki",
+  ];
+  // const locations = company.locations.map((loc) => loc.name);
 
   // Conflict check for conflict order badge
   useEffect(() => {

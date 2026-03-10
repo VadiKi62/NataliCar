@@ -66,7 +66,13 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
   const carApiIdentifier = car?.regNumber || car?.carNumber || "";
 
-  const locations = company.locations.map((loc) => loc.name);
+  const locations = [
+    "Airport",
+    "Thessaloniki",
+    "Nea Kalikratia",
+    "Halkidiki",
+  ];
+  // const locations = company.locations.map((loc) => loc.name);
 
   const {
     defaultStartHour,

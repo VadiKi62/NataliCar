@@ -1,6 +1,19 @@
 import { redirect } from "next/navigation";
-import { getDefaultLocale } from "@domain/locationSeo/locationSeoService";
+import { LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
+import {
+  getDefaultLocale,
+  getLocationById,
+  getLocationPath,
+} from "@domain/locationSeo/locationSeoService";
 
 export default function HomePageRedirect() {
-  redirect(`/${getDefaultLocale()}`);
+  const locale = getDefaultLocale();
+  const airportLocation = getLocationById(locale, LOCATION_IDS.THESSALONIKI_AIRPORT);
+  const fallbackPath = `/${locale}`;
+
+  redirect(
+    airportLocation
+      ? getLocationPath(locale, airportLocation.slug)
+      : fallbackPath
+  );
 }

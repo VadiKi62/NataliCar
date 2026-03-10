@@ -4,48 +4,30 @@
  * Tests verify that field updates are formatted correctly and state is updated
  * even when backend doesn't return updated fields.
  */
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const ATHENS_TZ = "Europe/Athens";
 
 describe("handleFieldUpdate formatting and merge logic", () => {
-  // Mock dayjs
-  const mockDayjs = (dateStr) => {
-    const date = new Date(dateStr);
-    return {
-      tz: () => ({
-        startOf: () => ({
-          utc: () => ({
-            toISOString: () => date.toISOString(),
-          }),
-        }),
-      }),
-      hour: (h) => ({
-        minute: (m) => ({
-          utc: () => ({
-            toISOString: () => {
-              const d = new Date(date);
-              d.setHours(h, m);
-              return d.toISOString();
-            },
-          }),
-        }),
-      }),
-    };
-  };
-
   describe("Date field formatting", () => {
     test("rentalStartDate: '2026-01-06' => ISO string in Athens timezone", () => {
       const value = "2026-01-06";
-      const dateTime = mockDayjs(value);
-      const isoString = dateTime.tz("Europe/Athens").startOf("day").utc().toISOString();
+      const isoString = dayjs.tz(value, ATHENS_TZ).startOf("day").utc().toISOString();
       
-      expect(isoString).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+      // Athens in January is UTC+2, so midnight local = 22:00 previous day in UTC
+      expect(isoString).toBe("2026-01-05T22:00:00.000Z");
     });
 
     test("rentalEndDate: '2026-01-10' => ISO string in Athens timezone", () => {
       const value = "2026-01-10";
-      const dateTime = mockDayjs(value);
-      const isoString = dateTime.tz("Europe/Athens").startOf("day").utc().toISOString();
+      const isoString = dayjs.tz(value, ATHENS_TZ).startOf("day").utc().toISOString();
       
-      expect(isoString).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+      expect(isoString).toBe("2026-01-09T22:00:00.000Z");
     });
   });
 
@@ -53,21 +35,33 @@ describe("handleFieldUpdate formatting and merge logic", () => {
     test("timeIn: '13:45' + existingDate => ISO string", () => {
       const value = "13:45";
       const existingDate = new Date("2026-01-06T12:00:00Z");
-      const [hours, minutes] = value.split(":");
-      const dateTime = mockDayjs(existingDate.toISOString());
-      const isoString = dateTime.hour(parseInt(hours, 10)).minute(parseInt(minutes, 10)).utc().toISOString();
+      const [hours, minutes] = value.split(":").map(Number);
+      const isoString = dayjs(existingDate)
+        .tz(ATHENS_TZ)
+        .hour(hours)
+        .minute(minutes)
+        .second(0)
+        .millisecond(0)
+        .utc()
+        .toISOString();
       
-      expect(isoString).toContain("13:45");
+      expect(isoString).toBe("2026-01-06T11:45:00.000Z");
     });
 
     test("timeOut: '10:30' + existingDate => ISO string", () => {
       const value = "10:30";
       const existingDate = new Date("2026-01-10T12:00:00Z");
-      const [hours, minutes] = value.split(":");
-      const dateTime = mockDayjs(existingDate.toISOString());
-      const isoString = dateTime.hour(parseInt(hours, 10)).minute(parseInt(minutes, 10)).utc().toISOString();
+      const [hours, minutes] = value.split(":").map(Number);
+      const isoString = dayjs(existingDate)
+        .tz(ATHENS_TZ)
+        .hour(hours)
+        .minute(minutes)
+        .second(0)
+        .millisecond(0)
+        .utc()
+        .toISOString();
       
-      expect(isoString).toContain("10:30");
+      expect(isoString).toBe("2026-01-10T08:30:00.000Z");
     });
   });
 

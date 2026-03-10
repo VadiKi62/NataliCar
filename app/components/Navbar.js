@@ -199,7 +199,7 @@ export default function NavBar({
   const [locationsAnchor, setLocationsAnchor] = useState(null);
   const locationsButtonRef = useRef(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { hubLinks, navLocationsDescription } = useNavLocations();
+  const { hubLinks } = useNavLocations();
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [selectedDiscount, setSelectedDiscount] = useState(0);
   const [discountStartDate, setDiscountStartDate] = useState(null);
@@ -823,45 +823,23 @@ export default function NavBar({
             disablePadding: true,
           }}
         >
-          <Box sx={{ display: "flex", flexDirection: "row", minHeight: 160 }}>
-            <Box
-              sx={{
-                flex: "0 0 48%",
-                p: 2,
-                borderRight: 1,
-                borderColor: "divider",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <Typography variant="body2" sx={{ lineHeight: 1.5, color: "text.secondary" }}>
-                {navLocationsDescription}
-              </Typography>
-            </Box>
-            <Box sx={{ flex: "1 1 auto", py: 1.5, px: 1 }}>
-              <Typography
-                variant="overline"
-                sx={{ px: 1.5, color: "text.secondary", fontWeight: 600 }}
-              >
-                {t("header.locations") || "Locations"}
-              </Typography>
-              <List dense disablePadding>
-                {hubLinks?.map((link) => (
-                  <ListItem key={link.href} disablePadding>
-                    <Link
-                      href={link.href}
-                      onClick={handleLocationsClose}
-                      style={{ textDecoration: "none", color: "inherit", width: "100%", padding: "6px 12px" }}
-                    >
-                      <ListItemText
-                        primary={link.label}
-                        primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
-                      />
-                    </Link>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
+          <Box sx={{ py: 1.5, px: 1 }}>
+            <List dense disablePadding>
+              {hubLinks?.map((link) => (
+                <ListItem key={link.href} disablePadding>
+                  <Link
+                    href={link.href}
+                    onClick={handleLocationsClose}
+                    style={{ textDecoration: "none", color: "inherit", width: "100%", padding: "6px 12px" }}
+                  >
+                    <ListItemText
+                      primary={link.label}
+                      primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
+                    />
+                  </Link>
+                </ListItem>
+              ))}
+            </List>
           </Box>
         </Menu>
 
@@ -1029,12 +1007,6 @@ export default function NavBar({
                 </ListItem>
                 {hubLinks?.length > 0 && (
                   <>
-                    <ListItem sx={{ pt: 1, pb: 0 }}>
-                      <ListItemText
-                        primary={t("header.locations") || "Locations"}
-                        primaryTypographyProps={{ variant: "overline", color: "text.secondary" }}
-                      />
-                    </ListItem>
                     {hubLinks.map((link) => (
                       <ListItem key={link.href} button component={Link} href={link.href} onClick={() => setDrawerOpen(false)}>
                         <ListItemText primary={link.label} inset />

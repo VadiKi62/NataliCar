@@ -114,8 +114,14 @@ const BookingModal = ({
   });
   const [timeErrors, setTimeErrors] = useState(null);
   const [orderNumber, setOrderNumber] = useState("");
-  // Массив мест из базы (company.locations)
-  const placeOptions = company?.locations?.map((loc) => loc.name) || [];
+  // Временно ограничиваем выпадающий список 4 локациями.
+  const placeOptions = [
+    "Airport",
+    "Thessaloniki",
+    "Nea Kalikratia",
+    "Halkidiki",
+  ];
+  // const placeOptions = company?.locations?.map((loc) => loc.name) || [];
   const [placeIn, setPlaceIn] = useState("");
   const [placeOut, setPlaceOut] = useState("");
   const [flightNumber, setFlightNumber] = useState("");

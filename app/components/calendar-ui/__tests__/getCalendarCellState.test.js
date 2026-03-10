@@ -74,8 +74,9 @@ describe("getCalendarCellState (pure)", () => {
     expect(cellState.isPastDay).toBe(false);
   });
 
-  test("🧭 Edge: previous day IS past day", () => {
-    const cellState = createCellState(withDate("2026-01-09T23:59:59Z"));
+  test("🧭 Edge: full previous day IS past day (timezone safe)", () => {
+    // Use start of previous UTC day so it remains "past day" in any local timezone.
+    const cellState = createCellState(withDate("2026-01-09T00:00:00.000Z"));
     expect(cellState.isPastDay).toBe(true);
   });
 
