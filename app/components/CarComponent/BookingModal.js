@@ -57,6 +57,12 @@ import {
   fromServerUTC,
   formatTimeHHMM,
 } from "@/domain/time/athensTime";
+import {
+  DEFAULT_BOOKING_LOCATION,
+  LOCATION_DIVIDER_BEFORE,
+  ORDERED_LOCATION_OPTIONS,
+  SELECTED_LOCATION_STORAGE_KEY,
+} from "@/domain/orders/locationOptions";
 import "@/styles/animations.css";
 
 // Extend dayjs with plugins
@@ -114,13 +120,7 @@ const BookingModal = ({
   });
   const [timeErrors, setTimeErrors] = useState(null);
   const [orderNumber, setOrderNumber] = useState("");
-  // Временно ограничиваем выпадающий список 4 локациями.
-  const placeOptions = [
-    "Airport",
-    "Thessaloniki",
-    "Nea Kalikratia",
-    "Halkidiki",
-  ];
+  const placeOptions = ORDERED_LOCATION_OPTIONS;
   // const placeOptions = company?.locations?.map((loc) => loc.name) || [];
   const [placeIn, setPlaceIn] = useState("");
   const [placeOut, setPlaceOut] = useState("");
@@ -437,8 +437,13 @@ const BookingModal = ({
       setInsurance("TPL"); // Всегда по умолчанию внутренний код ОСАГО
       setChildSeats(0); // Всегда по умолчанию 0
       setOrderNumber(generateOrderNumber());
-      setPlaceIn("Halkidikí"); // Значение по умолчанию
-      setPlaceOut("Halkidikí"); // Значение по умолчанию
+      const savedLocation =
+        typeof window !== "undefined"
+          ? localStorage.getItem(SELECTED_LOCATION_STORAGE_KEY)
+          : null;
+      const nextLocation = savedLocation || DEFAULT_BOOKING_LOCATION;
+      setPlaceIn(nextLocation);
+      setPlaceOut(nextLocation);
       // Подтягиваем franchise из базы/prop автомобиля при открытии модалки
       // 1) если пришёл вместе с car — используем его
       if (car && typeof car.franchise !== "undefined") {
@@ -597,8 +602,7 @@ const BookingModal = ({
 
   // Unified close handler - only allow close button (not backdrop or Escape)
   // This matches the default behavior contract: transactional modals should not close accidentally
-  const handleDialogClose = (event, reason) => {
-    // Only close for button clicks and programmatic closes
+  const handleDialogClose = (_event, reason) => {
     // Block backdrop clicks and Escape key (default: closeOnBackdropClick=false, closeOnEscape=false)
     if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
       handleModalClose();
@@ -910,6 +914,7 @@ const BookingModal = ({
                             t("order.pickupLocation") || "Место получения"
                           }
                           options={placeOptions}
+                          dividerBeforeOption={LOCATION_DIVIDER_BEFORE}
                           value={placeIn}
                           onInputChange={(event, newInputValue) =>
                             setPlaceIn(newInputValue)
@@ -933,6 +938,7 @@ const BookingModal = ({
                       <BookingLocationAutocomplete
                         label={t("order.pickupLocation") || "Место получения"}
                         options={placeOptions}
+                        dividerBeforeOption={LOCATION_DIVIDER_BEFORE}
                         value={placeIn}
                         onInputChange={(event, newInputValue) =>
                           setPlaceIn(newInputValue)
@@ -946,6 +952,7 @@ const BookingModal = ({
                     <BookingLocationAutocomplete
                       label={t("order.returnLocation") || "Место возврата"}
                       options={placeOptions}
+                      dividerBeforeOption={LOCATION_DIVIDER_BEFORE}
                       value={placeOut}
                       onInputChange={(event, newInputValue) =>
                         setPlaceOut(newInputValue)

@@ -52,6 +52,10 @@ import {
   toServerUTC,
   formatTimeHHMM,
 } from "@/domain/time/athensTime";
+import {
+  LOCATION_DIVIDER_BEFORE,
+  ORDERED_LOCATION_OPTIONS,
+} from "@/domain/orders/locationOptions";
 import { getBusinessRentalDaysByMinutes } from "@/domain/orders/numberOfDays";
 import { RenderTextField } from "@/app/components/ui/inputs/Fields";
 
@@ -66,12 +70,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
   const carApiIdentifier = car?.regNumber || car?.carNumber || "";
 
-  const locations = [
-    "Airport",
-    "Thessaloniki",
-    "Nea Kalikratia",
-    "Halkidiki",
-  ];
+  const locations = ORDERED_LOCATION_OPTIONS;
   // const locations = company.locations.map((loc) => loc.name);
 
   const {
@@ -83,8 +82,8 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
 
   const [bookDates, setBookedDates] = useState({ start: null, end: null });
   const [orderDetails, setOrderDetails] = useState({
-    placeIn: "Nea Kalikratia",
-    placeOut: "Nea Kalikratia",
+    placeIn: "Nea Kallikratia",
+    placeOut: "Nea Kallikratia",
     customerName: "",
     phone: "",
     email: "",
@@ -578,6 +577,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           <BookingLocationAutocomplete
             label={t("order.pickupLocation")}
             options={locations}
+            dividerBeforeOption={LOCATION_DIVIDER_BEFORE}
             value={orderDetails.placeIn || ""}
             onChange={(_, newValue) =>
               handleFieldChange("placeIn", newValue || "")
@@ -590,6 +590,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           <BookingLocationAutocomplete
             label={t("order.returnLocation")}
             options={locations}
+            dividerBeforeOption={LOCATION_DIVIDER_BEFORE}
             value={orderDetails.placeOut || ""}
             onChange={(_, newValue) =>
               handleFieldChange("placeOut", newValue || "")

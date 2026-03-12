@@ -57,6 +57,10 @@ import { getSecondDriverPriceLabelValue } from "@utils/secondDriverPricing";
 import { toggleConfirmedStatus, getConfirmedOrders } from "@utils/action";
 import { RenderSelectField } from "@/app/components/ui/inputs/Fields";
 import { useTranslation } from "react-i18next";
+import {
+  LOCATION_DIVIDER_BEFORE,
+  ORDERED_LOCATION_OPTIONS,
+} from "@/domain/orders/locationOptions";
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
@@ -262,13 +266,29 @@ const EditOrderModal = ({
 
   // Сегодня (Athens timezone) для ограничения выбора начала аренды
   const todayStr = athensNow().format("YYYY-MM-DD");
-  const locations = [
-    "Airport",
-    "Thessaloniki",
-    "Nea Kalikratia",
-    "Halkidiki",
-  ];
+  const locations = ORDERED_LOCATION_OPTIONS;
   // const locations = company.locations.map((loc) => loc.name);
+  const renderLocationOption = (listItemProps, option) => {
+    const hasDivider = option === LOCATION_DIVIDER_BEFORE;
+
+    return (
+      <li
+        {...listItemProps}
+        style={{
+          ...listItemProps.style,
+          ...(hasDivider
+            ? {
+                borderTop: "2px solid #000",
+                marginTop: 4,
+                paddingTop: 10,
+              }
+            : {}),
+        }}
+      >
+        {option}
+      </li>
+    );
+  };
 
   // Conflict check for conflict order badge
   useEffect(() => {
@@ -1678,6 +1698,7 @@ const EditOrderModal = ({
                   <Autocomplete
                     freeSolo
                     options={locations}
+                    renderOption={renderLocationOption}
                     value={editedOrder.placeIn || ""}
                     onChange={(_, newValue) => {
                       if (!permissions.fieldPermissions.placeIn) return;
@@ -1748,6 +1769,7 @@ const EditOrderModal = ({
                   <Autocomplete
                     freeSolo
                     options={locations}
+                    renderOption={renderLocationOption}
                     value={editedOrder.placeOut || ""}
                     onChange={(_, newValue) =>
                       updateField("placeOut", newValue || "")

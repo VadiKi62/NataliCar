@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import { styled } from "@mui/system";
 import Image from "next/image";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import {
   MenuItem,
   TextField,
   Chip,
+  Divider,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useSession, signOut } from "next-auth/react";
@@ -39,13 +40,24 @@ import {
 } from "@mui/material";
 import dynamic from "next/dynamic";
 import {
+  getLocationByAnySlug,
+  getLocationById,
+  getLocationByLocaleAndSlug,
   isSupportedLocale,
   normalizeLocale,
   switchPathLocale,
   withLocalePrefix,
 } from "@domain/locationSeo/locationSeoService";
+import {
+  LOCATION_IDS,
+  LOCATION_ROUTE_SEGMENT,
+} from "@domain/locationSeo/locationSeoKeys";
 import { useNavLocations } from "@app/context/NavLocationsContext";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import {
+  ORDERED_LOCATION_OPTIONS,
+  SELECTED_LOCATION_STORAGE_KEY,
+} from "@/domain/orders/locationOptions";
 
 const LANG_LABELS = {
   en: "English",
@@ -259,6 +271,42 @@ export default function NavBar({
       ? normalizeLocale(pathSegments[0])
       : null;
   const effectiveLocale = urlLocale || lang || "en";
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !pathname || isAdmin) return;
+
+    const segments = pathname.split("/").filter(Boolean);
+    const localeSegment = segments[0];
+    const routeSegment = segments[1];
+    const locationSlug = segments[2];
+
+    if (
+      !isSupportedLocale(localeSegment) ||
+      routeSegment !== LOCATION_ROUTE_SEGMENT ||
+      !locationSlug
+    ) {
+      return;
+    }
+
+    const locale = normalizeLocale(localeSegment);
+    const location =
+      getLocationByLocaleAndSlug(locale, locationSlug) ||
+      getLocationByAnySlug(locale, locationSlug);
+    if (!location) return;
+
+    const englishLocation = getLocationById("en", location.id);
+    const englishShortName = englishLocation?.shortName || "";
+    const bookingLocation =
+      location.id === LOCATION_IDS.THESSALONIKI_AIRPORT
+        ? "Airport"
+        : ORDERED_LOCATION_OPTIONS.find(
+            (option) => option.toLowerCase() === englishShortName.toLowerCase()
+          );
+
+    if (bookingLocation) {
+      localStorage.setItem(SELECTED_LOCATION_STORAGE_KEY, bookingLocation);
+    }
+  }, [pathname, isAdmin]);
 
   const localeLink = (path) => (isAdmin ? path : withLocalePrefix(effectiveLocale, path));
   const homeHref = localeLink("/");
@@ -813,8 +861,10 @@ export default function NavBar({
                 mt: 1.5,
                 minWidth: 320,
                 maxWidth: 420,
+                maxHeight: "70vh",
                 borderRadius: 2,
-                overflow: "hidden",
+                overflowX: "hidden",
+                overflowY: "auto",
               },
             },
           }}
@@ -825,19 +875,29 @@ export default function NavBar({
         >
           <Box sx={{ py: 1.5, px: 1 }}>
             <List dense disablePadding>
-              {hubLinks?.map((link) => (
-                <ListItem key={link.href} disablePadding>
-                  <Link
-                    href={link.href}
-                    onClick={handleLocationsClose}
-                    style={{ textDecoration: "none", color: "inherit", width: "100%", padding: "6px 12px" }}
-                  >
-                    <ListItemText
-                      primary={link.label}
-                      primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
+              {hubLinks?.map((link, index) => (
+                <Fragment key={link.href}>
+                  {index === 4 && (
+                    <Divider
+                      component="li"
+                      sx={{ borderColor: "common.black", borderBottomWidth: 2, my: 0.5 }}
                     />
-                  </Link>
-                </ListItem>
+                  )}
+                  <ListItem disablePadding>
+                      <Link
+                        href={link.href}
+                        onClick={() => {
+                          handleLocationsClose();
+                        }}
+                        style={{ textDecoration: "none", color: "inherit", width: "100%", padding: "6px 12px" }}
+                      >
+                        <ListItemText
+                          primary={link.label}
+                          primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
+                        />
+                      </Link>
+                  </ListItem>
+                </Fragment>
               ))}
             </List>
           </Box>
@@ -1007,10 +1067,15 @@ export default function NavBar({
                 </ListItem>
                 {hubLinks?.length > 0 && (
                   <>
-                    {hubLinks.map((link) => (
-                      <ListItem key={link.href} button component={Link} href={link.href} onClick={() => setDrawerOpen(false)}>
-                        <ListItemText primary={link.label} inset />
-                      </ListItem>
+                    {hubLinks.map((link, index) => (
+                      <Fragment key={link.href}>
+                        {index === 4 && (
+                          <Divider sx={{ borderColor: "common.black", borderBottomWidth: 2, my: 0.5 }} />
+                        )}
+                        <ListItem button component={Link} href={link.href} onClick={() => setDrawerOpen(false)}>
+                          <ListItemText primary={link.label} inset />
+                        </ListItem>
+                      </Fragment>
                     ))}
                   </>
                 )}

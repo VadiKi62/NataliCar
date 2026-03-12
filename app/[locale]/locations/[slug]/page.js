@@ -82,12 +82,29 @@ export default async function LocationSeoPage({ params }) {
 
   const locationHeroImage =
     location.id === LOCATION_IDS.NEA_KALLIKRATIA
-      ? "/car-rental-neakallikratia.png"
+      ? {
+          defaultSrc: "/car-rental-neakallikratia.png",
+          portraitPhoneSrc: "/car-rental-neakallikratia-portrait.png",
+        }
       : location.id === LOCATION_IDS.HALKIDIKI
-        ? "/car-rental-halkidiki.png"
+        ? {
+            defaultSrc: "/car-rental-halkidiki.png",
+            portraitPhoneSrc: "/car-rental-halkidiki-portrait.png",
+          }
+      : location.id === LOCATION_IDS.THESSALONIKI_AIRPORT
+        ? {
+            defaultSrc: "/car-rental-thessaloniki-airport.png",
+            portraitPhoneSrc: "/car-rental-thessaloniki-airport-portrait.png",
+          }
       : location.id === LOCATION_IDS.THESSALONIKI
-        ? "/car-rental-thessaloniki.png"
-      : "/car-rental-thessaloniki-airport.png";
+        ? {
+            defaultSrc: "/car-rental-thessaloniki.png",
+            portraitPhoneSrc: "/car-rental-thessaloniki-portrait.png",
+          }
+      : {
+          defaultSrc: "/car-rental-neakallikratia.png",
+          portraitPhoneSrc: "/car-rental-neakallikratia-portrait.png",
+        };
   const heroImages = [locationHeroImage];
   const ctaHref = locationLinks.hubPath;
   const ctaLabel = links.locationHeroCtaLabel;
@@ -102,6 +119,7 @@ export default async function LocationSeoPage({ params }) {
         ctaHref={ctaHref}
         ctaLabel={ctaLabel}
         fullBleedUnderNav
+        ctaBottomRight
       />
       <Box
         component="main"

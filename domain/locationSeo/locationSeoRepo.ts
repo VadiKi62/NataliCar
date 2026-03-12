@@ -10,6 +10,7 @@ import {
 import type {
   LocaleSeoDictionary,
   LocationSeoContent,
+  LocationSeoFaqItem,
   LocationSeoRepoItem,
 } from "./types";
 
@@ -351,6 +352,12 @@ const locationHeroCtaLabelOverrides: Partial<Record<SupportedLocale, string>> = 
   sr: "Pronađite svoj automobil",
 };
 
+const localFaqTitleOverrides: Partial<Record<SupportedLocale, string>> = {
+  de: "Lokale FAQ",
+  ro: "Intrebari locale frecvente",
+  sr: "Lokalna FAQ",
+};
+
 const localeSeoDictionaryExpanded = expandLocaleRecord(localeSeoDictionaryRaw);
 
 // Patch fallback-only locales with translated hero CTA labels.
@@ -358,18 +365,268 @@ const localeSeoDictionaryExpanded = expandLocaleRecord(localeSeoDictionaryRaw);
 // so we must clone the links object before mutating to avoid corrupting "en".
 for (const locale of SUPPORTED_LOCALES) {
   const label = locationHeroCtaLabelOverrides[locale];
-  if (label) {
+  const localFaqTitle = localFaqTitleOverrides[locale];
+  if (label || localFaqTitle) {
     localeSeoDictionaryExpanded[locale] = {
       ...localeSeoDictionaryExpanded[locale],
       links: {
         ...localeSeoDictionaryExpanded[locale].links,
-        locationHeroCtaLabel: label,
+        ...(label ? { locationHeroCtaLabel: label } : {}),
+        ...(localFaqTitle ? { localFaqTitle } : {}),
       },
     };
   }
 }
 
 export const localeSeoDictionary = localeSeoDictionaryExpanded;
+
+type LocationContentFallbackTemplate = {
+  h1: string;
+  seoTitle: string;
+  seoDescription: string;
+  introText: string;
+  pickupLocation: string;
+  offerName: string;
+  offerDescription: string;
+  pickupGuidance: string;
+};
+
+type LocationFaqFallbackTemplate = LocationSeoFaqItem[];
+
+const locationContentFallbackTemplates: Partial<
+  Record<SupportedLocale, LocationContentFallbackTemplate>
+> = {
+  ru: {
+    h1: "\u041F\u0440\u043E\u043A\u0430\u0442 \u0430\u0432\u0442\u043E \u0432 {locationName}",
+    seoTitle:
+      "\u041F\u0440\u043E\u043A\u0430\u0442 \u0430\u0432\u0442\u043E \u0432 {locationName} | Natali Cars",
+    seoDescription:
+      "\u0410\u0440\u0435\u043D\u0434\u0443\u0439\u0442\u0435 \u0430\u0432\u0442\u043E\u043C\u043E\u0431\u0438\u043B\u044C \u0432 {locationName} \u0441 \u0443\u0434\u043E\u0431\u043D\u043E\u0439 \u0432\u044B\u0434\u0430\u0447\u0435\u0439 \u0438 \u043F\u0440\u044F\u043C\u043E\u0439 \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u043A\u043E\u0439 Natali Cars.",
+    introText:
+      "\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 {locationName} \u043F\u043E\u043C\u043E\u0433\u0430\u0435\u0442 \u043E\u0440\u0433\u0430\u043D\u0438\u0437\u043E\u0432\u0430\u0442\u044C \u043F\u0440\u043E\u043A\u0430\u0442 \u0430\u0432\u0442\u043E \u0441 \u0432\u044B\u0434\u0430\u0447\u0435\u0439 \u0443 \u043C\u0435\u0441\u0442\u0430 \u043F\u0440\u043E\u0436\u0438\u0432\u0430\u043D\u0438\u044F \u0438\u043B\u0438 \u0432 \u0433\u043E\u0440\u043E\u0434\u0435.",
+    pickupLocation:
+      "\u0422\u043E\u0447\u043A\u0430 \u0432\u044B\u0434\u0430\u0447\u0438 \u0432 {locationName}",
+    offerName:
+      "\u0410\u0440\u0435\u043D\u0434\u0430 \u0430\u0432\u0442\u043E \u0432 {locationName}",
+    offerDescription:
+      "\u0412\u044B\u0434\u0430\u0447\u0430 \u0443 \u043E\u0442\u0435\u043B\u044F \u0438\u043B\u0438 \u0432 \u0433\u043E\u0440\u043E\u0434\u0435 \u0434\u043B\u044F \u043F\u043E\u0435\u0437\u0434\u043E\u043A \u043F\u043E {locationName} \u0438 \u043E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044F\u043C.",
+    pickupGuidance:
+      "\u041F\u0435\u0440\u0435\u0434\u0430\u0447\u0443 \u0430\u0432\u0442\u043E \u0432 {locationName} \u043C\u043E\u0436\u043D\u043E \u043E\u0440\u0433\u0430\u043D\u0438\u0437\u043E\u0432\u0430\u0442\u044C \u0443 \u043C\u0435\u0441\u0442\u0430 \u043F\u0440\u043E\u0436\u0438\u0432\u0430\u043D\u0438\u044F \u0438\u043B\u0438 \u0432 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u043D\u043E\u0439 \u0442\u043E\u0447\u043A\u0435. \u0423\u043A\u0430\u0436\u0438\u0442\u0435 \u0430\u0434\u0440\u0435\u0441 \u043F\u0440\u0438 \u0431\u0440\u043E\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0438.",
+  },
+};
+
+const locationFaqFallbackTemplates: Partial<
+  Record<SupportedLocale, LocationFaqFallbackTemplate>
+> = {
+  ru: [
+    {
+      question:
+        "\u041C\u043E\u0436\u043D\u043E \u043B\u0438 \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C \u0430\u0432\u0442\u043E \u0432 {locationName} \u0440\u044F\u0434\u043E\u043C \u0441 \u043E\u0442\u0435\u043B\u0435\u043C?",
+      answer:
+        "\u0414\u0430. \u041C\u044B \u043C\u043E\u0436\u0435\u043C \u043E\u0440\u0433\u0430\u043D\u0438\u0437\u043E\u0432\u0430\u0442\u044C \u0432\u044B\u0434\u0430\u0447\u0443 \u0443 \u043E\u0442\u0435\u043B\u044F, \u0430\u043F\u0430\u0440\u0442\u0430\u043C\u0435\u043D\u0442\u043E\u0432 \u0438\u043B\u0438 \u0432 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u043D\u043E\u0439 \u0442\u043E\u0447\u043A\u0435.",
+    },
+    {
+      question:
+        "\u041F\u043E\u0434\u0445\u043E\u0434\u0438\u0442 \u043B\u0438 \u0430\u0440\u0435\u043D\u0434\u0430 \u0430\u0432\u0442\u043E \u0432 {locationName} \u0434\u043B\u044F \u043F\u043E\u0435\u0437\u0434\u043E\u043A \u043F\u043E \u0440\u0435\u0433\u0438\u043E\u043D\u0443?",
+      answer:
+        "\u0414\u0430. \u0421 \u0430\u0432\u0442\u043E\u043C\u043E\u0431\u0438\u043B\u0435\u043C \u0443\u0434\u043E\u0431\u043D\u043E \u043F\u043E\u0441\u0435\u0449\u0430\u0442\u044C \u043F\u043B\u044F\u0436\u0438, \u0441\u043E\u0441\u0435\u0434\u043D\u0438\u0435 \u043A\u0443\u0440\u043E\u0440\u0442\u044B \u0438 \u0434\u043E\u0441\u0442\u043E\u043F\u0440\u0438\u043C\u0435\u0447\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u0438.",
+    },
+    {
+      question:
+        "\u041A\u0430\u043A \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u0442\u044C \u043C\u0435\u0441\u0442\u043E \u0438 \u0432\u0440\u0435\u043C\u044F \u0432\u044B\u0434\u0430\u0447\u0438 \u0432 {locationName}?",
+      answer:
+        "\u0423\u043A\u0430\u0436\u0438\u0442\u0435 \u0430\u0434\u0440\u0435\u0441 \u043F\u0440\u043E\u0436\u0438\u0432\u0430\u043D\u0438\u044F \u0438 \u0443\u0434\u043E\u0431\u043D\u043E\u0435 \u0432\u0440\u0435\u043C\u044F \u043F\u0440\u0438 \u0431\u0440\u043E\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0438, \u0438 \u043C\u044B \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043C \u0442\u043E\u0447\u043A\u0443 \u043F\u0435\u0440\u0435\u0434\u0430\u0447\u0438.",
+    },
+  ],
+  uk: [
+    {
+      question:
+        "\u0427\u0438 \u043C\u043E\u0436\u043D\u0430 \u043E\u0442\u0440\u0438\u043C\u0430\u0442\u0438 \u0430\u0432\u0442\u043E \u0432 {locationName} \u0431\u0456\u043B\u044F \u0433\u043E\u0442\u0435\u043B\u044E?",
+      answer:
+        "\u0422\u0430\u043A. \u041C\u0438 \u043C\u043E\u0436\u0435\u043C\u043E \u043E\u0440\u0433\u0430\u043D\u0456\u0437\u0443\u0432\u0430\u0442\u0438 \u0432\u0438\u0434\u0430\u0447\u0443 \u0431\u0456\u043B\u044F \u0433\u043E\u0442\u0435\u043B\u044E, \u0430\u043F\u0430\u0440\u0442\u0430\u043C\u0435\u043D\u0442\u0456\u0432 \u0430\u0431\u043E \u0432 \u0443\u0437\u0433\u043E\u0434\u0436\u0435\u043D\u0456\u0439 \u0442\u043E\u0447\u0446\u0456.",
+    },
+    {
+      question:
+        "\u0427\u0438 \u0437\u0440\u0443\u0447\u043D\u0430 \u043E\u0440\u0435\u043D\u0434\u0430 \u0430\u0432\u0442\u043E \u0432 {locationName} \u0434\u043B\u044F \u043F\u043E\u0457\u0437\u0434\u043E\u043A \u043E\u043A\u043E\u043B\u0438\u0446\u044F\u043C\u0438?",
+      answer:
+        "\u0422\u0430\u043A. \u0410\u0432\u0442\u043E\u043C\u043E\u0431\u0456\u043B\u0435\u043C \u0437\u0440\u0443\u0447\u043D\u043E \u0432\u0456\u0434\u0432\u0456\u0434\u0430\u0442\u0438 \u043F\u043B\u044F\u0436\u0456, \u0441\u0443\u0441\u0456\u0434\u043D\u0456 \u043A\u0443\u0440\u043E\u0440\u0442\u0438 \u0442\u0430 \u0446\u0456\u043A\u0430\u0432\u0456 \u043C\u0456\u0441\u0446\u044F.",
+    },
+    {
+      question:
+        "\u042F\u043A \u0443\u0437\u0433\u043E\u0434\u0438\u0442\u0438 \u043C\u0456\u0441\u0446\u0435 \u0442\u0430 \u0447\u0430\u0441 \u0432\u0438\u0434\u0430\u0447\u0456 \u0432 {locationName}?",
+      answer:
+        "\u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0430\u0434\u0440\u0435\u0441\u0443 \u043F\u0440\u043E\u0436\u0438\u0432\u0430\u043D\u043D\u044F \u0442\u0430 \u0437\u0440\u0443\u0447\u043D\u0438\u0439 \u0447\u0430\u0441 \u043F\u0456\u0434 \u0447\u0430\u0441 \u0431\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F, \u0456 \u043C\u0438 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043C\u043E \u0442\u043E\u0447\u043A\u0443 \u043F\u0435\u0440\u0435\u0434\u0430\u0447\u0456.",
+    },
+  ],
+  el: [
+    {
+      question:
+        "\u039C\u03C0\u03BF\u03C1\u03CE \u03BD\u03B1 \u03C0\u03B1\u03C1\u03B1\u03BB\u03AC\u03B2\u03C9 \u03B1\u03C5\u03C4\u03BF\u03BA\u03AF\u03BD\u03B7\u03C4\u03BF \u03C3\u03C4\u03BF {locationName} \u03BA\u03BF\u03BD\u03C4\u03AC \u03C3\u03C4\u03BF \u03BE\u03B5\u03BD\u03BF\u03B4\u03BF\u03C7\u03B5\u03AF\u03BF \u03BC\u03BF\u03C5;",
+      answer:
+        "\u039D\u03B1\u03B9. \u039C\u03C0\u03BF\u03C1\u03BF\u03CD\u03BC\u03B5 \u03BD\u03B1 \u03BF\u03C1\u03B3\u03B1\u03BD\u03CE\u03C3\u03BF\u03C5\u03BC\u03B5 \u03C0\u03B1\u03C1\u03AC\u03B4\u03BF\u03C3\u03B7 \u03C3\u03B5 \u03BE\u03B5\u03BD\u03BF\u03B4\u03BF\u03C7\u03B5\u03AF\u03BF, \u03B4\u03B9\u03B1\u03BC\u03AD\u03C1\u03B9\u03C3\u03BC\u03B1 \u03AE \u03C3\u03B5 \u03C3\u03C5\u03BC\u03C6\u03C9\u03BD\u03B7\u03BC\u03AD\u03BD\u03BF \u03C3\u03B7\u03BC\u03B5\u03AF\u03BF.",
+    },
+    {
+      question:
+        "\u0395\u03AF\u03BD\u03B1\u03B9 \u03C7\u03C1\u03AE\u03C3\u03B9\u03BC\u03B7 \u03B7 \u03B5\u03BD\u03BF\u03B9\u03BA\u03AF\u03B1\u03C3\u03B7 \u03B1\u03C5\u03C4\u03BF\u03BA\u03B9\u03BD\u03AE\u03C4\u03BF\u03C5 \u03C3\u03C4\u03BF {locationName} \u03B3\u03B9\u03B1 \u03B4\u03B9\u03B1\u03B4\u03C1\u03BF\u03BC\u03AD\u03C2 \u03C3\u03C4\u03B7\u03BD \u03C0\u03B5\u03C1\u03B9\u03BF\u03C7\u03AE;",
+      answer:
+        "\u039D\u03B1\u03B9. \u039C\u03B5 \u03B1\u03C5\u03C4\u03BF\u03BA\u03AF\u03BD\u03B7\u03C4\u03BF \u03BC\u03B5\u03C4\u03B1\u03BA\u03B9\u03BD\u03B5\u03AF\u03C3\u03C4\u03B5 \u03B5\u03CD\u03BA\u03BF\u03BB\u03B1 \u03C3\u03B5 \u03C0\u03B1\u03C1\u03B1\u03BB\u03AF\u03B5\u03C2, \u03B3\u03B5\u03B9\u03C4\u03BF\u03BD\u03B9\u03BA\u03AC \u03B8\u03AD\u03C1\u03B5\u03C4\u03C1\u03B1 \u03BA\u03B1\u03B9 \u03B1\u03BE\u03B9\u03BF\u03B8\u03AD\u03B1\u03C4\u03B1.",
+    },
+    {
+      question:
+        "\u03A0\u03CE\u03C2 \u03BA\u03B1\u03BD\u03BF\u03BD\u03AF\u03B6\u03C9 \u03C4\u03BF \u03C3\u03B7\u03BC\u03B5\u03AF\u03BF \u03BA\u03B1\u03B9 \u03C4\u03B7\u03BD \u03CE\u03C1\u03B1 \u03C0\u03B1\u03C1\u03B1\u03BB\u03B1\u03B2\u03AE\u03C2 \u03C3\u03C4\u03BF {locationName};",
+      answer:
+        "\u0394\u03CE\u03C3\u03C4\u03B5 \u03C3\u03C4\u03B7\u03BD \u03BA\u03C1\u03AC\u03C4\u03B7\u03C3\u03B7 \u03C4\u03B7 \u03B4\u03B9\u03B5\u03CD\u03B8\u03C5\u03BD\u03C3\u03AE \u03C3\u03B1\u03C2 \u03BA\u03B1\u03B9 \u03C4\u03B7\u03BD \u03B5\u03C0\u03B9\u03B8\u03C5\u03BC\u03B7\u03C4\u03AE \u03CE\u03C1\u03B1 \u03BA\u03B1\u03B9 \u03B8\u03B1 \u03B5\u03C0\u03B9\u03B2\u03B5\u03B2\u03B1\u03B9\u03CE\u03C3\u03BF\u03C5\u03BC\u03B5 \u03C4\u03BF \u03C3\u03B7\u03BC\u03B5\u03AF\u03BF \u03C0\u03B1\u03C1\u03AC\u03B4\u03BF\u03C3\u03B7\u03C2.",
+    },
+  ],
+  de: [
+    {
+      question:
+        "Kann ich das Auto in {locationName} in der Naehe meines Hotels uebernehmen?",
+      answer:
+        "Ja. Wir koennen die Uebergabe am Hotel, Apartment oder an einem vereinbarten Treffpunkt organisieren.",
+    },
+    {
+      question:
+        "Ist ein Mietwagen in {locationName} praktisch fuer Ausfluege in die Umgebung?",
+      answer:
+        "Ja. Mit dem Auto erreichen Sie Straende, benachbarte Orte und Sehenswuerdigkeiten flexibel.",
+    },
+    {
+      question: "Wie vereinbare ich Abholort und Uhrzeit in {locationName}?",
+      answer:
+        "Geben Sie bei der Buchung Ihre Adresse und Wunschzeit an, wir bestaetigen den Treffpunkt.",
+    },
+  ],
+  bg: [
+    {
+      question:
+        "\u041C\u043E\u0433\u0430 \u043B\u0438 \u0434\u0430 \u0432\u0437\u0435\u043C\u0430 \u043A\u043E\u043B\u0430 \u0432 {locationName} \u0431\u043B\u0438\u0437\u043E \u0434\u043E \u0445\u043E\u0442\u0435\u043B\u0430 \u043C\u0438?",
+      answer:
+        "\u0414\u0430. \u041C\u043E\u0436\u0435\u043C \u0434\u0430 \u043E\u0440\u0433\u0430\u043D\u0438\u0437\u0438\u0440\u0430\u043C\u0435 \u043F\u0440\u0435\u0434\u0430\u0432\u0430\u043D\u0435 \u043F\u0440\u0438 \u0445\u043E\u0442\u0435\u043B, \u0430\u043F\u0430\u0440\u0442\u0430\u043C\u0435\u043D\u0442 \u0438\u043B\u0438 \u043D\u0430 \u0443\u0433\u043E\u0432\u043E\u0440\u0435\u043D\u0430 \u0442\u043E\u0447\u043A\u0430.",
+    },
+    {
+      question:
+        "\u041F\u043E\u0434\u0445\u043E\u0434\u044F\u0449 \u043B\u0438 \u0435 \u043D\u0430\u0435\u043C\u044A\u0442 \u043D\u0430 \u043A\u043E\u043B\u0430 \u0432 {locationName} \u0437\u0430 \u0440\u0430\u0437\u0445\u043E\u0434\u043A\u0438 \u0432 \u0440\u0430\u0439\u043E\u043D\u0430?",
+      answer:
+        "\u0414\u0430. \u0421 \u043A\u043E\u043B\u0430 \u043B\u0435\u0441\u043D\u043E \u0441\u0442\u0438\u0433\u0430\u0442\u0435 \u0434\u043E \u043F\u043B\u0430\u0436\u043E\u0432\u0435, \u0441\u044A\u0441\u0435\u0434\u043D\u0438 \u043A\u0443\u0440\u043E\u0440\u0442\u0438 \u0438 \u0437\u0430\u0431\u0435\u043B\u0435\u0436\u0438\u0442\u0435\u043B\u043D\u043E\u0441\u0442\u0438.",
+    },
+    {
+      question:
+        "\u041A\u0430\u043A \u0434\u0430 \u0443\u0442\u043E\u0447\u043D\u044F \u043C\u044F\u0441\u0442\u043E\u0442\u043E \u0438 \u0447\u0430\u0441\u0430 \u0437\u0430 \u043F\u0440\u0435\u0434\u0430\u0432\u0430\u043D\u0435 \u0432 {locationName}?",
+      answer:
+        "\u041F\u043E\u0441\u043E\u0447\u0435\u0442\u0435 \u0430\u0434\u0440\u0435\u0441\u0430 \u0438 \u0443\u0434\u043E\u0431\u043D\u0438\u044F \u0447\u0430\u0441 \u043F\u0440\u0438 \u0440\u0435\u0437\u0435\u0440\u0432\u0430\u0446\u0438\u044F, \u0430 \u043D\u0438\u0435 \u0449\u0435 \u043F\u043E\u0442\u0432\u044A\u0440\u0434\u0438\u043C \u0442\u043E\u0447\u043A\u0430\u0442\u0430 \u0437\u0430 \u043F\u0440\u0435\u0434\u0430\u0432\u0430\u043D\u0435.",
+    },
+  ],
+  ro: [
+    {
+      question: "Pot prelua masina in {locationName} aproape de hotel?",
+      answer:
+        "Da. Putem organiza predarea la hotel, apartament sau intr-un punct stabilit impreuna.",
+    },
+    {
+      question:
+        "Este utila inchirierea unei masini in {locationName} pentru excursii in zona?",
+      answer:
+        "Da. Cu masina ajungeti usor la plaje, localitati vecine si obiective turistice.",
+    },
+    {
+      question: "Cum stabilesc locul si ora preluarii in {locationName}?",
+      answer:
+        "Indicati adresa si ora dorita la rezervare, iar noi confirmam punctul de predare.",
+    },
+  ],
+  sr: [
+    {
+      question: "Da li mogu preuzeti auto u {locationName} blizu hotela?",
+      answer:
+        "Da. Mozemo organizovati preuzimanje kod hotela, apartmana ili na dogovorenom mestu.",
+    },
+    {
+      question: "Da li je rent a car u {locationName} dobar za izlete po okolini?",
+      answer:
+        "Da. Automobilom lako obilazite plaze, susedna mesta i znamenitosti.",
+    },
+    {
+      question: "Kako da dogovorim mesto i vreme preuzimanja u {locationName}?",
+      answer:
+        "Unesite adresu i zeljeno vreme pri rezervaciji, a mi cemo potvrditi tacku preuzimanja.",
+    },
+  ],
+};
+
+function fillLocationNameTemplate(template: string, locationName: string): string {
+  return template.replaceAll("{locationName}", locationName);
+}
+
+function buildLocalizedFallbackFaq(
+  locale: SupportedLocale,
+  baseFaq: LocationSeoFaqItem[] | undefined,
+  locationName: string
+): LocationSeoFaqItem[] | undefined {
+  if (!baseFaq || baseFaq.length === 0) {
+    return baseFaq;
+  }
+
+  const faqTemplate = locationFaqFallbackTemplates[locale];
+  if (!faqTemplate || faqTemplate.length === 0) {
+    return baseFaq;
+  }
+
+  return faqTemplate.map((item) => ({
+    question: fillLocationNameTemplate(item.question, locationName),
+    answer: fillLocationNameTemplate(item.answer, locationName),
+  }));
+}
+
+function buildLocalizedFallbackLocationContent(
+  locale: SupportedLocale,
+  baseContent: LocationSeoContent
+): LocationSeoContent {
+  const template = locationContentFallbackTemplates[locale];
+  const locationName = baseContent.shortName;
+  const localizedFaq = buildLocalizedFallbackFaq(locale, baseContent.faq, locationName);
+
+  if (!template) {
+    return {
+      ...baseContent,
+      faq: localizedFaq,
+    };
+  }
+
+  return {
+    ...baseContent,
+    h1: fillLocationNameTemplate(template.h1, locationName),
+    seoTitle: fillLocationNameTemplate(template.seoTitle, locationName),
+    seoDescription: fillLocationNameTemplate(template.seoDescription, locationName),
+    introText: fillLocationNameTemplate(template.introText, locationName),
+    pickupLocation: fillLocationNameTemplate(template.pickupLocation, locationName),
+    offerName: fillLocationNameTemplate(template.offerName, locationName),
+    offerDescription: fillLocationNameTemplate(template.offerDescription, locationName),
+    pickupGuidance: baseContent.pickupGuidance
+      ? fillLocationNameTemplate(template.pickupGuidance, locationName)
+      : baseContent.pickupGuidance,
+    faq: localizedFaq,
+  };
+}
+
+function expandLocationContentRecord(
+  partial: PartialLocaleRecord<LocationSeoContent>
+): Record<SupportedLocale, LocationSeoContent> {
+  const fallbackContent = partial[DEFAULT_LOCALE];
+  if (!fallbackContent) {
+    throw new Error("[locationSeoRepo] Missing default locale location content");
+  }
+
+  const expanded = expandLocaleRecord(partial);
+
+  for (const locale of SUPPORTED_LOCALES) {
+    if (locale === DEFAULT_LOCALE) continue;
+    if (partial[locale]) continue;
+    expanded[locale] = buildLocalizedFallbackLocationContent(locale, fallbackContent);
+  }
+
+  return expanded;
+}
 
 const locationContentByKeyRaw: Record<
   LocationContentKey,
@@ -1334,7 +1591,7 @@ const locationContentByKeyRaw: Record<
 export const locationContentByKey = Object.fromEntries(
   Object.entries(locationContentByKeyRaw).map(([contentKey, localizedValues]) => [
     contentKey,
-    expandLocaleRecord(localizedValues),
+    expandLocationContentRecord(localizedValues),
   ])
 ) as Record<LocationContentKey, Record<SupportedLocale, LocationSeoContent>>;
 

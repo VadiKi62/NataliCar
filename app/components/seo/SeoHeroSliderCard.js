@@ -7,6 +7,8 @@ import Link from "next/link";
 import ActionButton from "@/app/components/ui/buttons/ActionButton";
 
 const AUTO_MS = 6000;
+const PHONE_PORTRAIT_QUERY =
+  "(max-width: 767px) and (orientation: portrait) and (pointer: coarse)";
 
 // Matches Feed mainPt so hero sits under nav with no white stripe
 const HERO_TOP_PADDING = { xs: "110px", md: "90px" };
@@ -20,10 +22,43 @@ export default function SeoHeroSliderCard({
   ctaHref,
   ctaLabel,
   fullBleedUnderNav = false,
+  ctaBottomRight = false,
 }) {
+  const [isPortraitPhone, setIsPortraitPhone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+
+    const mediaQuery = window.matchMedia(PHONE_PORTRAIT_QUERY);
+    const applyMatch = () => setIsPortraitPhone(mediaQuery.matches);
+    applyMatch();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", applyMatch);
+      return () => mediaQuery.removeEventListener("change", applyMatch);
+    }
+
+    mediaQuery.addListener(applyMatch);
+    return () => mediaQuery.removeListener(applyMatch);
+  }, []);
+
   const images =
     Array.isArray(imageUrls) && imageUrls.length > 0
       ? imageUrls
+          .map((item) => {
+            if (typeof item === "string") {
+              return item;
+            }
+
+            if (!item || typeof item !== "object") {
+              return "";
+            }
+
+            return isPortraitPhone
+              ? item.portraitPhoneSrc || item.defaultSrc || ""
+              : item.defaultSrc || item.portraitPhoneSrc || "";
+          })
+          .filter(Boolean)
       : [];
 
   const [index, setIndex] = useState(0);
@@ -126,7 +161,7 @@ export default function SeoHeroSliderCard({
               {p}
             </Typography>
           ))}
-          {ctaHref && ctaLabel && (
+          {ctaHref && ctaLabel && !ctaBottomRight && (
             <Box sx={{ mt: 3 }}>
               <ActionButton
                 component={Link}
@@ -140,6 +175,26 @@ export default function SeoHeroSliderCard({
           )}
         </Box>
       </Box>
+
+      {ctaHref && ctaLabel && ctaBottomRight && (
+        <Box
+          sx={{
+            position: "absolute",
+            right: { xs: 16, md: 24 },
+            bottom: { xs: 16, md: 24 },
+            zIndex: 3,
+          }}
+        >
+          <ActionButton
+            component={Link}
+            href={ctaHref}
+            label={ctaLabel}
+            color="primary"
+            variant="contained"
+            size="large"
+          />
+        </Box>
+      )}
 
       {/* DOTS */}
       {images.length > 1 && (

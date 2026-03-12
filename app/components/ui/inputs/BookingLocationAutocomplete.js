@@ -19,9 +19,33 @@ const BookingLocationAutocomplete = ({
   options,
   onChange,
   onInputChange,
+  dividerBeforeOption,
   sx,
   ...props
 }) => {
+  const renderOption = (listItemProps, option) => {
+    const labelText = typeof option === "string" ? option : option?.label || "";
+    const needsDivider = dividerBeforeOption && labelText === dividerBeforeOption;
+
+    return (
+      <li
+        {...listItemProps}
+        style={{
+          ...listItemProps.style,
+          ...(needsDivider
+            ? {
+                borderTop: "2px solid #000",
+                marginTop: 4,
+                paddingTop: 10,
+              }
+            : {}),
+        }}
+      >
+        {labelText}
+      </li>
+    );
+  };
+
   return (
     <StyledAutocomplete
       freeSolo
@@ -29,6 +53,7 @@ const BookingLocationAutocomplete = ({
       value={value}
       onChange={onChange}
       onInputChange={onInputChange}
+      renderOption={renderOption}
       sx={sx}
       PaperProps={{
         sx: (theme) => ({
