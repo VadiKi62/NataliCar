@@ -128,68 +128,77 @@ const BookingModal = ({
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Получение стоимости с сервера при изменении дат
-  const fetchTotalPrice = useCallback(async (signal) => {
-    if (!carApiIdentifier || !presetDates?.startDate || !presetDates?.endDate) {
-      setDaysAndTotal({ days: 0, totalPrice: 0 });
-      return;
-    }
-    const normalizedStartDate = dayjs(presetDates.startDate).tz(TIME_ZONE);
-    const normalizedEndDate = dayjs(presetDates.endDate).tz(TIME_ZONE);
-    if (!normalizedStartDate.isValid() || !normalizedEndDate.isValid()) {
-      setDaysAndTotal({ days: 0, totalPrice: 0 });
-      return;
-    }
-    const timeInAthens =
-      startTime && presetDates?.startDate
-        ? createAthensDateTime(
-            dayjs(presetDates.startDate).tz(TIME_ZONE).format("YYYY-MM-DD"),
-            formatTimeHHMM(dayjs(startTime))
-          )
-        : null;
-    const timeOutAthens =
-      endTime && presetDates?.endDate
-        ? createAthensDateTime(
-            dayjs(presetDates.endDate).tz(TIME_ZONE).format("YYYY-MM-DD"),
-            formatTimeHHMM(dayjs(endTime))
-          )
-        : null;
-    const timeInServer = timeInAthens ? toServerUTC(timeInAthens) : undefined;
-    const timeOutServer = timeOutAthens ? toServerUTC(timeOutAthens) : undefined;
-    setCalcLoading(true);
-    try {
-      const result = await calculateTotalPrice(
-        carApiIdentifier,
-        normalizedStartDate.format("YYYY-MM-DD"),
-        normalizedEndDate.format("YYYY-MM-DD"),
-        insurance,
-        childSeats,
-        {
-          signal,
-          secondDriver,
-          timeIn: timeInServer,
-          timeOut: timeOutServer,
-        }
-      );
-      if (signal?.aborted) return;
-      setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
-    } catch (error) {
-      if (error?.name === "AbortError" || signal?.aborted) return;
-      setDaysAndTotal({ days: 0, totalPrice: 0 });
-    } finally {
-      if (!signal?.aborted) {
-        setCalcLoading(false);
+  const fetchTotalPrice = useCallback(
+    async (signal) => {
+      if (
+        !carApiIdentifier ||
+        !presetDates?.startDate ||
+        !presetDates?.endDate
+      ) {
+        setDaysAndTotal({ days: 0, totalPrice: 0 });
+        return;
       }
-    }
-  }, [
-    carApiIdentifier,
-    presetDates?.startDate,
-    presetDates?.endDate,
-    insurance,
-    childSeats,
-    secondDriver,
-    startTime,
-    endTime,
-  ]);
+      const normalizedStartDate = dayjs(presetDates.startDate).tz(TIME_ZONE);
+      const normalizedEndDate = dayjs(presetDates.endDate).tz(TIME_ZONE);
+      if (!normalizedStartDate.isValid() || !normalizedEndDate.isValid()) {
+        setDaysAndTotal({ days: 0, totalPrice: 0 });
+        return;
+      }
+      const timeInAthens =
+        startTime && presetDates?.startDate
+          ? createAthensDateTime(
+              dayjs(presetDates.startDate).tz(TIME_ZONE).format("YYYY-MM-DD"),
+              formatTimeHHMM(dayjs(startTime))
+            )
+          : null;
+      const timeOutAthens =
+        endTime && presetDates?.endDate
+          ? createAthensDateTime(
+              dayjs(presetDates.endDate).tz(TIME_ZONE).format("YYYY-MM-DD"),
+              formatTimeHHMM(dayjs(endTime))
+            )
+          : null;
+      const timeInServer = timeInAthens ? toServerUTC(timeInAthens) : undefined;
+      const timeOutServer = timeOutAthens
+        ? toServerUTC(timeOutAthens)
+        : undefined;
+      setCalcLoading(true);
+      try {
+        const result = await calculateTotalPrice(
+          carApiIdentifier,
+          normalizedStartDate.format("YYYY-MM-DD"),
+          normalizedEndDate.format("YYYY-MM-DD"),
+          insurance,
+          childSeats,
+          {
+            signal,
+            secondDriver,
+            timeIn: timeInServer,
+            timeOut: timeOutServer,
+          }
+        );
+        if (signal?.aborted) return;
+        setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
+      } catch (error) {
+        if (error?.name === "AbortError" || signal?.aborted) return;
+        setDaysAndTotal({ days: 0, totalPrice: 0 });
+      } finally {
+        if (!signal?.aborted) {
+          setCalcLoading(false);
+        }
+      }
+    },
+    [
+      carApiIdentifier,
+      presetDates?.startDate,
+      presetDates?.endDate,
+      insurance,
+      childSeats,
+      secondDriver,
+      startTime,
+      endTime,
+    ]
+  );
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -221,7 +230,8 @@ const BookingModal = ({
     // Диагностический пролог: покажем, почему лог мог быть подавлен
     try {
       const carMatch =
-        !DEBUG_CAR_ID || [car?._id, car?.regNumber, car?.carNumber].includes(DEBUG_CAR_ID);
+        !DEBUG_CAR_ID ||
+        [car?._id, car?.regNumber, car?.carNumber].includes(DEBUG_CAR_ID);
       const dateMatch =
         !DEBUG_DATE ||
         DEBUG_DATE === presetEndStr ||
@@ -241,7 +251,8 @@ const BookingModal = ({
       // });
     } catch {}
     if (
-      (!DEBUG_CAR_ID || [car?._id, car?.regNumber, car?.carNumber].includes(DEBUG_CAR_ID)) &&
+      (!DEBUG_CAR_ID ||
+        [car?._id, car?.regNumber, car?.carNumber].includes(DEBUG_CAR_ID)) &&
       (!DEBUG_DATE ||
         DEBUG_DATE === presetEndStr ||
         DEBUG_DATE === presetStartStr)
@@ -269,25 +280,25 @@ const BookingModal = ({
             : null;
         if (process.env.NODE_ENV === "development") {
           console.log("[BookingModal] Booking dates displayed:", {
-          carId: carIdentifier,
-          presetStartDate: presetStartStr,
-          presetEndDate: presetEndStr,
-          startTime: startTimeStr,
-          endTime: endTimeStr,
-          startLocal: localStartCombined
-            ? localStartCombined.format("YYYY-MM-DD HH:mm")
-            : null,
-          startUTC: localStartCombined
-            ? localStartCombined.utc().format("YYYY-MM-DD HH:mm")
-            : null,
-          dateLocal: localCombined
-            ? localCombined.format("YYYY-MM-DD HH:mm")
-            : null,
-          dateUTC: localCombined
-            ? localCombined.utc().format("YYYY-MM-DD HH:mm")
-            : null,
-          rawStartISO,
-          rawEndISO,
+            carId: carIdentifier,
+            presetStartDate: presetStartStr,
+            presetEndDate: presetEndStr,
+            startTime: startTimeStr,
+            endTime: endTimeStr,
+            startLocal: localStartCombined
+              ? localStartCombined.format("YYYY-MM-DD HH:mm")
+              : null,
+            startUTC: localStartCombined
+              ? localStartCombined.utc().format("YYYY-MM-DD HH:mm")
+              : null,
+            dateLocal: localCombined
+              ? localCombined.format("YYYY-MM-DD HH:mm")
+              : null,
+            dateUTC: localCombined
+              ? localCombined.utc().format("YYYY-MM-DD HH:mm")
+              : null,
+            rawStartISO,
+            rawEndISO,
           });
         }
       } catch (e) {
@@ -475,9 +486,11 @@ const BookingModal = ({
     if (email && !validateEmail(email))
       newErrors.email = "Invalid email address";
     if (!phone?.trim()) newErrors.phone = requiredMsg;
-    if (phone?.trim() && !validatePhone(phone)) newErrors.phone = "Invalid phone number";
+    if (phone?.trim() && !validatePhone(phone))
+      newErrors.phone = "Invalid phone number";
     // if (!termsAccepted) newErrors.terms = requiredMsg; // поле политики/условий пока закомментировано
-    if (!presetDates?.startDate || !presetDates?.endDate) newErrors.dates = t("order.requiredDates") || "Pick-up and return dates";
+    if (!presetDates?.startDate || !presetDates?.endDate)
+      newErrors.dates = t("order.requiredDates") || "Pick-up and return dates";
     if (timeErrors) newErrors.time = timeErrors;
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -759,9 +772,7 @@ const BookingModal = ({
                         mx: 0.5,
                       }}
                     >
-                      {calcLoading 
-                        ? "" 
-                        : `${daysAndTotal.totalPrice}€`}
+                      {calcLoading ? "" : `${daysAndTotal.totalPrice}€`}
                     </Box>
                   </Typography>
                 </>
@@ -835,7 +846,7 @@ const BookingModal = ({
                         error={Boolean(timeErrors || errors.time)}
                         helperText={
                           errors.time || timeErrors
-                            ? (errors.time || timeErrors)
+                            ? errors.time || timeErrors
                             : timeLimits.minStart
                             ? `${t("order.minAllowed", {
                                 defaultValue: "Не раньше: ",
@@ -910,9 +921,7 @@ const BookingModal = ({
                         }}
                       >
                         <BookingLocationAutocomplete
-                          label={
-                            t("order.pickupLocation") || "Место получения"
-                          }
+                          label={t("order.pickupLocation") || "Место получения"}
                           options={placeOptions}
                           dividerBeforeOption={LOCATION_DIVIDER_BEFORE}
                           value={placeIn}
@@ -981,11 +990,11 @@ const BookingModal = ({
                       alignItems: { sm: "center" },
                     }}
                   >
-                    <FormControl 
+                    <FormControl
                       size="small"
-                      sx={{ 
-                        flex: insurance === "TPL" ? 2 : 1, 
-                        width: { xs: "100%" } 
+                      sx={{
+                        flex: insurance === "TPL" ? 2 : 1,
+                        width: { xs: "100%" },
                       }}
                     >
                       <InputLabel>{t("order.insurance")}</InputLabel>
@@ -996,9 +1005,10 @@ const BookingModal = ({
                         sx={{
                           height: { sm: "40px" },
                           // Используем правильный синтаксис MUI для кастомных media queries
-                          "@media (max-width:600px) and (orientation: portrait)": {
-                            height: "50px",
-                          },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              height: "50px",
+                            },
                         }}
                       >
                         {(
@@ -1023,15 +1033,16 @@ const BookingModal = ({
                         value={franchiseOrder || 0}
                         InputProps={{ readOnly: true }}
                         size="small"
-                        sx={{ 
+                        sx={{
                           flex: 1,
                           // Используем правильный синтаксис MUI для кастомных media queries
-                          "@media (max-width:600px) and (orientation: portrait)": {
-                            "& .MuiInputBase-root": {
-                              height: "50px !important",
-                              minHeight: "50px !important",
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              "& .MuiInputBase-root": {
+                                height: "50px !important",
+                                minHeight: "50px !important",
+                              },
                             },
-                          },
                           "& .MuiInputBase-root": {
                             height: "40px !important",
                             minHeight: "40px !important",
@@ -1039,8 +1050,8 @@ const BookingModal = ({
                         }}
                       />
                     )}
-                    <FormControl 
-                      size="small" 
+                    <FormControl
+                      size="small"
                       sx={{ flex: 1, width: { xs: "100%" } }}
                     >
                       <InputLabel>
@@ -1057,9 +1068,10 @@ const BookingModal = ({
                         sx={{
                           height: { sm: "40px" },
                           // Используем правильный синтаксис MUI для кастомных media queries
-                          "@media (max-width:600px) and (orientation: portrait)": {
-                            height: "50px",
-                          },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              height: "50px",
+                            },
                         }}
                       >
                         <MenuItem value={0}>
@@ -1088,7 +1100,8 @@ const BookingModal = ({
                       value={name}
                       onChange={(e) => {
                         setName(e.target.value);
-                        if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                        if (errors.name)
+                          setErrors((prev) => ({ ...prev, name: undefined }));
                       }}
                       error={!!errors.name}
                       helperText={errors.name}
@@ -1177,7 +1190,11 @@ const BookingModal = ({
                             onChange={(e) => setViber(e.target.checked)}
                           />
                         }
-                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: "0.85rem",
+                          },
+                        }}
                         label="Viber"
                       />
                       <FormControlLabel
@@ -1188,7 +1205,11 @@ const BookingModal = ({
                             onChange={(e) => setWhatsapp(e.target.checked)}
                           />
                         }
-                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: "0.85rem",
+                          },
+                        }}
                         label="WhatsApp"
                       />
                       <FormControlLabel
@@ -1199,7 +1220,11 @@ const BookingModal = ({
                             onChange={(e) => setTelegram(e.target.checked)}
                           />
                         }
-                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: "0.85rem",
+                          },
+                        }}
                         label="Telegram"
                       />
                     </Box>
@@ -1228,7 +1253,11 @@ const BookingModal = ({
                             onChange={(e) => setSecondDriver(e.target.checked)}
                           />
                         }
-                        sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: "0.85rem",
+                          },
+                        }}
                         label={t("order.secondDriver", {
                           price: secondDriverPriceLabelValue,
                         })}
@@ -1314,13 +1343,14 @@ const BookingModal = ({
                       onClick={handleModalClose}
                       label="OK"
                       sx={{
-                        "@media (max-width:600px) and (orientation: portrait)": {
-                          flexBasis: 0,
-                          flexGrow: 1,
-                          minWidth: 0,
-                          backgroundColor: "secondary.main",
-                          color: "secondary.contrastText",
-                        },
+                        "@media (max-width:600px) and (orientation: portrait)":
+                          {
+                            flexBasis: 0,
+                            flexGrow: 1,
+                            minWidth: 0,
+                            backgroundColor: "secondary.main",
+                            color: "secondary.contrastText",
+                          },
                       }}
                     />
                   ) : (
@@ -1329,11 +1359,12 @@ const BookingModal = ({
                         onClick={handleModalClose}
                         label={t("basic.cancel")}
                         sx={{
-                          "@media (max-width:600px) and (orientation: portrait)": {
-                            flexBasis: 0,
-                            flexGrow: 0.7,
-                            minWidth: 0,
-                          },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              flexBasis: 0,
+                              flexGrow: 0.7,
+                              minWidth: 0,
+                            },
                         }}
                       />
                       <ConfirmButton
@@ -1347,12 +1378,13 @@ const BookingModal = ({
                             : t("order.confirmBooking")
                         }
                         sx={{
-                          "@media (max-width:600px) and (orientation: portrait)": {
-                            flexBasis: 0,
-                            flexGrow: 1.3,
-                            minWidth: 0,
-                            padding: "12px 20px",
-                          },
+                          "@media (max-width:600px) and (orientation: portrait)":
+                            {
+                              flexBasis: 0,
+                              flexGrow: 1.3,
+                              minWidth: 0,
+                              padding: "12px 20px",
+                            },
                         }}
                       />
                     </>

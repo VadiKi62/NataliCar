@@ -35,9 +35,7 @@ import { CAR_CLASSES } from "@models/enums";
 import SelectedFieldClass from "@/app/components/ui/inputs/SelectedFieldClass";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
-import {
-  Slider,
-} from "@mui/material";
+import { Slider } from "@mui/material";
 import dynamic from "next/dynamic";
 import {
   getLocationByAnySlug,
@@ -74,10 +72,7 @@ const LANG_LABELS = {
 // ADMIN-ONLY CODE ISOLATION
 // All admin UI is loaded via AdminRoot to prevent bundle leakage
 // ============================================================
-const AdminRoot = dynamic(
-  () => import("@app/admin/AdminRoot"),
-  { ssr: false }
-);
+const AdminRoot = dynamic(() => import("@app/admin/AdminRoot"), { ssr: false });
 
 const StyledBox = styled(Box, {
   shouldForwardProp: (prop) => prop !== "$isCarInfo" && prop !== "scrolled",
@@ -102,10 +97,13 @@ const GradientAppBar = styled(AppBar, {
   position: "fixed",
   // КРИТИЧНО для CLS: НЕ менять height после mount!
   // Убрана анимация height — она вызывала layout shift
-  transition: theme.transitions.create(["background-color", "backdrop-filter"], {
-    duration: theme.transitions.duration.standard,
-    easing: theme.transitions.easing.easeInOut,
-  }),
+  transition: theme.transitions.create(
+    ["background-color", "backdrop-filter"],
+    {
+      duration: theme.transitions.duration.standard,
+      easing: theme.transitions.easing.easeInOut,
+    }
+  ),
   // Фиксированная высота — НЕ меняется при scroll
   height: 60,
   minHeight: 60,
@@ -152,10 +150,9 @@ export default function NavBar({
   // Получаем информацию о сессии (для админки). Guard for SSG / no SessionProvider yet.
   const sessionValue = useSession();
   const session = sessionValue?.data ?? null;
-  const adminRole = isAdmin && session?.user?.role !== undefined 
-    ? session.user.role 
-    : null; // ROLE.ADMIN = 1, ROLE.SUPERADMIN = 2
-  
+  const adminRole =
+    isAdmin && session?.user?.role !== undefined ? session.user.role : null; // ROLE.ADMIN = 1, ROLE.SUPERADMIN = 2
+
   // Обработчик logout
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/" });
@@ -249,7 +246,6 @@ export default function NavBar({
     // Язык определяется и сохраняется через общий i18n + Context.
   }, [isAdmin, i18n]);
 
-
   const {
     scrolled,
     setSelectedClass,
@@ -308,7 +304,8 @@ export default function NavBar({
     }
   }, [pathname, isAdmin]);
 
-  const localeLink = (path) => (isAdmin ? path : withLocalePrefix(effectiveLocale, path));
+  const localeLink = (path) =>
+    isAdmin ? path : withLocalePrefix(effectiveLocale, path);
   const homeHref = localeLink("/");
   const rentalTermsHref = localeLink("/rental-terms");
   const contactsHref = localeLink("/contacts");
@@ -427,9 +424,12 @@ export default function NavBar({
         // Используем данные из ответа API для консистентности
         const savedData = response.data;
         if (savedData) {
-          if (savedData.startDate) setDiscountStartDate(new Date(savedData.startDate));
-          if (savedData.endDate) setDiscountEndDate(new Date(savedData.endDate));
-          if (typeof savedData.discount === "number") setSelectedDiscount(savedData.discount);
+          if (savedData.startDate)
+            setDiscountStartDate(new Date(savedData.startDate));
+          if (savedData.endDate)
+            setDiscountEndDate(new Date(savedData.endDate));
+          if (typeof savedData.discount === "number")
+            setSelectedDiscount(savedData.discount);
         }
       } else {
         if (process.env.NODE_ENV === "development") {
@@ -453,25 +453,25 @@ export default function NavBar({
   // Определение: активна ли скидка сегодня (по локальной дате, без времени)
   const isDiscountActiveToday = () => {
     if (!hasConfiguredDiscount()) return false;
-    
+
     const normalize = (d) =>
       new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const today = normalize(new Date());
     const start = normalize(discountStartDate);
     const end = normalize(discountEndDate);
-    
+
     return today >= start && today <= end;
   };
-  
+
   // Определение: скидка в будущем
   const isDiscountUpcoming = () => {
     if (!hasConfiguredDiscount()) return false;
-    
+
     const normalize = (d) =>
       new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const today = normalize(new Date());
     const start = normalize(discountStartDate);
-    
+
     return today < start;
   };
 
@@ -497,12 +497,14 @@ export default function NavBar({
     }
     if (isDiscountUpcoming()) {
       // Скидка запланирована на будущее
-      return `${selectedDiscount}% с ${formatDiscountDate(discountStartDate)} по ${formatDiscountDate(discountEndDate)}`;
+      return `${selectedDiscount}% с ${formatDiscountDate(
+        discountStartDate
+      )} по ${formatDiscountDate(discountEndDate)}`;
     }
     // Нет настроенной скидки
     return t("discount.inactive");
   };
-  
+
   const discountButtonLabel = getDiscountButtonLabel();
   const adminNavLinkSx = {
     px: { md: 1.1, lg: 1.8 },
@@ -711,9 +713,13 @@ export default function NavBar({
                       aria-haspopup="true"
                       aria-expanded={Boolean(locationsAnchor)}
                       aria-label={t("header.locations") || "Locations"}
-                      aria-controls={locationsAnchor ? "locations-menu" : undefined}
+                      aria-controls={
+                        locationsAnchor ? "locations-menu" : undefined
+                      }
                       id={locationsAnchor ? "locations-button" : undefined}
-                      onClick={hubLinks?.length ? handleLocationsOpen : undefined}
+                      onClick={
+                        hubLinks?.length ? handleLocationsOpen : undefined
+                      }
                       sx={{
                         minWidth: 0,
                         px: { md: 0.8, lg: 1.5 },
@@ -725,7 +731,10 @@ export default function NavBar({
                     >
                       <Typography
                         component="span"
-                        sx={{ fontStretch: "extra-condensed", textTransform: "uppercase" }}
+                        sx={{
+                          fontStretch: "extra-condensed",
+                          textTransform: "uppercase",
+                        }}
                       >
                         {t("header.locations") || "Locations"}
                       </Typography>
@@ -756,9 +765,7 @@ export default function NavBar({
                 {isAdmin && (
                   <>
                     <Link href="/admin/cars">
-                      <Typography
-                        sx={adminNavLinkSx}
-                      >
+                      <Typography sx={adminNavLinkSx}>
                         {t("header.cars")}
                       </Typography>
                     </Link>
@@ -774,16 +781,12 @@ export default function NavBar({
                       </Typography>
                     </Link>*/}
                     <Link href="/admin/orders-calendar">
-                      <Typography
-                        sx={adminNavLinkSx}
-                      >
+                      <Typography sx={adminNavLinkSx}>
                         {t("header.calendar")}
                       </Typography>
                     </Link>
                     <Link href="/admin/orders">
-                      <Typography
-                        sx={adminNavLinkSx}
-                      >
+                      <Typography sx={adminNavLinkSx}>
                         {t("header.table")}
                       </Typography>
                     </Link>
@@ -808,7 +811,8 @@ export default function NavBar({
               <Link href={homeHref}>
                 <Logo
                   sx={{
-                    fontSize: "clamp(12px, calc(0.79rem + 1vw), 32px)", lineHeight: 1,
+                    fontSize: "clamp(12px, calc(0.79rem + 1vw), 32px)",
+                    lineHeight: 1,
                   }}
                 >
                   {companyName}
@@ -822,15 +826,21 @@ export default function NavBar({
                   size="small"
                   sx={{
                     position: "absolute",
-                    top:-5,
+                    top: -5,
                     right: -5,
-                    backgroundColor: adminRole === ROLE.SUPERADMIN 
-                      ? "rgba(255, 193, 7, 0.2)" 
-                      : "rgba(33, 150, 243, 0.2)",
-                    color: adminRole === ROLE.SUPERADMIN 
-                      ? "#ffc107" 
-                      : "secondary.main",
-                    border: `1px solid ${adminRole === ROLE.SUPERADMIN ? "triadic.yellowBright" : "secondary.main"}`,
+                    backgroundColor:
+                      adminRole === ROLE.SUPERADMIN
+                        ? "rgba(255, 193, 7, 0.2)"
+                        : "rgba(33, 150, 243, 0.2)",
+                    color:
+                      adminRole === ROLE.SUPERADMIN
+                        ? "#ffc107"
+                        : "secondary.main",
+                    border: `1px solid ${
+                      adminRole === ROLE.SUPERADMIN
+                        ? "triadic.yellowBright"
+                        : "secondary.main"
+                    }`,
                     fontWeight: 600,
                     fontSize: "0.65rem",
                     height: 20,
@@ -841,11 +851,7 @@ export default function NavBar({
                 />
               )}
             </Box>
-            
           </Stack>
-
-
-
         </Toolbar>
 
         <Menu
@@ -880,22 +886,34 @@ export default function NavBar({
                   {index === 4 && (
                     <Divider
                       component="li"
-                      sx={{ borderColor: "common.black", borderBottomWidth: 2, my: 0.5 }}
+                      sx={{
+                        borderColor: "common.black",
+                        borderBottomWidth: 2,
+                        my: 0.5,
+                      }}
                     />
                   )}
                   <ListItem disablePadding>
-                      <Link
-                        href={link.href}
-                        onClick={() => {
-                          handleLocationsClose();
+                    <Link
+                      href={link.href}
+                      onClick={() => {
+                        handleLocationsClose();
+                      }}
+                      style={{
+                        textDecoration: "none",
+                        color: "inherit",
+                        width: "100%",
+                        padding: "6px 12px",
+                      }}
+                    >
+                      <ListItemText
+                        primary={link.label}
+                        primaryTypographyProps={{
+                          variant: "body2",
+                          fontWeight: 500,
                         }}
-                        style={{ textDecoration: "none", color: "inherit", width: "100%", padding: "6px 12px" }}
-                      >
-                        <ListItemText
-                          primary={link.label}
-                          primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
-                        />
-                      </Link>
+                      />
+                    </Link>
                   </ListItem>
                 </Fragment>
               ))}
@@ -934,12 +952,8 @@ export default function NavBar({
           <MenuItem onClick={() => handleLanguageSelect("bg")}>
             Български
           </MenuItem>
-          <MenuItem onClick={() => handleLanguageSelect("ro")}>
-            Română
-          </MenuItem>
-          <MenuItem onClick={() => handleLanguageSelect("sr")}>
-            Srpski
-          </MenuItem>
+          <MenuItem onClick={() => handleLanguageSelect("ro")}>Română</MenuItem>
+          <MenuItem onClick={() => handleLanguageSelect("sr")}>Srpski</MenuItem>
         </LanguagePopover>
 
         {isMain && (
@@ -966,17 +980,16 @@ export default function NavBar({
                 "& > *": { minWidth: 0 },
                 // apply only for small landscape touch devices (phones/tablets)
                 // Используем правильный синтаксис MUI для кастомных media queries
-                "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)": {
-                  gap: 1,
-                  px: 1,
-                },
+                "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)":
+                  {
+                    gap: 1,
+                    px: 1,
+                  },
               }}
             >
               {/* Legend: occupy only intrinsic space - loaded via AdminRoot */}
               <Box sx={{ flex: "0 0 auto", mr: 1, minWidth: 0 }}>
-                {isAdmin && (
-                  <AdminRoot showLegend={true} isMain={isMain} />
-                )}
+                {isAdmin && <AdminRoot showLegend={true} isMain={isMain} />}
               </Box>
 
               {/* Контейнер для фильтров - занимает оставшееся пространство и может сжиматься */}
@@ -996,12 +1009,13 @@ export default function NavBar({
                   sx={{
                     // only override widths for small landscape touch devices; let SelectedFieldClass control desktop sizes
                     // Используем правильный синтаксис MUI для кастомных media queries
-                    "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)": {
-                      "& .MuiFormControl-root": {
-                        minWidth: 190,
-                        maxWidth: 210,
+                    "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)":
+                      {
+                        "& .MuiFormControl-root": {
+                          minWidth: 190,
+                          maxWidth: 210,
+                        },
                       },
-                    },
                   }}
                 >
                   <SelectedFieldClass
@@ -1016,12 +1030,13 @@ export default function NavBar({
                 <Box
                   sx={{
                     // Используем правильный синтаксис MUI для кастомных media queries
-                    "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)": {
-                      "& .MuiFormControl-root": {
-                        minWidth: 190,
-                        maxWidth: 210,
+                    "@media (max-width:900px) and (orientation: landscape) and (hover: none) and (pointer: coarse)":
+                      {
+                        "& .MuiFormControl-root": {
+                          minWidth: 190,
+                          maxWidth: 210,
+                        },
                       },
-                    },
                   }}
                 >
                   <SelectedFieldClass
@@ -1070,9 +1085,20 @@ export default function NavBar({
                     {hubLinks.map((link, index) => (
                       <Fragment key={link.href}>
                         {index === 4 && (
-                          <Divider sx={{ borderColor: "common.black", borderBottomWidth: 2, my: 0.5 }} />
+                          <Divider
+                            sx={{
+                              borderColor: "common.black",
+                              borderBottomWidth: 2,
+                              my: 0.5,
+                            }}
+                          />
                         )}
-                        <ListItem button component={Link} href={link.href} onClick={() => setDrawerOpen(false)}>
+                        <ListItem
+                          button
+                          component={Link}
+                          href={link.href}
+                          onClick={() => setDrawerOpen(false)}
+                        >
                           <ListItemText primary={link.label} inset />
                         </ListItem>
                       </Fragment>
@@ -1114,7 +1140,9 @@ export default function NavBar({
             {/* Кнопка logout - только для админки в мобильном меню */}
             {isAdmin && adminRole !== null && (
               <>
-                <Box sx={{ px: 2, py: 1, borderTop: "1px solid rgba(0,0,0,0.1)" }}>
+                <Box
+                  sx={{ px: 2, py: 1, borderTop: "1px solid rgba(0,0,0,0.1)" }}
+                >
                   <Button
                     variant="outlined"
                     fullWidth
