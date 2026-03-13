@@ -117,9 +117,12 @@ export async function GET(request: NextRequest) {
         { testingCar: { $exists: false } },
       ],
     };
-    const cars = await Car.find(filter)
+    // Mongoose Query has union overloads that confuse TS; assert to run the chain
+    const cars = await (Car as import("mongoose").Model<Record<string, unknown>>)
+      .find(filter)
       .select("_id model transmission slug photoUrl pricingTiers")
-      .lean();
+      .lean()
+      .exec();
 
     const items: InternalCarItem[] = (cars as Array<Record<string, unknown>>).map(
       (doc) => ({
