@@ -71,9 +71,11 @@ export default function LegalPageContent({ docType, jur = "EU", forcedLang = nul
     };
   }, [docType, lang, jur]);
 
+  const contentPadding = { maxWidth: 820, margin: "0 auto", padding: "24px 20px 48px" };
+
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "48px" }}>
+      <div style={{ ...contentPadding, textAlign: "center", paddingTop: "48px", paddingBottom: "48px" }}>
         <p style={{ color: "#666" }}>Loading...</p>
       </div>
     );
@@ -83,13 +85,21 @@ export default function LegalPageContent({ docType, jur = "EU", forcedLang = nul
     return (
       <div
         style={{
-          padding: "16px",
-          backgroundColor: "#ffebee",
-          borderRadius: "4px",
-          color: "#c62828",
+          ...contentPadding,
+          paddingTop: "24px",
+          paddingBottom: "24px",
         }}
       >
-        {error}
+        <div
+          style={{
+            padding: "16px",
+            backgroundColor: "#ffebee",
+            borderRadius: "4px",
+            color: "#c62828",
+          }}
+        >
+          {error}
+        </div>
       </div>
     );
   }
@@ -98,13 +108,21 @@ export default function LegalPageContent({ docType, jur = "EU", forcedLang = nul
     return (
       <div
         style={{
-          padding: "16px",
-          backgroundColor: "#fff3e0",
-          borderRadius: "4px",
-          color: "#e65100",
+          ...contentPadding,
+          paddingTop: "24px",
+          paddingBottom: "24px",
         }}
       >
-        No content available
+        <div
+          style={{
+            padding: "16px",
+            backgroundColor: "#fff3e0",
+            borderRadius: "4px",
+            color: "#e65100",
+          }}
+        >
+          No content available
+        </div>
       </div>
     );
   }
@@ -113,7 +131,7 @@ export default function LegalPageContent({ docType, jur = "EU", forcedLang = nul
 
   if (!Array.isArray(sections) || sections.length === 0) {
     return (
-      <>
+      <div style={contentPadding}>
         <h1 style={{ textAlign: "center", marginBottom: "32px" }}>
           {title || "Legal Document"}
         </h1>
@@ -127,12 +145,18 @@ export default function LegalPageContent({ docType, jur = "EU", forcedLang = nul
         >
           No content available
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <article>
+    <article
+      style={{
+        maxWidth: 820,
+        margin: "0 auto",
+        padding: "24px 20px 48px",
+      }}
+    >
       {doc.stale && (
         <div
           style={{

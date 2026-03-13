@@ -21,7 +21,8 @@ import {
   getCarPath,
   getLocaleDictionary,
   getLocationById,
-  getLocationPath,
+  getLocationPathFromLocation,
+  getLocationSeoSlug,
   getSupportedLocales,
   isSupportedLocale,
   normalizeLocale,
@@ -187,7 +188,7 @@ export default async function LocalizedCarPage({ params }) {
     [LOCATION_IDS.HALKIDIKI, LOCATION_IDS.THESSALONIKI_AIRPORT, LOCATION_IDS.NEA_KALLIKRATIA].includes(loc.id)
   );
   const pillarLinks = pillarLocations.slice(0, 3).map((loc) => ({
-    href: getLocationPath(locale, loc.slug),
+    href: getLocationPathFromLocation(locale, loc),
     label: (carDict.breadcrumbCarRentalLocation || "").replace(/\{locationName\}/g, loc.shortName) || `Car rental ${loc.shortName}`,
   }));
 
@@ -211,7 +212,7 @@ export default async function LocalizedCarPage({ params }) {
 
   // ── Pickup locations with links ────────────────────────────────────
   const locationLinks = getAllLocationsForLocale(locale).map((location) => ({
-    href: getLocationPath(locale, location.slug),
+    href: getLocationPathFromLocation(locale, location),
     label: location.shortName,
   }));
 
@@ -259,8 +260,9 @@ export default async function LocalizedCarPage({ params }) {
     }).map((cat) => {
       const locationName = location.nameByLocale[locale];
       const content = getResolvedCategoryContent(cat.id, locale, locationName);
+      const locSlug = getLocationSeoSlug(location.locationId, locale);
       return {
-        href: getSeoPagePath(locale, `${cat.id}-car-rental-${location.slugSuffix}`),
+        href: getSeoPagePath(locale, `${cat.id}-car-rental-${locSlug}`),
         label: content?.h1 || `${cat.id} car rental`,
       };
     })
@@ -268,13 +270,14 @@ export default async function LocalizedCarPage({ params }) {
 
   // Add general category links for the main location
   const mainLocation = SEO_LOCATIONS[0];
+  const mainLocSlug = getLocationSeoSlug(mainLocation.locationId, locale);
   const generalCategoryLinks = CAR_CATEGORIES
     .filter((cat) => !categoryLinks.some((cl) => cl.href.includes(cat.id)))
     .slice(0, 3)
     .map((cat) => {
       const content = getResolvedCategoryContent(cat.id, locale, mainLocation.nameByLocale[locale]);
       return {
-        href: getSeoPagePath(locale, `${cat.id}-car-rental-${mainLocation.slugSuffix}`),
+        href: getSeoPagePath(locale, `${cat.id}-car-rental-${mainLocSlug}`),
         label: content?.h1 || `${cat.id} car rental`,
       };
     });
@@ -287,8 +290,9 @@ export default async function LocalizedCarPage({ params }) {
   const brandLinks = carBrandSlug
     ? SEO_LOCATIONS.slice(0, 2).map((location) => {
         const brandContent = getResolvedBrandContent(carBrand, locale, location.nameByLocale[locale]);
+        const locSlug = getLocationSeoSlug(location.locationId, locale);
         return {
-          href: getSeoPagePath(locale, buildBrandPageSlug(carBrandSlug, location.slugSuffix)),
+          href: getSeoPagePath(locale, buildBrandPageSlug(carBrandSlug, locSlug)),
           label: brandContent.h1,
         };
       })

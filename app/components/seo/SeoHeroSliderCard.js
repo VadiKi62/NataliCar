@@ -22,7 +22,6 @@ export default function SeoHeroSliderCard({
   ctaHref,
   ctaLabel,
   fullBleedUnderNav = false,
-  ctaBottomRight = false,
 }) {
   const [isPortraitPhone, setIsPortraitPhone] = useState(false);
 
@@ -106,7 +105,17 @@ export default function SeoHeroSliderCard({
         </Box>
       ))}
 
-      {/* OVERLAY: dark gradient from right so white text is readable */}
+      {/* Dark overlay so white text is clearly readable */}
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.55))",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Gradient from right for text area */}
       <Box
         sx={(theme) => ({
           position: "absolute",
@@ -115,10 +124,11 @@ export default function SeoHeroSliderCard({
             ${theme.palette.common.black}CC 0%, 
             ${theme.palette.common.black}88 40%, 
             transparent 75%)`,
+          pointerEvents: "none",
         })}
       />
 
-      {/* CONTENT */}
+      {/* CONTENT: CTA above title, then paragraphs (no absolute positioning) */}
       <Box
         sx={{
           position: "relative",
@@ -134,14 +144,29 @@ export default function SeoHeroSliderCard({
         }}
       >
         <Box sx={{ maxWidth: 680, textAlign: "right" }}>
+          {ctaHref && ctaLabel && (
+            <Box sx={{ mb: 2 }}>
+              <ActionButton
+                component={Link}
+                href={ctaHref}
+                label={ctaLabel}
+                color="primary"
+                variant="contained"
+                size="large"
+              />
+            </Box>
+          )}
           <Typography
             component="h1"
             variant="h2"
             sx={{
-              fontWeight: 700,
+              fontWeight: 1000,
               lineHeight: 1.2,
               mb: 2,
               color: "common.white",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
             }}
           >
             {title}
@@ -161,40 +186,8 @@ export default function SeoHeroSliderCard({
               {p}
             </Typography>
           ))}
-          {ctaHref && ctaLabel && !ctaBottomRight && (
-            <Box sx={{ mt: 3 }}>
-              <ActionButton
-                component={Link}
-                href={ctaHref}
-                label={ctaLabel}
-                color="primary"
-                variant="contained"
-                size="large"
-              />
-            </Box>
-          )}
         </Box>
       </Box>
-
-      {ctaHref && ctaLabel && ctaBottomRight && (
-        <Box
-          sx={{
-            position: "absolute",
-            right: { xs: 16, md: 24 },
-            bottom: { xs: 16, md: 24 },
-            zIndex: 3,
-          }}
-        >
-          <ActionButton
-            component={Link}
-            href={ctaHref}
-            label={ctaLabel}
-            color="primary"
-            variant="contained"
-            size="large"
-          />
-        </Box>
-      )}
 
       {/* DOTS */}
       {images.length > 1 && (

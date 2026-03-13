@@ -14,12 +14,41 @@ export function SeoLinksBlock({ title, links }) {
   if (!links || links.length === 0) return null;
 
   return (
-    <section style={{ maxWidth: 980, margin: "0 auto", padding: "8px 16px" }}>
-      <h2 style={{ marginBottom: 8 }}>{title}</h2>
-      <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+    <section
+      style={{
+        maxWidth: 980,
+        margin: "0 auto",
+        padding: "20px 16px",
+        marginTop: 16,
+        border: "1px solid #e0e0e0",
+        borderRadius: 8,
+        backgroundColor: "#fafafa",
+      }}
+    >
+      <h2
+        style={{
+          marginBottom: 12,
+          marginTop: 0,
+          fontSize: "1.125rem",
+          fontWeight: 600,
+          color: "#333",
+        }}
+      >
+        {title}
+      </h2>
+      <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.8, listStyle: "disc" }}>
         {links.map((link) => (
-          <li key={link.href}>
-            <Link href={link.href}>{link.label}</Link>
+          <li key={link.href} style={{ marginBottom: 6 }}>
+            <Link
+              href={link.href}
+              style={{
+                color: "#1976d2",
+                textDecoration: "none",
+                fontSize: "1rem",
+              }}
+            >
+              {link.label}
+            </Link>
           </li>
         ))}
       </ul>

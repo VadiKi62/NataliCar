@@ -3,7 +3,7 @@ import { LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
 import {
   getDefaultLocale,
   getLocationById,
-  getLocationPath,
+  getLocationPathFromLocation,
 } from "@domain/locationSeo/locationSeoService";
 
 export default function HomePageRedirect() {
@@ -13,7 +13,7 @@ export default function HomePageRedirect() {
 
   redirect(
     airportLocation
-      ? getLocationPath(locale, airportLocation.slug)
+      ? getLocationPathFromLocation(locale, airportLocation)
       : fallbackPath
   );
 }

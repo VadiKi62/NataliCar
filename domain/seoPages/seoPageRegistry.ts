@@ -1,4 +1,9 @@
-import { LOCATION_IDS, SUPPORTED_LOCALES, type SupportedLocale } from "@domain/locationSeo/locationSeoKeys";
+import {
+  LOCATION_IDS,
+  SUPPORTED_LOCALES,
+  type LocationId,
+  type SupportedLocale,
+} from "@domain/locationSeo/locationSeoKeys";
 import type {
   CarCategoryDefinition,
   CarCategoryFilter,
@@ -13,11 +18,21 @@ import type {
 // SEO locations — the 4 primary markets
 // ---------------------------------------------------------------------------
 
+// Single source of truth for location page URLs: /{locale}/locations/{seoSlugByLocale[locale]}
 export const SEO_LOCATIONS: SeoLocationDefinition[] = [
   {
     id: "halkidiki",
     locationId: LOCATION_IDS.HALKIDIKI,
-    slugSuffix: "halkidiki",
+    seoSlugByLocale: {
+      en: "car-rental-halkidiki",
+      ru: "arenda-avto-halkidiki",
+      uk: "orenda-avto-halkidiki",
+      el: "enoikiasi-autokinitou-halkidiki",
+      de: "mietwagen-halkidiki",
+      bg: "koli-pod-naem-halkidiki",
+      ro: "inchirieri-auto-halkidiki",
+      sr: "rent-a-car-halkidiki",
+    },
     nameByLocale: {
       en: "Halkidiki", ru: "Халкидики", uk: "Халкідіки", el: "Χαλκιδική",
       de: "Chalkidiki", bg: "Халкидики", ro: "Halkidiki", sr: "Halkidiki",
@@ -26,7 +41,16 @@ export const SEO_LOCATIONS: SeoLocationDefinition[] = [
   {
     id: "thessaloniki-airport",
     locationId: LOCATION_IDS.THESSALONIKI_AIRPORT,
-    slugSuffix: "thessaloniki-airport",
+    seoSlugByLocale: {
+      en: "car-rental-thessaloniki-airport",
+      ru: "arenda-avto-aeroport-saloniki",
+      uk: "orenda-avto-aeroport-saloniky",
+      el: "enoikiasi-autokinitou-aerodromio-thessalonikis",
+      de: "mietwagen-thessaloniki-flughafen",
+      bg: "koli-pod-naem-letishte-solun",
+      ro: "inchirieri-auto-aeroport-salonic",
+      sr: "rent-a-car-aerodrom-solun",
+    },
     nameByLocale: {
       en: "Thessaloniki Airport", ru: "аэропорт Салоники", uk: "аеропорт Салоніки",
       el: "Αεροδρόμιο Θεσσαλονίκης", de: "Flughafen Thessaloniki",
@@ -36,7 +60,16 @@ export const SEO_LOCATIONS: SeoLocationDefinition[] = [
   {
     id: "nea-kallikratia",
     locationId: LOCATION_IDS.NEA_KALLIKRATIA,
-    slugSuffix: "nea-kallikratia",
+    seoSlugByLocale: {
+      en: "car-rental-nea-kallikratia",
+      ru: "arenda-avto-nea-kallikratia",
+      uk: "orenda-avto-nea-kallikratia",
+      el: "enoikiasi-autokinitou-nea-kallikratia",
+      de: "mietwagen-nea-kallikratia",
+      bg: "koli-pod-naem-nea-kallikratia",
+      ro: "inchirieri-auto-nea-kallikratia",
+      sr: "rent-a-car-nea-kallikratia",
+    },
     nameByLocale: {
       en: "Nea Kallikratia", ru: "Неа Каликратия", uk: "Неа Калікратія",
       el: "Νέα Καλλικράτεια", de: "Nea Kallikratia", bg: "Неа Каликратия",
@@ -46,7 +79,16 @@ export const SEO_LOCATIONS: SeoLocationDefinition[] = [
   {
     id: "thessaloniki",
     locationId: LOCATION_IDS.THESSALONIKI,
-    slugSuffix: "thessaloniki",
+    seoSlugByLocale: {
+      en: "car-rental-thessaloniki",
+      ru: "arenda-avto-saloniki",
+      uk: "orenda-avto-saloniky",
+      el: "enoikiasi-autokinitou-thessaloniki",
+      de: "mietwagen-thessaloniki",
+      bg: "koli-pod-naem-solun",
+      ro: "inchirieri-auto-salonic",
+      sr: "rent-a-car-solun",
+    },
     nameByLocale: {
       en: "Thessaloniki", ru: "Салоники", uk: "Салоніки",
       el: "Θεσσαλονίκη", de: "Thessaloniki", bg: "Солун",
@@ -54,6 +96,22 @@ export const SEO_LOCATIONS: SeoLocationDefinition[] = [
     },
   },
 ];
+
+/** Single source: SEO_LOCATIONS. Returns slug for /{locale}/locations/{slug}; fallback to en. */
+export function getLocationSeoSlug(locationId: LocationId, locale: SupportedLocale): string | undefined {
+  const entry = SEO_LOCATIONS.find((e) => e.locationId === locationId);
+  if (!entry?.seoSlugByLocale) return undefined;
+  return entry.seoSlugByLocale[locale] ?? entry.seoSlugByLocale.en;
+}
+
+/** Resolve locale + slug to locationId from SEO_LOCATIONS (fallback to en slug). */
+export function getLocationIdBySeoSlug(locale: SupportedLocale, slug: string): LocationId | undefined {
+  const entry = SEO_LOCATIONS.find(
+    (e) =>
+      e.seoSlugByLocale?.[locale] === slug || e.seoSlugByLocale?.en === slug
+  );
+  return entry?.locationId as LocationId | undefined;
+}
 
 // ---------------------------------------------------------------------------
 // Car category definitions — 5 categories × 4 locations = 20 pages
@@ -372,32 +430,46 @@ export const CAR_CATEGORIES: CarCategoryDefinition[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// SEO page slug matrix: {category}-car-rental-{location}
+// SEO page slug matrix: {category}-car-rental-{location} (localized via seoSlugByLocale)
 // ---------------------------------------------------------------------------
 
-const seoPageIndex = new Map<string, SeoPageEntry>();
-
-export function getAllSeoPageSlugs(): SeoPageEntry[] {
-  if (seoPageIndex.size > 0) return Array.from(seoPageIndex.values());
-
-  for (const category of CAR_CATEGORIES) {
-    for (const location of SEO_LOCATIONS) {
-      const slug = `${category.id}-car-rental-${location.slugSuffix}`;
-      const entry: SeoPageEntry = {
-        seoSlug: slug,
-        categoryId: category.id,
-        locationId: location.locationId,
-      };
-      seoPageIndex.set(slug, entry);
-    }
-  }
-
-  return Array.from(seoPageIndex.values());
+/** Category × location SEO slug for a given locale. Uses centralized getLocationSeoSlug. */
+export function getCategoryLocationSeoSlug(
+  categoryId: string,
+  locationId: string,
+  locale: SupportedLocale
+): string {
+  const locSlug = getLocationSeoSlug(locationId as LocationId, locale);
+  return `${categoryId}-car-rental-${locSlug || locationId}`;
 }
 
-export function getSeoPageBySlug(slug: string): SeoPageEntry | null {
-  if (seoPageIndex.size === 0) getAllSeoPageSlugs();
-  return seoPageIndex.get(slug) || null;
+/** All category×location SEO pages for a locale (localized slugs). */
+export function getAllSeoPageSlugs(locale: SupportedLocale): SeoPageEntry[] {
+  const entries: SeoPageEntry[] = [];
+  for (const category of CAR_CATEGORIES) {
+    for (const location of SEO_LOCATIONS) {
+      const seoSlug = getCategoryLocationSeoSlug(category.id, location.locationId, locale);
+      entries.push({
+        seoSlug,
+        categoryId: category.id,
+        locationId: location.locationId,
+      });
+    }
+  }
+  return entries;
+}
+
+/** Resolve category×location page by locale and slug (localized seoSlugByLocale). */
+export function getSeoPageBySlug(locale: SupportedLocale, slug: string): SeoPageEntry | null {
+  for (const category of CAR_CATEGORIES) {
+    for (const location of SEO_LOCATIONS) {
+      const expected = getCategoryLocationSeoSlug(category.id, location.locationId, locale);
+      if (expected === slug) {
+        return { seoSlug: slug, categoryId: category.id, locationId: location.locationId };
+      }
+    }
+  }
+  return null;
 }
 
 export function getCategoryById(id: string): CarCategoryDefinition | null {
@@ -408,8 +480,29 @@ export function getSeoLocationById(id: string): SeoLocationDefinition | null {
   return SEO_LOCATIONS.find((l) => l.locationId === id) || null;
 }
 
+/** Find SEO location by localized slug for a locale (seoSlugByLocale). */
+export function getSeoLocationBySeoSlug(
+  locale: SupportedLocale,
+  locationSlug: string
+): SeoLocationDefinition | null {
+  return (
+    SEO_LOCATIONS.find(
+      (l) => getLocationSeoSlug(l.locationId as LocationId, locale) === locationSlug
+    ) || null
+  );
+}
+
+/** @deprecated Use getSeoLocationBySeoSlug(locale, slug) with localized slug. */
 export function getSeoLocationBySlugSuffix(suffix: string): SeoLocationDefinition | null {
   return SEO_LOCATIONS.find((l) => l.slugSuffix === suffix) || null;
+}
+
+/** Localized location slug for a given locale, with English fallback. Uses seoSlugByLocale. */
+export function getLocationSlugForLocale(
+  location: SeoLocationDefinition,
+  locale: SupportedLocale
+): string {
+  return location.seoSlugByLocale?.[locale] ?? location.seoSlugByLocale?.en ?? "";
 }
 
 // ---------------------------------------------------------------------------
@@ -499,37 +592,42 @@ export function getResolvedCategoryContent(
 }
 
 // ---------------------------------------------------------------------------
-// Programmatic pages: rent-{carSlug}-{locationSuffix}
+// Programmatic pages: {carSlug}-rental-{locationSeoSlug} (localized)
 // ---------------------------------------------------------------------------
 
-const programmaticPageIndex = new Map<string, ProgrammaticPageEntry>();
-
-export function buildProgrammaticSlug(carSlug: string, locationSuffix: string): string {
-  return `rent-${carSlug}-${locationSuffix}`;
+export function buildProgrammaticSlug(carSlug: string, locationSeoSlug: string): string {
+  return `${carSlug}-rental-${locationSeoSlug}`;
 }
 
+/** All programmatic slugs for a locale (uses getLocationSeoSlug per location). */
 export function buildAllProgrammaticSlugs(
-  carSlugs: string[]
+  carSlugs: string[],
+  locale: SupportedLocale
 ): ProgrammaticPageEntry[] {
-  programmaticPageIndex.clear();
-
+  const entries: ProgrammaticPageEntry[] = [];
   for (const carSlug of carSlugs) {
     for (const location of SEO_LOCATIONS) {
-      const slug = buildProgrammaticSlug(carSlug, location.slugSuffix);
-      const entry: ProgrammaticPageEntry = {
-        seoSlug: slug,
-        carSlug,
-        locationId: location.locationId,
-      };
-      programmaticPageIndex.set(slug, entry);
+      const locSlug = getLocationSeoSlug(location.locationId as LocationId, locale);
+      const slug = buildProgrammaticSlug(carSlug, locSlug);
+      entries.push({ seoSlug: slug, carSlug, locationId: location.locationId });
     }
   }
-
-  return Array.from(programmaticPageIndex.values());
+  return entries;
 }
 
-export function getProgrammaticPageBySlug(slug: string): ProgrammaticPageEntry | null {
-  return programmaticPageIndex.get(slug) || null;
+/** Resolve programmatic page by locale and slug (localized seoSlugByLocale). */
+export function getProgrammaticPageBySlug(
+  locale: SupportedLocale,
+  slug: string
+): ProgrammaticPageEntry | null {
+  for (const location of SEO_LOCATIONS) {
+    const suffix = `-rental-${getLocationSeoSlug(location.locationId as LocationId, locale)}`;
+    if (!slug.endsWith(suffix)) continue;
+    const carSlugCandidate = slug.slice(0, slug.length - suffix.length);
+    if (!carSlugCandidate) continue;
+    return { seoSlug: slug, carSlug: carSlugCandidate, locationId: location.locationId };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,8 +649,8 @@ function toBrandSlug(brand: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function buildBrandPageSlug(brandSlug: string, locationSuffix: string): string {
-  return `${brandSlug}-car-rental-${locationSuffix}`;
+export function buildBrandPageSlug(brandSlug: string, locationSeoSlug: string): string {
+  return `${brandSlug}-car-rental-${locationSeoSlug}`;
 }
 
 export function extractUniqueBrands(
@@ -576,24 +674,25 @@ export function extractUniqueBrands(
   return result;
 }
 
+/** All brand×location pages for a locale (uses getLocationSeoSlug). */
 export function buildAllBrandPageSlugs(
-  cars: Array<Record<string, unknown>>
+  cars: Array<Record<string, unknown>>,
+  locale: SupportedLocale
 ): BrandPageEntry[] {
   const brands = extractUniqueBrands(cars);
   const entries: BrandPageEntry[] = [];
-
   for (const { brand, brandSlug } of brands) {
     for (const location of SEO_LOCATIONS) {
+      const locSlug = getLocationSeoSlug(location.locationId as LocationId, locale);
       entries.push({
-        seoSlug: buildBrandPageSlug(brandSlug, location.slugSuffix),
+        seoSlug: buildBrandPageSlug(brandSlug, locSlug),
         brand,
         brandSlug,
         locationId: location.locationId,
-        locationSlugSuffix: location.slugSuffix,
+        locationSlugSuffix: locSlug,
       });
     }
   }
-
   return entries;
 }
 
@@ -608,14 +707,61 @@ export function filterCarsByBrand(
   });
 }
 
+/**
+ * Build hreflang alternates for a brand×location page (localized slug per locale).
+ * Used by getSeoPageAlternates (brand branch) and by sitemap; keeps page metadata in sync with sitemap.
+ */
+export function getBrandPageAlternates(
+  brandSlug: string,
+  locationId: string
+): Record<string, string> {
+  const alternates: Record<string, string> = {};
+  for (const loc of SUPPORTED_LOCALES) {
+    const slug = buildBrandPageSlug(
+      brandSlug,
+      getLocationSeoSlug(locationId as LocationId, loc)
+    );
+    alternates[loc] = getSeoPagePath(loc, slug);
+  }
+  return alternates;
+}
+
+/**
+ * Parse a slug for the given locale to extract brandSlug and locationId if it matches brand×location pattern.
+ * Used by getSeoPageAlternates to build correct hreflang without needing cars data.
+ */
+function parseBrandPageSlugParts(
+  slug: string,
+  locale: SupportedLocale
+): { brandSlug: string; locationId: string } | null {
+  if (!slug || !slug.includes("-car-rental-")) return null;
+  const firstPart = slug.split("-car-rental-")[0];
+  if (!firstPart || CATEGORY_IDS_SET.has(firstPart)) return null;
+
+  for (const location of SEO_LOCATIONS) {
+    const locSlug = getLocationSeoSlug(location.locationId as LocationId, locale);
+    const suffix = `-car-rental-${locSlug}`;
+    if (!slug.endsWith(suffix)) continue;
+
+    const brandSlugCandidate = slug.slice(0, slug.length - suffix.length);
+    if (!brandSlugCandidate) continue;
+
+    return { brandSlug: brandSlugCandidate, locationId: location.locationId };
+  }
+  return null;
+}
+
+/** Resolve brand page by locale and slug (localized seoSlugByLocale). */
 export function resolveBrandFromSlug(
   slug: string,
-  cars: Array<Record<string, unknown>>
+  cars: Array<Record<string, unknown>>,
+  locale: SupportedLocale
 ): BrandPageEntry | null {
   if (CATEGORY_IDS_SET.has(slug.split("-car-rental-")[0])) return null;
 
   for (const location of SEO_LOCATIONS) {
-    const suffix = `-car-rental-${location.slugSuffix}`;
+    const locSlug = getLocationSeoSlug(location.locationId as LocationId, locale);
+    const suffix = `-car-rental-${locSlug}`;
     if (!slug.endsWith(suffix)) continue;
 
     const brandSlugCandidate = slug.slice(0, slug.length - suffix.length);
@@ -629,7 +775,7 @@ export function resolveBrandFromSlug(
         brand: matched.brand,
         brandSlug: matched.brandSlug,
         locationId: location.locationId,
-        locationSlugSuffix: location.slugSuffix,
+        locationSlugSuffix: locSlug,
       };
     }
   }
@@ -691,10 +837,44 @@ export function getSeoPagePath(locale: string, seoSlug: string): string {
   return `/${locale}/${seoSlug}`;
 }
 
-export function getSeoPageAlternates(seoSlug: string): Record<string, string> {
+/** Alternates for a category×location page (localized slug per locale). */
+export function getSeoPageAlternatesForCategoryLocation(
+  categoryId: string,
+  locationId: string
+): Record<string, string> {
   const alternates: Record<string, string> = {};
   for (const locale of SUPPORTED_LOCALES) {
-    alternates[locale] = getSeoPagePath(locale, seoSlug);
+    const slug = getCategoryLocationSeoSlug(categoryId, locationId, locale);
+    alternates[locale] = getSeoPagePath(locale, slug);
   }
   return alternates;
+}
+
+/** Alternates for any SEO page: resolve slug for current locale then build per-locale paths. */
+export function getSeoPageAlternates(locale: SupportedLocale, seoSlug: string): Record<string, string> {
+  const entry = getSeoPageBySlug(locale, seoSlug);
+  if (entry) {
+    return getSeoPageAlternatesForCategoryLocation(entry.categoryId, entry.locationId);
+  }
+  const prog = getProgrammaticPageBySlug(locale, seoSlug);
+  if (prog) {
+    const alternates: Record<string, string> = {};
+    for (const loc of SUPPORTED_LOCALES) {
+      const slug = buildProgrammaticSlug(
+        prog.carSlug,
+        getLocationSeoSlug(prog.locationId as LocationId, loc)
+      );
+      alternates[loc] = getSeoPagePath(loc, slug);
+    }
+    return alternates;
+  }
+  const brandParts = parseBrandPageSlugParts(seoSlug, locale);
+  if (brandParts) {
+    return getBrandPageAlternates(brandParts.brandSlug, brandParts.locationId);
+  }
+  const fallback: Record<string, string> = {};
+  for (const l of SUPPORTED_LOCALES) {
+    fallback[l] = getSeoPagePath(l, seoSlug);
+  }
+  return fallback;
 }

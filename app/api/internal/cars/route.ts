@@ -1,9 +1,9 @@
 /**
- * Internal API: list cars for external consumers (e.g. bbqr.site).
+ * Internal API: list cars for external consumers (e.g. bbqr.site, Nea Kallikratia Guide).
  * - Returns ONLY real cars (testingCar = false or not set).
  * - Protected by Bearer token (INTERNAL_API_TOKEN).
  * - CORS allowed only from https://bbqr.site.
- * - Returns minimal public fields only.
+ * - Returns extended public fields: slug, transmission, fueltype, seats, model, class, and optional detail fields.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,13 +15,25 @@ const AUTH_SCHEME = "Bearer";
 
 const DEFAULT_BASE_URL = "https://natali-cars.com";
 
-/** Ideal format for external listings (e.g. BBQR). */
+/** Extended format for external listings (e.g. BBQR, Nea Kallikratia Guide). */
 export type InternalCarItem = {
   externalId: string;
   title: string;
+  slug: string;
   priceFrom: number;
   image: string | null;
   bookingUrl: string;
+  transmission: string;
+  fueltype: string | null;
+  seats: number;
+  model?: string;
+  class?: string;
+  registration?: number;
+  color?: string | null;
+  numberOfDoors?: number;
+  airConditioning?: boolean;
+  enginePower?: number;
+  engine?: string | null;
 };
 
 /** Base URL for booking links (no trailing slash). */
@@ -111,7 +123,7 @@ export async function OPTIONS() {
   });
 }
 
-/** GET: return only real cars (testingCar = false), minimal public fields. */
+/** GET: return only real cars (testingCar = false), extended public fields for listings. */
 export async function GET(request: NextRequest) {
   const headers = {
     "Content-Type": "application/json",
@@ -146,7 +158,9 @@ export async function GET(request: NextRequest) {
     // Mongoose Query has union overloads that confuse TS; assert to run the chain
     const cars = await (Car as import("mongoose").Model<Record<string, unknown>>)
       .find(filter)
-      .select("_id model transmission slug photoUrl pricingTiers")
+      .select(
+        "_id model transmission slug photoUrl pricingTiers fueltype seats class registration color numberOfDoors airConditioning enginePower engine"
+      )
       .lean()
       .exec();
 
@@ -156,12 +170,36 @@ export async function GET(request: NextRequest) {
         const slug = (doc.slug as string) ?? "";
         const model = (doc.model as string) ?? "";
         const transmission = (doc.transmission as string) ?? "";
+        const seats = Number(doc.seats);
         return {
           externalId: String(doc._id),
           title: buildTitle(model, transmission),
+          slug,
           priceFrom: getRepresentativePrice(doc.pricingTiers),
           image: typeof doc.photoUrl === "string" ? doc.photoUrl : null,
           bookingUrl: `${baseUrl}/cars/${encodeURIComponent(slug)}`,
+          transmission: transmission || "",
+          fueltype:
+            typeof doc.fueltype === "string" && doc.fueltype
+              ? doc.fueltype
+              : null,
+          seats: Number.isFinite(seats) && seats > 0 ? seats : 5,
+          ...(typeof doc.model === "string" && { model: doc.model }),
+          ...(typeof doc.class === "string" && { class: doc.class }),
+          ...(Number.isFinite(Number(doc.registration)) && {
+            registration: Number(doc.registration),
+          }),
+          ...(typeof doc.color === "string" && { color: doc.color || null }),
+          ...(Number.isFinite(Number(doc.numberOfDoors)) && {
+            numberOfDoors: Number(doc.numberOfDoors),
+          }),
+          ...(typeof doc.airConditioning === "boolean" && {
+            airConditioning: doc.airConditioning,
+          }),
+          ...(Number.isFinite(Number(doc.enginePower)) && {
+            enginePower: Number(doc.enginePower),
+          }),
+          ...(typeof doc.engine === "string" && { engine: doc.engine || null }),
         };
       }
     );

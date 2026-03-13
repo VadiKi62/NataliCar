@@ -34,7 +34,12 @@ export interface CarCategoryDefinition {
 export interface SeoLocationDefinition {
   id: string;
   locationId: string;
-  slugSuffix: string;
+  /** Single source of truth for location page URL segment: /{locale}/locations/{seoSlugByLocale[locale]} */
+  seoSlugByLocale: Record<SupportedLocale, string>;
+  /** @deprecated Use seoSlugByLocale for routing. Kept for backward compatibility. */
+  slugSuffix?: string;
+  /** @deprecated Use seoSlugByLocale for routing. Kept for backward compatibility. */
+  slugByLocale?: Record<SupportedLocale, string>;
   nameByLocale: Record<SupportedLocale, string>;
 }
 

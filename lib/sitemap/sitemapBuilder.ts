@@ -6,19 +6,29 @@ import {
   getHubAlternates,
   getLocationAlternatesById,
   getLocationPathFromLocation,
+  getLocationSeoSlug,
   getStaticPagePath,
   getSupportedLocales,
 } from "@domain/locationSeo/locationSeoService";
-import { LOCATION_IDS, STATIC_PAGE_KEYS, type StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
+import {
+  LOCATION_IDS,
+  STATIC_PAGE_KEYS,
+  type LocationId,
+  type StaticPageKey,
+} from "@domain/locationSeo/locationSeoKeys";
 import { buildHreflangAlternates } from "@/services/seo/hreflangBuilder";
 import { toAbsoluteUrl } from "@/services/seo/urlBuilder";
 import {
   getAllSeoPageSlugs,
-  getSeoPageAlternates,
+  getSeoPageAlternatesForCategoryLocation,
   getSeoPagePath,
   buildProgrammaticSlug,
+  buildAllProgrammaticSlugs,
   buildAllBrandPageSlugs,
-  SEO_LOCATIONS,
+  getBrandPageAlternates,
+  getCategoryById,
+  filterCarsByCategory,
+  filterCarsByBrand,
 } from "@domain/seoPages/seoPageRegistry";
 
 type SitemapCar = {
@@ -94,12 +104,26 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
   const entries: MetadataRoute.Sitemap = [];
   const supportedLocales = getSupportedLocales();
 
+  const publicCars = (cars || []).filter(isPublicCar);
+
+  function getLatestDateForCars(candidateCars: SitemapCar[]): string {
+    if (!candidateCars || candidateCars.length === 0) return nowIso;
+    let latest = "1970-01-01T00:00:00.000Z";
+    for (const car of candidateCars) {
+      const d = getLastModifiedDate(car);
+      if (d > latest) latest = d;
+    }
+    return latest === "1970-01-01T00:00:00.000Z" ? nowIso : latest;
+  }
+
+  const globalCarsLastModified = getLatestDateForCars(publicCars);
+
   const hubAlternates = buildHreflangAlternates(getHubAlternates());
   for (const locale of supportedLocales) {
     const localePath = `/${locale}`;
     entries.push({
       url: toAbsoluteUrl(localePath),
-      lastModified: nowIso,
+      lastModified: globalCarsLastModified,
       changeFrequency: "daily",
       priority: locale === defaultLocale ? 1 : 0.9,
       alternates: {
@@ -114,7 +138,7 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
   for (const locale of supportedLocales) {
     entries.push({
       url: toAbsoluteUrl(`/${locale}/locations`),
-      lastModified: nowIso,
+      lastModified: globalCarsLastModified,
       changeFrequency: "weekly",
       priority: locale === defaultLocale ? 0.85 : 0.8,
       alternates: { languages: locationsIndexAlternates },
@@ -127,7 +151,7 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
   for (const locale of supportedLocales) {
     entries.push({
       url: toAbsoluteUrl(`/${locale}/cars`),
-      lastModified: nowIso,
+      lastModified: globalCarsLastModified,
       changeFrequency: "weekly",
       priority: locale === defaultLocale ? 0.9 : 0.85,
       alternates: { languages: carsIndexAlternates },
@@ -165,7 +189,7 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
       const locationPath = getLocationPathFromLocation(locale, localizedLocation);
       entries.push({
         url: toAbsoluteUrl(locationPath),
-        lastModified: nowIso,
+        lastModified: globalCarsLastModified,
         changeFrequency: "weekly",
         priority: getLocationPriority(location.id, locale, defaultLocale),
         alternates: {
@@ -175,7 +199,6 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     }
   }
 
-  const publicCars = (cars || []).filter(isPublicCar);
   for (const car of publicCars) {
     const slug = String(car.slug).trim();
     const alternates = buildHreflangAlternates(getCarAlternates(slug));
@@ -194,14 +217,20 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     }
   }
 
-  // ── Category × Location SEO pages (e.g. /automatic-car-rental-halkidiki) ──
-  const seoPageSlugs = getAllSeoPageSlugs();
-  for (const seoPage of seoPageSlugs) {
-    const alternates = buildHreflangAlternates(getSeoPageAlternates(seoPage.seoSlug));
-    for (const locale of supportedLocales) {
+  // ── Category × Location SEO pages (localized slug per locale) ──
+  for (const locale of supportedLocales) {
+    const seoPageSlugs = getAllSeoPageSlugs(locale);
+    for (const seoPage of seoPageSlugs) {
+      const alternates = buildHreflangAlternates(
+        getSeoPageAlternatesForCategoryLocation(seoPage.categoryId, seoPage.locationId)
+      );
+      const category = getCategoryById(seoPage.categoryId);
+      const categoryCars =
+        category && category.filter ? filterCarsByCategory(publicCars, category.filter) : [];
+      const categoryLastModified = getLatestDateForCars(categoryCars);
       entries.push({
         url: toAbsoluteUrl(getSeoPagePath(locale, seoPage.seoSlug)),
-        lastModified: nowIso,
+        lastModified: categoryLastModified,
         changeFrequency: "weekly",
         priority: locale === defaultLocale ? 0.85 : 0.8,
         alternates: { languages: alternates },
@@ -209,14 +238,18 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     }
   }
 
-  // ── Brand × Location SEO pages (e.g. /toyota-car-rental-halkidiki) ──
-  const brandPages = buildAllBrandPageSlugs(publicCars);
-  for (const brandPage of brandPages) {
-    const brandAlternates = buildHreflangAlternates(getSeoPageAlternates(brandPage.seoSlug));
-    for (const locale of supportedLocales) {
+  // ── Brand × Location SEO pages (localized slug per locale) ──
+  for (const locale of supportedLocales) {
+    const brandPages = buildAllBrandPageSlugs(publicCars, locale);
+    for (const brandPage of brandPages) {
+      const brandAlternates = buildHreflangAlternates(
+        getBrandPageAlternates(brandPage.brandSlug, brandPage.locationId)
+      );
+      const brandCars = filterCarsByBrand(publicCars, brandPage.brand);
+      const brandLastModified = getLatestDateForCars(brandCars);
       entries.push({
         url: toAbsoluteUrl(getSeoPagePath(locale, brandPage.seoSlug)),
-        lastModified: nowIso,
+        lastModified: brandLastModified,
         changeFrequency: "weekly",
         priority: locale === defaultLocale ? 0.8 : 0.75,
         alternates: { languages: brandAlternates },
@@ -224,21 +257,29 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     }
   }
 
-  // ── Programmatic rent-{car}-{location} pages ──
-  for (const car of publicCars) {
-    const carSlug = String(car.slug).trim();
-    for (const location of SEO_LOCATIONS) {
-      const progSlug = buildProgrammaticSlug(carSlug, location.slugSuffix);
-      const progAlternates = buildHreflangAlternates(getSeoPageAlternates(progSlug));
-      for (const locale of supportedLocales) {
-        entries.push({
-          url: toAbsoluteUrl(getSeoPagePath(locale, progSlug)),
-          lastModified: getLastModifiedDate(car),
-          changeFrequency: "weekly",
-          priority: locale === defaultLocale ? 0.7 : 0.65,
-          alternates: { languages: progAlternates },
-        });
+  // ── Programmatic rent-{car}-{location} pages (localized slug per locale) ──
+  for (const locale of supportedLocales) {
+    const progSlugs = buildAllProgrammaticSlugs(
+      publicCars.map((c) => String(c.slug).trim()),
+      locale
+    );
+    for (const prog of progSlugs) {
+      const progAlternates: Record<string, string> = {};
+      for (const loc of supportedLocales) {
+        const slug = buildProgrammaticSlug(
+        prog.carSlug,
+        getLocationSeoSlug(prog.locationId as LocationId, loc)
+      );
+        progAlternates[loc] = getSeoPagePath(loc, slug);
       }
+      const car = publicCars.find((c) => String(c.slug).trim() === prog.carSlug);
+      entries.push({
+        url: toAbsoluteUrl(getSeoPagePath(locale, prog.seoSlug)),
+        lastModified: car ? getLastModifiedDate(car) : globalCarsLastModified,
+        changeFrequency: "weekly",
+        priority: locale === defaultLocale ? 0.7 : 0.65,
+        alternates: { languages: buildHreflangAlternates(progAlternates) },
+      });
     }
   }
 

@@ -45,25 +45,52 @@ const cars = await res.json();
 
 ## Response format
 
-**200 OK** — JSON array of cars (ideal format for external listings, e.g. BBQR):
+**200 OK** — JSON array of cars (extended format for external listings, e.g. BBQR, Nea Kallikratia Guide):
 
 ```json
 [
   {
-    "externalId": "507f1f77bcf86cd799439011",
-    "title": "Toyota Yaris Automatic",
-    "priceFrom": 30,
-    "image": "https://...",
-    "bookingUrl": "https://natali-cars.com/cars/toyota-yaris-automatic"
+    "externalId": "670bb226223dd911f059528a",
+    "title": "Ford Fiesta",
+    "slug": "ford-fiesta-automatic",
+    "priceFrom": 35,
+    "image": "Ford_Fiesta_2017_moqke9",
+    "bookingUrl": "https://natali-cars.com/cars/ford-fiesta-automatic",
+    "transmission": "automatic",
+    "fueltype": "petrol",
+    "seats": 5,
+    "model": "Ford Fiesta",
+    "class": "compact",
+    "registration": 2019,
+    "color": "white",
+    "numberOfDoors": 5,
+    "airConditioning": true,
+    "enginePower": 120,
+    "engine": "1.5"
   }
 ]
 ```
 
+**Required / always present:**
 - **externalId** — MongoDB `_id` (for mapping in external system).
-- **title** — Display name: brand + model + transmission (e.g. "Toyota Yaris Automatic").
-- **priceFrom** — Representative minimum price from pricing tiers (for "from €30").
-- **image** — Car photo URL (or `null`).
-- **bookingUrl** — Deep link to Natali Cars booking: `/cars/[slug]`. BBQR can use this directly for "Check availability"; no need to build URLs or know site structure.
+- **title** — Display name: model + transmission (e.g. "Ford Fiesta Automatic").
+- **slug** — URL segment for the car (e.g. `ford-fiesta-automatic`).
+- **transmission** — `"automatic"` or `"manual"` (lowercase).
+- **fueltype** — `"petrol"`, `"diesel"`, `"electric"`, etc., or `null` if not set.
+- **seats** — Number of seats (default 5 if missing in DB).
+
+**Optional / when available:**
+- **priceFrom** — Representative minimum price from pricing tiers.
+- **image** — Car photo URL or identifier (or `null`).
+- **bookingUrl** — Full URL to Natali Cars booking for this car.
+- **model** — Model name (if different from title).
+- **class** — Car class, e.g. `"compact"`, `"suv"` (lowercase).
+- **registration** — Year of manufacture.
+- **color** — Exterior color.
+- **numberOfDoors** — Door count.
+- **airConditioning** — Boolean.
+- **enginePower** — Engine power (e.g. hp).
+- **engine** — Engine designation (e.g. `"1.5"`).
 
 **Base URL** for `bookingUrl` is taken from `NEXT_PUBLIC_API_BASE_URL` or `NEXT_PUBLIC_SITE_URL` (or Vercel), fallback `https://natali-cars.com`.
 

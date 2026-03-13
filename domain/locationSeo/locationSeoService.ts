@@ -25,6 +25,10 @@ import {
   resolveLocationIdByPath,
   getAllHierarchyPathSegments,
 } from "./locationHierarchy";
+import {
+  getLocationSeoSlug as getLocationSeoSlugFromSeoLocations,
+  getLocationIdBySeoSlug,
+} from "@domain/seoPages/seoPageRegistry";
 import type {
   LocaleDetectionInput,
   LocationAlternateMap,
@@ -45,6 +49,15 @@ const staticPagePathMap: Record<StaticPageKey, string> = {
 const locationById = new Map<LocationId, LocationSeoRepoItem>(
   locationSeoRepo.map((item) => [item.id, item])
 );
+
+// Primary SEO locations where URLs must always use localized SEO slugs
+// instead of hierarchy IDs (e.g. /en/locations/car-rental-thessaloniki).
+const PRIMARY_SEO_LOCATION_IDS = new Set<LocationId>([
+  LOCATION_IDS.HALKIDIKI,
+  LOCATION_IDS.THESSALONIKI,
+  LOCATION_IDS.THESSALONIKI_AIRPORT,
+  LOCATION_IDS.NEA_KALLIKRATIA,
+]);
 
 function normalizeLocaleCandidate(locale: string): SupportedLocale {
   const normalized = locale.toLowerCase().split("-")[0];
@@ -249,6 +262,58 @@ export function getAllLocationsForLocale(
   return locationSeoRepo.map((item) => buildLocationSeoRecord(locale, item));
 }
 
+// ---------------------------------------------------------------------------
+// Centralized SEO slug + path helpers
+// ---------------------------------------------------------------------------
+
+/** Localized SEO slug for a location id and locale. Single source: SEO_LOCATIONS; fallback to repo for non-SEO locations. */
+export function getLocationSeoSlug(
+  locationId: LocationId,
+  locale: SupportedLocale
+): string {
+  const slug = getLocationSeoSlugFromSeoLocations(locationId, locale);
+  if (slug) return slug;
+  const repoItem = locationById.get(locationId);
+  return (repoItem?.slugByLocale[locale] ||
+    repoItem?.slugByLocale[DEFAULT_LOCALE] ||
+    repoItem?.canonicalSlug ||
+    "") as string;
+}
+
+/** Canonical SEO path: /{locale}/locations/{localizedSeoSlug}. Uses SEO_LOCATIONS. */
+export function getLocationSeoPath(
+  locationId: LocationId,
+  locale: SupportedLocale
+): string | null {
+  const slug = getLocationSeoSlugFromSeoLocations(locationId, locale);
+  if (!slug) return null;
+  return getLocationPath(locale, slug);
+}
+
+/** Reverse lookup: locale + SEO slug → location. Single source: SEO_LOCATIONS; fallback to en slug. */
+export function getLocationBySeoSlug(
+  localeCandidate: string | undefined | null,
+  slug: string
+): LocationSeoResolved | null {
+  if (!slug || typeof slug !== "string") return null;
+  const locale = normalizeLocale(localeCandidate);
+  const locationId = getLocationIdBySeoSlug(locale, slug);
+  if (!locationId) return null;
+  return getLocationById(locale, locationId);
+}
+
+/** Hreflang/canonical alternates for a location id. Built from getLocationPathFromLocation (SEO_LOCATIONS). */
+export function getLocationAlternates(locationId: LocationId): LocationAlternateMap {
+  const alternates: LocationAlternateMap = {};
+  for (const locale of SUPPORTED_LOCALES) {
+    const location = getLocationById(locale as SupportedLocale, locationId);
+    if (location) {
+      alternates[locale as SupportedLocale] = getLocationPathFromLocation(locale, location);
+    }
+  }
+  return alternates;
+}
+
 /** Hub locations for the navbar Locations dropdown (flat list, legacy). */
 export function getHubLocationsForNav(
   localeCandidate: string | undefined | null
@@ -400,18 +465,21 @@ export function getLocationPath(
 }
 
 /**
- * Returns hierarchical URL for a location when defined in hierarchy (e.g. /en/locations/halkidiki/kassandra/afitos).
- * Otherwise returns flat URL (e.g. /en/locations/car-rental-halkidiki).
+ * Always returns /{locale}/locations/{seoSlug}. Single source: SEO_LOCATIONS.seoSlugByLocale.
+ * For locations in SEO_LOCATIONS uses that; otherwise falls back to hierarchy or location slug.
  */
 export function getLocationPathFromLocation(
   localeCandidate: string | undefined | null,
   location: LocationSeoResolved
 ): string {
   const locale = normalizeLocale(localeCandidate);
+  const seoSlug = getLocationSeoSlugFromSeoLocations(location.id, locale);
+  if (seoSlug) {
+    return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${seoSlug}`;
+  }
   const segments = getLocationPathSegments(location.id);
   if (segments && segments.length > 0) {
-    const path = segments.join("/");
-    return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${path}`;
+    return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${segments.join("/")}`;
   }
   return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${location.slug}`;
 }
@@ -626,7 +694,7 @@ export function getLocationBreadcrumbChain(
   if (!segments || segments.length === 0) {
     return [
       { href: getLocaleRootPath(locale), label: localeSeoDictionary[locale].car.breadcrumbHome },
-      { href: getLocationPath(locale, location.slug), label: location.shortName },
+      { href: getLocationPathFromLocation(locale, location), label: location.shortName },
     ];
   }
   const items: Array<{ href: string; label: string }> = [

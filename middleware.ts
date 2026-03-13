@@ -69,10 +69,30 @@ function buildLegacyLocationRedirect(
     const locationId = legacyLocationByCanonicalSlug.get(slug);
     if (locationId) {
       const location = getLocationById(locale, locationId);
-      if (location && location.slug !== slug) {
-        return getLocationPathFromLocation(locale, location);
+      if (location) {
+        const canonicalPath = getLocationPathFromLocation(locale, location);
+        const currentPath = `/${locale}/locations/${slug}`;
+        if (canonicalPath !== currentPath) {
+          return canonicalPath;
+        }
       }
     }
+
+    // Legacy id-based URLs like /locations/thessaloniki or /locations/halkidiki
+    // should also redirect to the new localized SEO slug paths.
+    const legacyId = Object.values(LOCATION_IDS).find((id) => id === slug);
+    if (legacyId) {
+      const loc = getLocationById(locale, legacyId);
+      if (loc) {
+        const target = getLocationPathFromLocation(locale, loc);
+        // Avoid redirecting when the URL is already canonical.
+        const current = getLocationPath(locale, slug);
+        if (target !== current) {
+          return target;
+        }
+      }
+    }
+
     return null;
   }
 

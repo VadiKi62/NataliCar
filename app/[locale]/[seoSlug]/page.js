@@ -15,7 +15,8 @@ import {
   getAllLocationsForLocale,
   getCarPath,
   getLocationById,
-  getLocationPath,
+  getLocationPathFromLocation,
+  getLocationSeoSlug,
   getSupportedLocales,
   isSupportedLocale,
   normalizeLocale,
@@ -33,6 +34,7 @@ import { buildHreflangAlternates } from "@/services/seo/hreflangBuilder";
 import {
   getAllSeoPageSlugs,
   getSeoPageBySlug,
+  getProgrammaticPageBySlug,
   getCategoryById,
   getSeoLocationById,
   getResolvedCategoryContent,
@@ -45,7 +47,6 @@ import {
   buildAllBrandPageSlugs,
   buildBrandPageSlug,
   extractUniqueBrands,
-  buildProgrammaticSlug,
   buildAllProgrammaticSlugs,
   SEO_LOCATIONS,
   CAR_CATEGORIES,
@@ -68,10 +69,9 @@ function getPublicCars(cars) {
 
 export async function generateStaticParams() {
   const locales = getSupportedLocales();
-  const categoryPages = getAllSeoPageSlugs();
 
   const categoryParams = locales.flatMap((locale) =>
-    categoryPages.map((entry) => ({ locale, seoSlug: entry.seoSlug }))
+    getAllSeoPageSlugs(locale).map((entry) => ({ locale, seoSlug: entry.seoSlug }))
   );
 
   let programmaticParams = [];
@@ -81,14 +81,12 @@ export async function generateStaticParams() {
     const publicCars = getPublicCars(cars);
 
     const carSlugs = publicCars.map((c) => String(c.slug).trim());
-    const programmaticPages = buildAllProgrammaticSlugs(carSlugs);
     programmaticParams = locales.flatMap((locale) =>
-      programmaticPages.map((entry) => ({ locale, seoSlug: entry.seoSlug }))
+      buildAllProgrammaticSlugs(carSlugs, locale).map((entry) => ({ locale, seoSlug: entry.seoSlug }))
     );
 
-    const brandPages = buildAllBrandPageSlugs(publicCars);
     brandParams = locales.flatMap((locale) =>
-      brandPages.map((entry) => ({ locale, seoSlug: entry.seoSlug }))
+      buildAllBrandPageSlugs(publicCars, locale).map((entry) => ({ locale, seoSlug: entry.seoSlug }))
     );
   } catch {
     // Cars unavailable at build time — pages generated at runtime
@@ -108,7 +106,7 @@ export async function generateMetadata({ params }) {
   const cookie = headersList.get("cookie");
 
   // Category × location page
-  const catPage = getSeoPageBySlug(slug);
+  const catPage = getSeoPageBySlug(locale, slug);
   if (catPage) {
     const location = getSeoLocationById(catPage.locationId);
     const locationName = location
@@ -118,7 +116,7 @@ export async function generateMetadata({ params }) {
     const resolved = getResolvedCategoryContent(catPage.categoryId, locale, locationName);
     if (!resolved) return { robots: { index: false, follow: false } };
 
-    const alternates = buildHreflangAlternates(getSeoPageAlternates(slug));
+    const alternates = buildHreflangAlternates(getSeoPageAlternates(locale, slug));
 
     return {
       title: resolved.seoTitle,
@@ -144,12 +142,12 @@ export async function generateMetadata({ params }) {
   }
 
   // Brand × location page
-  const brandPage = await resolveBrandPage(slug, cookie);
+  const brandPage = await resolveBrandPage(slug, cookie, locale);
   if (brandPage) {
     const locationName = brandPage.locationDef.nameByLocale[locale];
     const resolved = getResolvedBrandContent(brandPage.brand, locale, locationName);
     const pagePath = getSeoPagePath(locale, slug);
-    const alternates = buildHreflangAlternates(getSeoPageAlternates(slug));
+    const alternates = buildHreflangAlternates(getSeoPageAlternates(locale, slug));
 
     return {
       title: resolved.seoTitle,
@@ -162,7 +160,7 @@ export async function generateMetadata({ params }) {
   }
 
   // Programmatic page — try to resolve
-  const progPage = await resolveProgrammaticPage(slug, cookie);
+  const progPage = await resolveProgrammaticPage(locale, slug, cookie);
   if (progPage) {
     const { car, locationDef } = progPage;
     const locationName = locationDef.nameByLocale[locale];
@@ -171,7 +169,7 @@ export async function generateMetadata({ params }) {
     const title = `Rent ${carModel} in ${locationName} | Natali Cars`;
     const description = `Rent ${carModel} with pickup in ${locationName}. ${capitalize(car.transmission)} transmission, ${car.seats || 5} seats. Book online with Natali Cars.`;
     const pagePath = getSeoPagePath(locale, slug);
-    const alternates = buildHreflangAlternates(getSeoPageAlternates(slug));
+    const alternates = buildHreflangAlternates(getSeoPageAlternates(locale, slug));
 
     return {
       title,
@@ -202,19 +200,19 @@ export default async function SeoLandingPage({ params }) {
   const cookie = headersList.get("cookie");
 
   // ── Try category × location page first ──
-  const catPage = getSeoPageBySlug(slug);
+  const catPage = getSeoPageBySlug(locale, slug);
   if (catPage) {
     return renderCategoryPage(locale, catPage, cookie);
   }
 
   // ── Try brand × location page ──
-  const brandPage = await resolveBrandPage(slug, cookie);
+  const brandPage = await resolveBrandPage(slug, cookie, locale);
   if (brandPage) {
     return renderBrandPage(locale, slug, brandPage, cookie);
   }
 
   // ── Try programmatic rent-{car}-{location} page ──
-  const progPage = await resolveProgrammaticPage(slug, cookie);
+  const progPage = await resolveProgrammaticPage(locale, slug, cookie);
   if (progPage) {
     return renderProgrammaticPage(locale, slug, progPage, cookie);
   }
@@ -253,7 +251,8 @@ async function renderCategoryPage(locale, catPage, cookie) {
   const otherCategoryLinks = CAR_CATEGORIES
     .filter((c) => c.id !== catPage.categoryId)
     .map((c) => {
-      const otherSlug = `${c.id}-car-rental-${locationDef.slugSuffix}`;
+      const locSlug = getLocationSeoSlug(locationDef.locationId, locale);
+      const otherSlug = `${c.id}-car-rental-${locSlug}`;
       const otherContent = getResolvedCategoryContent(c.id, locale, locationName);
       return {
         href: getSeoPagePath(locale, otherSlug),
@@ -265,7 +264,7 @@ async function renderCategoryPage(locale, catPage, cookie) {
   const locationLinks = getAllLocationsForLocale(locale)
     .slice(0, 8)
     .map((loc) => ({
-      href: getLocationPath(locale, loc.slug),
+      href: getLocationPathFromLocation(locale, loc),
       label: loc.shortName,
     }));
 
@@ -390,8 +389,9 @@ async function renderBrandPage(locale, slug, brandPage, cookie) {
   }));
 
   // Category links for this location
+  const locSlugBrand = getLocationSeoSlug(locationDef.locationId, locale);
   const categoryLinks = CAR_CATEGORIES.map((c) => {
-    const catSlug = `${c.id}-car-rental-${locationDef.slugSuffix}`;
+    const catSlug = `${c.id}-car-rental-${locSlugBrand}`;
     const content = getResolvedCategoryContent(c.id, locale, locationName);
     return {
       href: getSeoPagePath(locale, catSlug),
@@ -405,7 +405,7 @@ async function renderBrandPage(locale, slug, brandPage, cookie) {
     .filter((b) => b.brandSlug !== brandSlug)
     .slice(0, 5)
     .map((b) => ({
-      href: getSeoPagePath(locale, buildBrandPageSlug(b.brandSlug, locationDef.slugSuffix)),
+      href: getSeoPagePath(locale, buildBrandPageSlug(b.brandSlug, locSlugBrand)),
       label: getResolvedBrandContent(b.brand, locale, locationName).h1,
     }));
 
@@ -413,7 +413,7 @@ async function renderBrandPage(locale, slug, brandPage, cookie) {
   const locationLinks = getAllLocationsForLocale(locale)
     .slice(0, 8)
     .map((loc) => ({
-      href: getLocationPath(locale, loc.slug),
+      href: getLocationPathFromLocation(locale, loc),
       label: loc.shortName,
     }));
 
@@ -516,13 +516,14 @@ async function renderProgrammaticPage(locale, slug, progPage, cookie) {
   const locationLinks = getAllLocationsForLocale(locale)
     .slice(0, 6)
     .map((loc) => ({
-      href: getLocationPath(locale, loc.slug),
+      href: getLocationPathFromLocation(locale, loc),
       label: loc.shortName,
     }));
 
   // Category links for this location
+  const locSlugProg = getLocationSeoSlug(locationDef.locationId, locale);
   const categoryLinks = CAR_CATEGORIES.map((c) => {
-    const catSlug = `${c.id}-car-rental-${locationDef.slugSuffix}`;
+    const catSlug = `${c.id}-car-rental-${locSlugProg}`;
     const content = getResolvedCategoryContent(c.id, locale, locationName);
     return {
       href: getSeoPagePath(locale, catSlug),
@@ -612,12 +613,12 @@ async function renderProgrammaticPage(locale, slug, progPage, cookie) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function resolveBrandPage(slug, cookie) {
+async function resolveBrandPage(slug, cookie, locale) {
   if (!slug.includes("-car-rental-")) return null;
 
   const cars = await fetchAllCars({ cookie }).catch(() => []);
   const publicCars = getPublicCars(cars);
-  const brandEntry = resolveBrandFromSlug(slug, publicCars);
+  const brandEntry = resolveBrandFromSlug(slug, publicCars, locale);
   if (!brandEntry) return null;
 
   const locationDef = SEO_LOCATIONS.find((l) => l.locationId === brandEntry.locationId);
@@ -642,24 +643,18 @@ function buildItemListJsonLd(items) {
   };
 }
 
-async function resolveProgrammaticPage(slug, cookie) {
-  if (!slug.startsWith("rent-")) return null;
-
+async function resolveProgrammaticPage(locale, slug, cookie) {
   const cars = await fetchAllCars({ cookie }).catch(() => []);
   const publicCars = getPublicCars(cars);
 
-  for (const location of SEO_LOCATIONS) {
-    const suffix = `-${location.slugSuffix}`;
-    if (!slug.endsWith(suffix)) continue;
-
-    const carSlugCandidate = slug.slice(5, slug.length - suffix.length);
-    if (!carSlugCandidate) continue;
-
+  const entry = getProgrammaticPageBySlug(locale, slug);
+  if (entry) {
     const car = publicCars.find(
-      (c) => c.slug && c.slug.toLowerCase() === carSlugCandidate.toLowerCase()
+      (c) => c.slug && c.slug.toLowerCase() === entry.carSlug.toLowerCase()
     );
     if (car) {
-      return { car, locationDef: location };
+      const locationDef = SEO_LOCATIONS.find((l) => l.locationId === entry.locationId);
+      if (locationDef) return { car, locationDef };
     }
   }
 

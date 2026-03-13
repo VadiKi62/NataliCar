@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
 import CarGrid from "@app/components/CarGrid";
@@ -12,7 +13,7 @@ import {
   getHubSeo,
   getLocationById,
   getLocationByPath,
-  getLocationByAnySlug,
+  getLocationBySeoSlug,
   getLocationPathFromLocation,
   getLocationBreadcrumbChain,
   getLocationHierarchyRouteParams,
@@ -21,7 +22,11 @@ import {
   isSupportedLocale,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
-import { LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
+import { SUPPORTED_LOCALES, LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
+import {
+  getLocationHeroImage,
+  getLocationDistanceText,
+} from "@domain/locationSeo/locationHeroImages";
 import { fetchAllCars, fetchCompany, reFetchActiveOrders } from "@utils/action";
 import { COMPANY_ID } from "@config/company";
 import { buildAutoRentalJsonLd, buildFaqJsonLd, buildBreadcrumbJsonLd } from "@/services/seo/jsonLdBuilder";
@@ -45,6 +50,7 @@ import {
 import {
   CAR_CATEGORIES,
   SEO_LOCATIONS,
+  getLocationSeoSlug,
   getResolvedCategoryContent,
   getSeoPagePath,
 } from "@domain/seoPages/seoPageRegistry";
@@ -64,21 +70,45 @@ function getPublicCars(cars) {
 
 export const dynamic = "force-dynamic";
 
+/** Location page paths: index, primary (single-segment SEO slug), and hierarchy (multi-segment). */
 export function generateStaticParams() {
-  return getLocationHierarchyRouteParams();
+  const params = [];
+  for (const locale of SUPPORTED_LOCALES) {
+    params.push({ locale, path: [] });
+    for (const loc of SEO_LOCATIONS) {
+      const slug = getLocationSeoSlug(loc.locationId, locale);
+      if (slug) params.push({ locale, path: [slug] });
+    }
+  }
+  const hierarchyParams = getLocationHierarchyRouteParams();
+  return [...params, ...hierarchyParams];
+}
+
+function toPathArray(path) {
+  if (path == null) return [];
+  if (Array.isArray(path)) {
+    const flat = path.flatMap((p) => (typeof p === "string" && p.includes("/") ? p.split("/").filter(Boolean) : p));
+    return flat.filter(Boolean);
+  }
+  const s = String(path).trim();
+  return s ? s.split("/").filter(Boolean) : [];
 }
 
 export async function generateMetadata({ params }) {
   const locale = normalizeLocale(params.locale);
-  const path = params.path ?? [];
-  const pathArray = Array.isArray(path) ? path : [path].filter(Boolean);
+  const pathArray = toPathArray(params.path);
   if (pathArray.length === 0) {
     return buildLocationsIndexMetadata(params.locale);
   }
-  let location = getLocationByPath(locale, pathArray);
-  if (!location && pathArray.length === 1) {
-    location = getLocationByAnySlug(locale, pathArray[0]);
+  // Single segment: resolve by centralized SEO slug first (seoSlugByLocale)
+  if (pathArray.length === 1) {
+    const locationBySlug = getLocationBySeoSlug(locale, pathArray[0]);
+    if (locationBySlug) {
+      return buildLocationMetadata(locationBySlug);
+    }
   }
+  // Multi-segment: hierarchy (path segments = location IDs)
+  const location = getLocationByPath(locale, pathArray);
   if (!location) {
     return { robots: { index: false, follow: false } };
   }
@@ -89,8 +119,7 @@ export default async function LocationHierarchyPage({ params }) {
   const locale = normalizeLocale(params.locale);
   if (!isSupportedLocale(locale)) notFound();
 
-  const path = params.path ?? [];
-  const pathArray = Array.isArray(path) ? path : [path].filter(Boolean);
+  const pathArray = toPathArray(params.path);
 
   if (pathArray.length > 3) notFound();
 
@@ -126,14 +155,26 @@ export default async function LocationHierarchyPage({ params }) {
     );
   }
 
-  let location = getLocationByPath(locale, pathArray);
+  let location = null;
 
-  if (!location && pathArray.length === 1) {
-    const bySlug = getLocationByAnySlug(locale, pathArray[0]);
-    if (bySlug) {
-      redirect(getLocationPathFromLocation(locale, bySlug));
+  // Single segment: resolve only via centralized SEO slug (seoSlugByLocale)
+  if (pathArray.length === 1) {
+    const slug = pathArray[0];
+    location = getLocationBySeoSlug(locale, slug);
+    // Legacy: single-segment hierarchy ID (e.g. /en/locations/halkidiki) → redirect to canonical SEO URL
+    if (!location) {
+      location = getLocationByPath(locale, pathArray);
+      if (location) {
+        const canonicalPath = getLocationPathFromLocation(locale, location);
+        const currentPath = `/${locale}/locations/${slug}`;
+        if (canonicalPath !== currentPath) {
+          redirect(canonicalPath);
+        }
+      }
     }
-    notFound();
+  } else {
+    // Multi-segment: hierarchy only (path segments = location IDs)
+    location = getLocationByPath(locale, pathArray);
   }
 
   if (!location) notFound();
@@ -156,10 +197,6 @@ export default async function LocationHierarchyPage({ params }) {
     companyData = company;
   }
   const publicCars = getPublicCars(allCars);
-  const carLinks = publicCars.map((c) => ({
-    href: getCarPath(locale, c.slug),
-    label: c.model || c.slug,
-  }));
 
   const pagePath = getLocationPathFromLocation(locale, location);
   const locationJsonLd = buildAutoRentalJsonLd({
@@ -176,32 +213,10 @@ export default async function LocationHierarchyPage({ params }) {
   const prioritizedTitle = prioritySeo?.h1 || location.h1;
   const prioritizedIntroText = prioritySeo?.introText || location.introText;
 
-  const locationHeroImage =
-    location.id === LOCATION_IDS.NEA_KALLIKRATIA
-      ? {
-          defaultSrc: "/car-rental-neakallikratia.png",
-          portraitPhoneSrc: "/car-rental-neakallikratia-portrait.png",
-        }
-      : location.id === LOCATION_IDS.HALKIDIKI
-        ? {
-            defaultSrc: "/car-rental-halkidiki.png",
-            portraitPhoneSrc: "/car-rental-halkidiki-portrait.png",
-          }
-      : location.id === LOCATION_IDS.THESSALONIKI_AIRPORT
-        ? {
-            defaultSrc: "/car-rental-thessaloniki-airport.png",
-            portraitPhoneSrc: "/car-rental-thessaloniki-airport-portrait.png",
-          }
-      : location.id === LOCATION_IDS.THESSALONIKI
-        ? {
-            defaultSrc: "/car-rental-thessaloniki.png",
-            portraitPhoneSrc: "/car-rental-thessaloniki-portrait.png",
-          }
-      : {
-          defaultSrc: "/car-rental-neakallikratia.png",
-          portraitPhoneSrc: "/car-rental-neakallikratia-portrait.png",
-        };
+  // Hero images: from config (domain/locationSeo/locationHeroImages.ts). Fallback used if no entry.
+  const locationHeroImage = getLocationHeroImage(location.id);
   const heroImages = [locationHeroImage];
+  const distanceText = getLocationDistanceText(location.id);
   const ctaHref =
     location.canonicalSlug && typeof getHomepageSearchUrl === "function"
       ? getHomepageSearchUrl(locale, location.canonicalSlug)
@@ -254,7 +269,6 @@ export default async function LocationHierarchyPage({ params }) {
         ctaHref={ctaHref}
         ctaLabel={ctaLabel}
         fullBleedUnderNav
-        ctaBottomRight
       />
       <Box
         component="main"
@@ -279,14 +293,48 @@ export default async function LocationHierarchyPage({ params }) {
           )}
           <SeoBreadcrumbNav items={breadcrumbItems} />
 
-          {isPillar && publicCars.length > 0 && (
+          {/* Temporarily disabled until car availability UX is redesigned. */}
+          {/* {isPillar && publicCars.length > 0 && (
             <section style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px 8px" }}>
               <h2 style={{ marginBottom: 16 }}>{dictionary.links.locationToCarsTitle}</h2>
               <CarGrid />
             </section>
-          )}
+          )} */}
 
-          <SeoIntroBlock title={prioritizedTitle} introText={prioritizedIntroText} skipTitle />
+          {/* 1. Intro (first paragraph only when we have multiple) */}
+          {(() => {
+            const introParas = prioritizedIntroText
+              ? prioritizedIntroText.split(/\n\n+/).filter(Boolean)
+              : [];
+            const firstPara = introParas.length > 0 ? introParas[0] : prioritizedIntroText;
+            return (
+              <SeoIntroBlock title={prioritizedTitle} introText={firstPara} skipTitle />
+            );
+          })()}
+
+          {/* 2. Location information: remaining short paragraphs */}
+          {prioritizedIntroText &&
+            prioritizedIntroText.split(/\n\n+/).filter(Boolean).length > 1 && (
+              <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 8px" }}>
+                {prioritizedIntroText
+                  .split(/\n\n+/)
+                  .filter(Boolean)
+                  .slice(1)
+                  .map((p, i) => (
+                    <p key={i} style={{ margin: "0 0 12px", lineHeight: 1.6 }}>
+                      {p.trim()}
+                    </p>
+                  ))}
+              </section>
+            )}
+
+          {/* 3. Distance to Thessaloniki */}
+          {distanceText && (
+            <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 8px" }}>
+              <h2 style={{ marginBottom: 8, fontSize: "1.25rem" }}>Distance to Thessaloniki</h2>
+              <p style={{ margin: 0, lineHeight: 1.6 }}>{distanceText}</p>
+            </section>
+          )}
 
           {isAirport && prioritySeo?.benefitBlockTitle && prioritySeo?.quickBenefits?.length > 0 && (
             <SeoWhyRentBlock
@@ -329,20 +377,48 @@ export default async function LocationHierarchyPage({ params }) {
             />
           )}
 
-          {carLinks.length > 0 && (
-            <SeoLinksBlock
-              title={dictionary.links.locationToCarsTitle}
-              links={carLinks}
-            />
+          {/* 4. FAQ */}
+          <SeoFaqBlock title={links.localFaqTitle} faq={location.faq} />
+
+          {/* 5. Cars list (text + links, no CarGrid) */}
+          {publicCars.length > 0 && (
+            <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 24px" }}>
+              <h2 style={{ marginBottom: 12, fontSize: "1.25rem", fontWeight: 600 }}>
+                Available cars in this location
+              </h2>
+              <Box
+                component="ul"
+                sx={{
+                  margin: 0,
+                  padding: 2,
+                  listStyle: "none",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  bgcolor: "background.paper",
+                  "& a": { color: "primary.main", textDecoration: "none" },
+                  "& a:hover": { textDecoration: "underline" },
+                  "& li": { py: 0.75, fontSize: "1rem", lineHeight: 1.5 },
+                }}
+              >
+                {publicCars.map((car) => (
+                  <Box component="li" key={car.slug}>
+                    <Link href={getCarPath(locale, car.slug)}>{car.model || car.slug}</Link>
+                  </Box>
+                ))}
+              </Box>
+            </section>
           )}
+
           {(() => {
             const matchedSeoLoc = SEO_LOCATIONS.find((sl) => sl.locationId === location.id);
             if (!matchedSeoLoc) return null;
+            const locSlug = getLocationSeoSlug(matchedSeoLoc.locationId, locale);
             const catLinks = CAR_CATEGORIES.map((cat) => {
               const locName = matchedSeoLoc.nameByLocale[locale];
               const content = getResolvedCategoryContent(cat.id, locale, locName);
               return {
-                href: getSeoPagePath(locale, `${cat.id}-car-rental-${matchedSeoLoc.slugSuffix}`),
+                href: getSeoPagePath(locale, `${cat.id}-car-rental-${locSlug}`),
                 label: content?.h1 || `${cat.id} car rental`,
               };
             });
@@ -357,8 +433,6 @@ export default async function LocationHierarchyPage({ params }) {
               links={internalLinks}
             />
           )}
-
-          <SeoFaqBlock title={links.localFaqTitle} faq={location.faq} />
         </Box>
       </Box>
     </Feed>
