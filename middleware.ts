@@ -169,6 +169,13 @@ export function middleware(request: NextRequest) {
       return withLocaleCookie(NextResponse.redirect(url, 301), locale);
     }
 
+    // /{locale}/home -> /{locale}
+    if (stripped === "/home") {
+      const target = withSearchParams(`/${locale}`, request);
+      const url = new URL(target, request.url);
+      return withLocaleCookie(NextResponse.redirect(url, 301), locale);
+    }
+
     // /{locale}/terms -> /{locale}/rental-terms
     if (stripped === "/terms") {
       const target = withSearchParams(getStaticPagePath(locale, "rental-terms"), request);

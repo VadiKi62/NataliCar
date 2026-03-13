@@ -6,7 +6,7 @@ import {
   getHubAlternates,
   getHubSeo,
   getLocationAlternatesById,
-  getLocationPath,
+  getLocationPathFromLocation,
   getLocaleRootPath,
   getSupportedLocales,
   getStaticPagePath,
@@ -122,7 +122,7 @@ export function buildLocationsIndexMetadata(
 }
 
 export function buildLocationMetadata(location: LocationSeoResolved): Metadata {
-  const canonicalPath = getLocationPath(location.locale, location.slug);
+  const canonicalPath = getLocationPathFromLocation(location.locale, location);
   const prioritySeo = isPriorityAirportLocation(location)
     ? getAirportPrioritySeo(location.locale)
     : null;
