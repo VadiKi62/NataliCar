@@ -39,11 +39,37 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
         "Natali Cars provides car rental coverage across Halkidiki sub-regions and Thessaloniki access points with one booking flow and location-specific pickup guidance.",
     },
     car: {
-      seoTitleTemplate: "{carModel} Rental in Halkidiki and Thessaloniki | Natali Cars",
+      seoTitleTemplate: "Rent {carModel} in Halkidiki | Natali Cars",
       seoDescriptionTemplate:
-        "Rent {carModel} with pickup options in {locationName}. Transparent rates, direct support, and flexible handover with Natali Cars.",
+        "Book {carModel} car rental in Halkidiki with pickup at Thessaloniki Airport (SKG) or {locationName}. {transmission} transmission, air conditioning, fuel efficient. Comfortable and easy to drive.",
+      carH1Template: "Rent {carModel} in {locationName}",
       introTemplate:
-        "Choose {carModel} and arrange pickup in {locationName}. This page is localized for regional SEO and links to location hubs.",
+        "The {carModel} is available for rent in {locationName} with flexible pickup and return options. {transmission} transmission, {fuelType} fuel, {seats} seats — a great choice for your trip to Halkidiki.",
+      introLongTemplate:
+        "The {carModel} is one of the most convenient cars to rent in {locationName}. This compact and fuel-efficient vehicle is ideal for exploring beaches, villages and scenic coastal roads. With {transmission} transmission and air conditioning, the {carModel} offers comfortable driving both in Thessaloniki city traffic and along the Halkidiki peninsula. Natali Cars offers pickup at Thessaloniki Airport (SKG) and Nea Kallikratia, making it easy to start your trip immediately after arrival. All rentals include comprehensive insurance and free cancellation. Book online to secure the best rate for your dates.",
+      specsTitle: "Vehicle Specifications",
+      quickSpecsTitle: "At a glance",
+      featuresTitle: "Features of {carModel}",
+      whyRentTitle: "Why choose {carModel} for your {locationName} trip",
+      whyRentBullets: [
+        "Easy parking — compact size fits narrow village streets",
+        "Fuel efficient — lower cost for long drives",
+        "Perfect for couples or small families",
+        "Reliable and comfortable for city and coast",
+      ],
+      faqTitle: "Frequently Asked Questions",
+      faq: [
+        { question: "Can I pick up this car at Thessaloniki Airport?", answer: "Yes, we offer pickup and return at Thessaloniki Airport (SKG), as well as at locations across Halkidiki including Nea Kallikratia, Kassandra, and Sithonia." },
+        { question: "Is insurance included in the rental price?", answer: "Basic TPL insurance is included at no extra cost. You can also add full CDW coverage for additional peace of mind during your rental." },
+        { question: "Do I need a credit card to rent a car?", answer: "No, a credit card is not required. We accept cash payments and offer rentals without a deposit on selected vehicles." },
+        { question: "What documents do I need to rent a car?", answer: "You need a valid driving license held for at least 1 year and a passport or ID card. International driving permits are accepted." },
+        { question: "Can I return the car to a different location?", answer: "Yes, one-way rentals are available. You can pick up in one location and return in another across our Halkidiki and Thessaloniki network." },
+      ],
+      breadcrumbHome: "Home",
+      breadcrumbCars: "Cars",
+      breadcrumbCarRentalLocation: "Car rental {locationName}",
+      pickupTitle: "Pickup Locations",
+      pillarLinksTitle: "Car rental by location",
     },
     links: {
       hubToLocationsTitle: "Explore Car Rental Locations",
@@ -63,6 +89,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       localFaqTitle: "Local FAQ",
       navLocationsDropdownDescription:
         "Pickup and return across Thessaloniki, airport, and Halkidiki peninsula. Choose your area for details and car search.",
+      otherCarsTitle: "Other cars you may like",
     },
     staticPages: {
       [STATIC_PAGE_KEYS.CONTACTS]: {
@@ -102,11 +129,37 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
         "Natali Cars покрывает основные зоны Халкидик и Салоник через единую систему бронирования и локальные SEO-страницы.",
     },
     car: {
-      seoTitleTemplate: "Аренда {carModel} в Халкидиках и Салониках | Natali Cars",
+      seoTitleTemplate: "Аренда {carModel} в Халкидиках | Natali Cars",
       seoDescriptionTemplate:
-        "Арендуйте {carModel} с выдачей в районе {locationName}. Прозрачные цены и поддержка напрямую от Natali Cars.",
+        "Забронируйте аренду {carModel} в Халкидиках с подачей в аэропорту Салоников (SKG) или {locationName}. {transmission}, кондиционер, экономичный расход.",
+      carH1Template: "Аренда {carModel} в {locationName}",
       introTemplate:
-        "Выберите {carModel} и оформите выдачу в {locationName}. Страница связана с локальными SEO-хабами.",
+        "{carModel} доступен для аренды в {locationName} с гибкими условиями выдачи и возврата. КПП {transmission}, топливо {fuelType}, {seats} мест — отличный выбор для поездки в Халкидики.",
+      introLongTemplate:
+        "{carModel} — один из самых удобных автомобилей для аренды в {locationName}. Компактный и экономичный, он идеален для поездок по пляжам, деревням и живописным дорогам побережья. С {transmission} и кондиционером {carModel} обеспечивает комфортную езду и в городе Салоники, и по полуострову Халкидики. Natali Cars предлагает подачу в аэропорту Салоников (SKG) и в Неа Каликратии. В стоимость входят страховка и бесплатная отмена. Забронируйте онлайн по лучшей цене.",
+      specsTitle: "Характеристики автомобиля",
+      quickSpecsTitle: "Кратко",
+      featuresTitle: "Особенности {carModel}",
+      whyRentTitle: "Почему выбрать {carModel} для поездки в {locationName}",
+      whyRentBullets: [
+        "Удобная парковка — компактный размер для узких улиц",
+        "Экономичный расход — выгодно для дальних поездок",
+        "Идеален для пары или небольшой семьи",
+        "Надёжный и комфортный в городе и на побережье",
+      ],
+      faqTitle: "Часто задаваемые вопросы",
+      faq: [
+        { question: "Можно ли забрать этот автомобиль в аэропорту Салоников?", answer: "Да, мы предлагаем выдачу и возврат в аэропорту Салоников (SKG), а также в Халкидиках: Неа Каликратия, Кассандра, Ситония." },
+        { question: "Включена ли страховка в стоимость аренды?", answer: "Базовая страховка ОСАГО (TPL) включена бесплатно. Вы также можете добавить полное КАСКО (CDW) для дополнительной защиты." },
+        { question: "Нужна ли кредитная карта для аренды?", answer: "Нет, кредитная карта не требуется. Мы принимаем оплату наличными и предлагаем аренду без депозита на отдельные автомобили." },
+        { question: "Какие документы нужны для аренды?", answer: "Вам понадобятся действующие водительские права со стажем не менее 1 года и паспорт или удостоверение личности. Принимаются международные права." },
+        { question: "Можно ли вернуть машину в другом месте?", answer: "Да, возможна аренда в одну сторону. Вы можете получить авто в одной точке и вернуть в другой по нашей сети в Халкидиках и Салониках." },
+      ],
+      breadcrumbHome: "Главная",
+      breadcrumbCars: "Автомобили",
+      breadcrumbCarRentalLocation: "Аренда авто в {locationName}",
+      pickupTitle: "Пункты выдачи",
+      pillarLinksTitle: "Аренда авто по локациям",
     },
     links: {
       hubToLocationsTitle: "Локации проката авто",
@@ -126,6 +179,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       localFaqTitle: "Частые вопросы",
       navLocationsDropdownDescription:
         "Выдача и возврат в Салониках, аэропорту и на полуострове Халкидики. Выберите район для деталей и поиска авто.",
+      otherCarsTitle: "Другие автомобили, которые могут вам понравиться",
     },
     staticPages: {
       [STATIC_PAGE_KEYS.CONTACTS]: {
@@ -165,11 +219,37 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
         "Natali Cars покриває ключові локації Халкідік та Салонік через єдину систему бронювання і локальні SEO-сторінки.",
     },
     car: {
-      seoTitleTemplate: "Оренда {carModel} в Халкідіках і Салоніках | Natali Cars",
+      seoTitleTemplate: "Оренда {carModel} в Халкідіках | Natali Cars",
       seoDescriptionTemplate:
-        "Орендуйте {carModel} з отриманням у {locationName}. Прозора ціна та підтримка напряму від Natali Cars.",
+        "Забронюйте оренду {carModel} в Халкідіках з подачею в аеропорту Салонік (SKG) або {locationName}. {transmission}, кондиціонер, економний витрата.",
+      carH1Template: "Оренда {carModel} у {locationName}",
       introTemplate:
-        "Оберіть {carModel} та організуйте отримання у {locationName}. Сторінка пов'язана з локальними SEO-хабами.",
+        "{carModel} доступний для оренди в {locationName} з гнучкими умовами видачі та повернення. КПП {transmission}, паливо {fuelType}, {seats} місць — чудовий вибір для подорожі до Халкідік.",
+      introLongTemplate:
+        "{carModel} — один із найзручніших автомобілів для оренди у {locationName}. Компактний та економний, він ідеальний для поїздок узбережжям, селами та мальовничими дорогами. З {transmission} та кондиціонером {carModel} забезпечує комфортну їзду в місті Салоніки та по Халкідіках. Natali Cars пропонує подачу в аеропорту Салонік (SKG) та в Неа Калікратії. У вартість входить страховка та безкоштовне скасування.",
+      specsTitle: "Характеристики автомобіля",
+      quickSpecsTitle: "Коротко",
+      featuresTitle: "Особливості {carModel}",
+      whyRentTitle: "Чому обрати {carModel} для поїздки у {locationName}",
+      whyRentBullets: [
+        "Зручна парковка — компактний розмір для вузьких вулиць",
+        "Економний витрата палива",
+        "Ідеален для пари або невеликої сім'ї",
+        "Надійний і комфортний у місті та на узбережжі",
+      ],
+      faqTitle: "Поширені запитання",
+      faq: [
+        { question: "Чи можна забрати цей автомобіль в аеропорту Салонік?", answer: "Так, ми пропонуємо видачу та повернення в аеропорту Салонік (SKG), а також у Халкідіках: Неа Калікратія, Кассандра, Сітонія." },
+        { question: "Чи включена страховка у вартість оренди?", answer: "Базова страховка ОСАГО (TPL) включена безкоштовно. Ви також можете додати повне КАСКО (CDW) для додаткового захисту." },
+        { question: "Чи потрібна кредитна картка для оренди?", answer: "Ні, кредитна картка не потрібна. Ми приймаємо оплату готівкою та пропонуємо оренду без депозиту на окремі автомобілі." },
+        { question: "Які документи потрібні для оренди?", answer: "Вам знадобляться дійсне водійське посвідчення зі стажем не менше 1 року та паспорт або посвідчення особи. Приймаються міжнародні права." },
+        { question: "Чи можна повернути авто в іншому місці?", answer: "Так, можлива оренда в один бік. Ви можете отримати авто в одній точці та повернути в іншій по нашій мережі в Халкідіках і Салоніках." },
+      ],
+      breadcrumbHome: "Головна",
+      breadcrumbCars: "Автомобілі",
+      breadcrumbCarRentalLocation: "Оренда авто у {locationName}",
+      pickupTitle: "Пункти видачі",
+      pillarLinksTitle: "Оренда авто за локаціями",
     },
     links: {
       hubToLocationsTitle: "Локації оренди авто",
@@ -189,6 +269,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       localFaqTitle: "Часті питання",
       navLocationsDropdownDescription:
         "Отримання та повернення в Салоніках, аеропорту та на півострові Халкідіки. Оберіть регіон для деталей та пошуку авто.",
+      otherCarsTitle: "Інші автомобілі, які можуть вам сподобатися",
     },
     staticPages: {
       [STATIC_PAGE_KEYS.CONTACTS]: {
@@ -228,11 +309,37 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
         "Η Natali Cars καλύπτει βασικές τοποθεσίες Χαλκιδικής και Θεσσαλονίκης με ενιαία ροή κράτησης και τοπικές SEO σελίδες.",
     },
     car: {
-      seoTitleTemplate: "Ενοικίαση {carModel} σε Χαλκιδική και Θεσσαλονίκη | Natali Cars",
+      seoTitleTemplate: "Ενοικίαση {carModel} στη Χαλκιδική | Natali Cars",
       seoDescriptionTemplate:
-        "Κλείστε {carModel} με παραλαβή στην περιοχή {locationName}. Διαφανείς τιμές και άμεση υποστήριξη από τη Natali Cars.",
+        "Κλείστε ενοικίαση {carModel} στη Χαλκιδική με παραλαβή στο αεροδρόμιο Θεσσαλονίκης (SKG) ή στη {locationName}. {transmission}, κλιματισμός, οικονομία καυσίμου.",
+      carH1Template: "Ενοικίαση {carModel} στη {locationName}",
       introTemplate:
-        "Επιλέξτε {carModel} και οργανώστε παραλαβή στην περιοχή {locationName}. Η σελίδα συνδέεται με τοπικά SEO hubs.",
+        "Το {carModel} είναι διαθέσιμο προς ενοικίαση στη {locationName} με ευέλικτες επιλογές παραλαβής και επιστροφής. Κιβώτιο {transmission}, καύσιμο {fuelType}, {seats} θέσεις — ιδανική επιλογή για τη Χαλκιδική.",
+      introLongTemplate:
+        "Το {carModel} είναι ένα από τα πιο βολικά αυτοκίνητα για ενοικίαση στη {locationName}. Κομψό και οικονομικό, ιδανικό για παραλίες, χωριά και πανοραμικούς δρόμους. Με κιβώτιο {transmission} και κλιματισμό, το {carModel} προσφέρει άνετη οδήγηση τόσο στην πόλη της Θεσσαλονίκης όσο και στη Χαλκιδική. Η Natali Cars προσφέρει παραλαβή στο αεροδρόμιο Θεσσαλονίκης (SKG) και στη Νέα Καλλικράτεια. Όλες οι ενοικιάσεις περιλαμβάνουν ασφάλιση και δωρεάν ακύρωση.",
+      specsTitle: "Προδιαγραφές οχήματος",
+      quickSpecsTitle: "Σύντομα",
+      featuresTitle: "Χαρακτηριστικά του {carModel}",
+      whyRentTitle: "Γιατί να επιλέξετε το {carModel} για το ταξίδι σας στη {locationName}",
+      whyRentBullets: [
+        "Εύκολο πάρκινγκ — compact μέγεθος για στενά δρομάκια",
+        "Οικονομία καυσίμου",
+        "Ιδανικό για ζευγάρια ή μικρές οικογένειες",
+        "Αξιόπιστο και άνετο στην πόλη και στην ακτή",
+      ],
+      faqTitle: "Συχνές ερωτήσεις",
+      faq: [
+        { question: "Μπορώ να παραλάβω αυτό το αυτοκίνητο στο αεροδρόμιο Θεσσαλονίκης;", answer: "Ναι, προσφέρουμε παραλαβή και επιστροφή στο αεροδρόμιο Θεσσαλονίκης (SKG), καθώς και σε τοποθεσίες στη Χαλκιδική: Νέα Καλλικράτεια, Κασσάνδρα, Σιθωνία." },
+        { question: "Περιλαμβάνεται ασφάλιση στην τιμή ενοικίασης;", answer: "Η βασική ασφάλιση αστικής ευθύνης (TPL) περιλαμβάνεται χωρίς επιπλέον κόστος. Μπορείτε επίσης να προσθέσετε πλήρη κάλυψη CDW." },
+        { question: "Χρειάζομαι πιστωτική κάρτα για ενοικίαση;", answer: "Όχι, δεν απαιτείται πιστωτική κάρτα. Δεχόμαστε πληρωμή με μετρητά και προσφέρουμε ενοικίαση χωρίς εγγύηση σε επιλεγμένα οχήματα." },
+        { question: "Τι έγγραφα χρειάζομαι;", answer: "Χρειάζεστε έγκυρη άδεια οδήγησης με τουλάχιστον 1 έτος εμπειρίας και διαβατήριο ή ταυτότητα. Γίνονται δεκτές διεθνείς άδειες." },
+        { question: "Μπορώ να επιστρέψω το αυτοκίνητο σε άλλη τοποθεσία;", answer: "Ναι, είναι διαθέσιμη η ενοικίαση μόνης κατεύθυνσης. Μπορείτε να παραλάβετε σε μία τοποθεσία και να επιστρέψετε σε άλλη." },
+      ],
+      breadcrumbHome: "Αρχική",
+      breadcrumbCars: "Αυτοκίνητα",
+      breadcrumbCarRentalLocation: "Ενοικίαση αυτοκινήτου στη {locationName}",
+      pickupTitle: "Σημεία παραλαβής",
+      pillarLinksTitle: "Ενοικίαση ανά τοποθεσία",
     },
     links: {
       hubToLocationsTitle: "Τοποθεσίες ενοικίασης",
@@ -252,6 +359,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       localFaqTitle: "Συχνές ερωτήσεις",
       navLocationsDropdownDescription:
         "Παραλαβή και επιστροφή στη Θεσσαλονίκη, αεροδρόμιο και Χαλκιδική. Επιλέξτε περιοχή για λεπτομέρειες και αναζήτηση αυτοκινήτου.",
+      otherCarsTitle: "Άλλα αυτοκίνητα που μπορεί να σας αρέσουν",
     },
     staticPages: {
       [STATIC_PAGE_KEYS.CONTACTS]: {
@@ -291,11 +399,37 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
         "Natali Cars предлага коли под наем в основните райони на Халкидики и Солун чрез една система за резервации и локализирани SEO страници.",
     },
     car: {
-      seoTitleTemplate: "Наем на {carModel} в Халкидики и Солун | Natali Cars",
+      seoTitleTemplate: "Наем на {carModel} в Халкидики | Natali Cars",
       seoDescriptionTemplate:
-        "Наемете {carModel} с получаване в {locationName}. Прозрачни цени, директна поддръжка и гъвкаво предаване от Natali Cars.",
+        "Резервирайте {carModel} в Халкидики с получаване на летище Солун (SKG) или {locationName}. {transmission}, климатик, икономичен разход.",
+      carH1Template: "Наем на {carModel} в {locationName}",
       introTemplate:
-        "Изберете {carModel} и организирайте получаване в {locationName}. Страницата е локализирана за регионално SEO и е свързана с локационните hub страници.",
+        "{carModel} е на разположение за наем в {locationName} с гъвкави опции за получаване и връщане. Скоростна кутия {transmission}, гориво {fuelType}, {seats} места — отличен избор за Халкидики.",
+      introLongTemplate:
+        "{carModel} е един от най-удобните автомобили за наем в {locationName}. Компактен и икономичен, идеален за плажове, села и сценични пътища. С {transmission} и климатик {carModel} предлага комфортно шофиране в Солун и по полуостров Халкидики. Natali Cars предлага получаване на летище Солун (SKG) и в Неа Каликратия. Всички наеми включват застраховка и безплатна отмяна.",
+      specsTitle: "Спецификации на автомобила",
+      quickSpecsTitle: "Накратко",
+      featuresTitle: "Характеристики на {carModel}",
+      whyRentTitle: "Защо да изберете {carModel} за пътуване в {locationName}",
+      whyRentBullets: [
+        "Лесно паркиране — компактен размер за тесни улици",
+        "Икономичен разход на гориво",
+        "Идеален за двойки или малки семейства",
+        "Надежден и комфортен в града и на крайбрежието",
+      ],
+      faqTitle: "Често задавани въпроси",
+      faq: [
+        { question: "Мога ли да взема този автомобил от летище Солун?", answer: "Да, предлагаме получаване и връщане на летище Солун (SKG), както и в Халкидики: Неа Каликратия, Касандра, Ситония." },
+        { question: "Включена ли е застраховка в цената за наем?", answer: "Базовата застраховка ГО (TPL) е включена безплатно. Можете да добавите и пълна CDW застраховка за допълнително спокойствие." },
+        { question: "Нужна ли ми е кредитна карта за наем?", answer: "Не, кредитна карта не е необходима. Приемаме плащане в брой и предлагаме наем без депозит за избрани автомобили." },
+        { question: "Какви документи са необходими?", answer: "Необходима ви е валидна шофьорска книжка с минимум 1 година стаж и паспорт или лична карта. Приемат се международни шофьорски книжки." },
+        { question: "Мога ли да върна колата на друго място?", answer: "Да, еднопосочен наем е възможен. Можете да вземете автомобила от едно място и да го върнете на друго в нашата мрежа." },
+      ],
+      breadcrumbHome: "Начало",
+      breadcrumbCars: "Автомобили",
+      breadcrumbCarRentalLocation: "Наем на кола в {locationName}",
+      pickupTitle: "Места за получаване",
+      pillarLinksTitle: "Наем на кола по локация",
     },
     links: {
       hubToLocationsTitle: "Разгледайте локациите за коли под наем",
@@ -315,6 +449,7 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       localFaqTitle: "Често задавани въпроси",
       navLocationsDropdownDescription:
         "Получаване и връщане в Солун, летището и на полуостров Халкидики. Изберете район за подробности и търсене на автомобил.",
+      otherCarsTitle: "Други автомобили, които може да ви харесат",
     },
     staticPages: {
       [STATIC_PAGE_KEYS.CONTACTS]: {

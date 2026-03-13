@@ -2,6 +2,7 @@ import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { revalidatePath, revalidateTag } from "next/cache";
 import dayjs from "dayjs";
+import { generateSlugBase, ensureUniqueSlug } from "@utils/slugCar";
 
 export const PUT = async (req) => {
   try {
@@ -10,6 +11,25 @@ export const PUT = async (req) => {
     const { _id, ...updateFields } = await req.json();
 
     updateFields.dateLastModified = dayjs().toDate();
+
+    // Auto-generate slug if model/transmission changed or car has no slug yet
+    const existingCar = await Car.findById(_id).lean();
+    const needsSlugUpdate =
+      !existingCar?.slug ||
+      (updateFields.model && updateFields.model !== existingCar.model) ||
+      (updateFields.transmission && updateFields.transmission !== existingCar.transmission);
+
+    if (needsSlugUpdate) {
+      const mergedData = { ...existingCar, ...updateFields };
+      const slugBase = generateSlugBase(mergedData);
+      updateFields.slug = await ensureUniqueSlug(slugBase, async (slug) => {
+        const existing = await Car.findOne({
+          slug: slug.trim().toLowerCase(),
+          _id: { $ne: _id },
+        }).lean();
+        return !!existing;
+      });
+    }
 
     const updatedCar = await Car.findByIdAndUpdate(_id, updateFields, {
       new: true,

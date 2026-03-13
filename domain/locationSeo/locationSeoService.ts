@@ -467,15 +467,34 @@ export function buildCarSeoText(
   input: {
     carModel: string;
     locationName: string;
+    transmission?: string;
+    fuelType?: string;
+    seats?: string;
   }
 ) {
   const locale = normalizeLocale(localeCandidate);
   const dictionary = localeSeoDictionary[locale];
 
+  const templateValues: Record<string, string> = {
+    carModel: input.carModel,
+    locationName: input.locationName,
+    transmission: input.transmission || "",
+    fuelType: input.fuelType || "",
+    seats: input.seats || "",
+  };
+
   return {
-    seoTitle: fillTemplate(dictionary.car.seoTitleTemplate, input),
-    seoDescription: fillTemplate(dictionary.car.seoDescriptionTemplate, input),
-    introText: fillTemplate(dictionary.car.introTemplate, input),
+    seoTitle: fillTemplate(dictionary.car.seoTitleTemplate, templateValues),
+    seoDescription: fillTemplate(dictionary.car.seoDescriptionTemplate, templateValues),
+    introText: fillTemplate(dictionary.car.introTemplate, templateValues),
+    h1Text: fillTemplate(dictionary.car.carH1Template, templateValues),
+    introLongText: fillTemplate(dictionary.car.introLongTemplate, templateValues),
+    quickSpecsTitle: dictionary.car.quickSpecsTitle,
+    featuresTitle: fillTemplate(dictionary.car.featuresTitle, templateValues),
+    whyRentTitle: fillTemplate(dictionary.car.whyRentTitle, templateValues),
+    whyRentBullets: dictionary.car.whyRentBullets || [],
+    pillarLinksTitle: dictionary.car.pillarLinksTitle,
+    breadcrumbCarRentalLocation: fillTemplate(dictionary.car.breadcrumbCarRentalLocation, templateValues),
   };
 }
 

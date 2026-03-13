@@ -46,10 +46,31 @@ export interface HubSeoContent {
   introText: string;
 }
 
+export interface CarFaqItem {
+  question: string;
+  answer: string;
+}
+
 export interface CarSeoContent {
   seoTitleTemplate: string;
   seoDescriptionTemplate: string;
+  /** H1 e.g. "Rent {carModel} in {locationName}" */
+  carH1Template: string;
   introTemplate: string;
+  /** Longer intro 150–200 words for SEO */
+  introLongTemplate: string;
+  specsTitle: string;
+  quickSpecsTitle: string;
+  featuresTitle: string;
+  whyRentTitle: string;
+  whyRentBullets: string[];
+  faqTitle: string;
+  faq: CarFaqItem[];
+  breadcrumbHome: string;
+  breadcrumbCars: string;
+  breadcrumbCarRentalLocation: string;
+  pickupTitle: string;
+  pillarLinksTitle: string;
 }
 
 export interface LinkSeoContent {
@@ -72,6 +93,8 @@ export interface LinkSeoContent {
   localFaqTitle: string;
   /** Short description for the navbar Locations mega menu (left column). */
   navLocationsDropdownDescription: string;
+  /** Title for "Other cars you may like" section on single car pages. */
+  otherCarsTitle: string;
 }
 
 export interface StaticPageSeoContent {

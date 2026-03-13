@@ -116,16 +116,23 @@ export const fetchAll = async () => {
 // Fetch all cars using fetch
 // По умолчанию используем кеширование (revalidate: 600 секунд = 10 минут).
 // Для мгновенно-актуальных данных (админка/оперативный UI) передавайте { skipCache: true }.
+// Передайте options.cookie (из headers().get('cookie')) при вызове с сервера, чтобы /api/car/all
+// видел сессию и мог вернуть testingCar для суперадмина.
 export const fetchAllCars = async (options = {}) => {
   try {
     const skipCache = Boolean(options?.skipCache);
+    const cookie = options?.cookie ?? null;
+    const baseHeaders = {
+      "Content-Type": "application/json",
+      ...(cookie ? { Cookie: cookie } : {}),
+    };
     const response = await fetch(
       getApiUrl(`/api/car/all`),
       skipCache
         ? {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
+              ...baseHeaders,
               "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
               Pragma: "no-cache",
             },
@@ -134,9 +141,7 @@ export const fetchAllCars = async (options = {}) => {
         : {
             method: "GET",
             cache: "force-cache",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: baseHeaders,
             // Кеширование: данные обновляются каждые 20 минут
             next: { revalidate: 1200, tags: ["cars"] },
           }

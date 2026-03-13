@@ -1,6 +1,10 @@
 import React from "react";
 import Login from "../components/Login/Login";
 
+export const metadata = {
+  robots: { index: false, follow: true },
+};
+
 const containerStyle = {
   width: "100%",
   height: "100vh",

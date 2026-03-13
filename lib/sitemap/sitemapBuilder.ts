@@ -11,6 +11,14 @@ import {
 import { LOCATION_IDS, STATIC_PAGE_KEYS, type StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
 import { buildHreflangAlternates } from "@/services/seo/hreflangBuilder";
 import { toAbsoluteUrl } from "@/services/seo/urlBuilder";
+import {
+  getAllSeoPageSlugs,
+  getSeoPageAlternates,
+  getSeoPagePath,
+  buildProgrammaticSlug,
+  buildAllBrandPageSlugs,
+  SEO_LOCATIONS,
+} from "@domain/seoPages/seoPageRegistry";
 
 type SitemapCar = {
   slug?: string;
@@ -112,17 +120,23 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     });
   }
 
-  // NOTE: /{locale}/cars is a redirect to /{locale}; keep redirect URLs out of sitemap.
+  const carsIndexAlternates = buildHreflangAlternates(
+    Object.fromEntries(supportedLocales.map((l) => [l, `/${l}/cars`]))
+  );
+  for (const locale of supportedLocales) {
+    entries.push({
+      url: toAbsoluteUrl(`/${locale}/cars`),
+      lastModified: nowIso,
+      changeFrequency: "weekly",
+      priority: locale === defaultLocale ? 0.9 : 0.85,
+      alternates: { languages: carsIndexAlternates },
+    });
+  }
 
-  const staticPages = [
-    STATIC_PAGE_KEYS.CONTACTS,
-    STATIC_PAGE_KEYS.PRIVACY_POLICY,
-    STATIC_PAGE_KEYS.TERMS_OF_SERVICE,
-    STATIC_PAGE_KEYS.COOKIE_POLICY,
-    STATIC_PAGE_KEYS.RENTAL_TERMS,
-  ] as const;
+  // Only SEO-relevant static pages. Exclude legal/technical (noindex) from sitemap.
+  const staticPagesInSitemap: StaticPageKey[] = [STATIC_PAGE_KEYS.CONTACTS];
 
-  for (const pageKey of staticPages) {
+  for (const pageKey of staticPagesInSitemap) {
     const alternates = buildLocaleStaticAlternates(pageKey);
     for (const locale of supportedLocales) {
       entries.push({
@@ -175,6 +189,54 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
           languages: alternates,
         },
       });
+    }
+  }
+
+  // ── Category × Location SEO pages (e.g. /automatic-car-rental-halkidiki) ──
+  const seoPageSlugs = getAllSeoPageSlugs();
+  for (const seoPage of seoPageSlugs) {
+    const alternates = buildHreflangAlternates(getSeoPageAlternates(seoPage.seoSlug));
+    for (const locale of supportedLocales) {
+      entries.push({
+        url: toAbsoluteUrl(getSeoPagePath(locale, seoPage.seoSlug)),
+        lastModified: nowIso,
+        changeFrequency: "weekly",
+        priority: locale === defaultLocale ? 0.85 : 0.8,
+        alternates: { languages: alternates },
+      });
+    }
+  }
+
+  // ── Brand × Location SEO pages (e.g. /toyota-car-rental-halkidiki) ──
+  const brandPages = buildAllBrandPageSlugs(publicCars);
+  for (const brandPage of brandPages) {
+    const brandAlternates = buildHreflangAlternates(getSeoPageAlternates(brandPage.seoSlug));
+    for (const locale of supportedLocales) {
+      entries.push({
+        url: toAbsoluteUrl(getSeoPagePath(locale, brandPage.seoSlug)),
+        lastModified: nowIso,
+        changeFrequency: "weekly",
+        priority: locale === defaultLocale ? 0.8 : 0.75,
+        alternates: { languages: brandAlternates },
+      });
+    }
+  }
+
+  // ── Programmatic rent-{car}-{location} pages ──
+  for (const car of publicCars) {
+    const carSlug = String(car.slug).trim();
+    for (const location of SEO_LOCATIONS) {
+      const progSlug = buildProgrammaticSlug(carSlug, location.slugSuffix);
+      const progAlternates = buildHreflangAlternates(getSeoPageAlternates(progSlug));
+      for (const locale of supportedLocales) {
+        entries.push({
+          url: toAbsoluteUrl(getSeoPagePath(locale, progSlug)),
+          lastModified: getLastModifiedDate(car),
+          changeFrequency: "weekly",
+          priority: locale === defaultLocale ? 0.7 : 0.65,
+          alternates: { languages: progAlternates },
+        });
+      }
     }
   }
 

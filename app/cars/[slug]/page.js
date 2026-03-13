@@ -1,5 +1,8 @@
-import { permanentRedirect } from "next/navigation";
-import { getDefaultLocale } from "@domain/locationSeo/locationSeoService";
+import { notFound, permanentRedirect } from "next/navigation";
+import { fetchCar } from "@utils/action";
+import { getDefaultLocale, getCarPath } from "@domain/locationSeo/locationSeoService";
+
+const MONGO_ID_REGEX = /^[0-9a-f]{24}$/i;
 
 export async function generateMetadata() {
   return {
@@ -10,6 +13,18 @@ export async function generateMetadata() {
   };
 }
 
-export default function LegacyCarsSlugRedirectPage({ params }) {
-  permanentRedirect(`/${getDefaultLocale()}/cars/${encodeURIComponent(params.slug)}`);
+export default async function LegacyCarsSlugRedirectPage({ params }) {
+  const raw = params.slug;
+  const defaultLocale = getDefaultLocale();
+
+  // If this looks like a MongoDB ObjectId, resolve the real slug and redirect
+  if (MONGO_ID_REGEX.test(raw)) {
+    const car = await fetchCar(raw).catch(() => null);
+    if (car?.slug) {
+      permanentRedirect(getCarPath(defaultLocale, car.slug));
+    }
+    notFound();
+  }
+
+  permanentRedirect(`/${defaultLocale}/cars/${encodeURIComponent(raw)}`);
 }

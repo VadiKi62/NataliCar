@@ -21,10 +21,9 @@ const defaultLocale = getDefaultLocale();
 // SEO: Multilingual keywords for better indexing in target markets
 // EN (international), RU (CIS tourists), DE (DACH region), SR (Balkans), EL (local)
 const multilangKeywords = getPrimaryKeywords(8);
-const languageAlternates = supportedLocales.reduce(
-  (acc, lang) => ({ ...acc, [lang]: `${seoConfig.baseUrl}/${lang}` }),
-  { "x-default": `${seoConfig.baseUrl}/${defaultLocale}` }
-);
+// Do NOT set alternates.canonical or alternates.languages here. Each [locale] page
+// must set its own canonical (self-referencing) and hreflang via generateMetadata.
+// Otherwise non-default locales would inherit canonical to defaultLocale → "Google chose different canonical".
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -57,10 +56,6 @@ export const metadata = {
   authors: [{ name: seoConfig.siteName }],
   creator: seoConfig.siteName,
   publisher: seoConfig.siteName,
-  alternates: {
-    canonical: `${seoConfig.baseUrl}/${defaultLocale}`,
-    languages: languageAlternates,
-  },
   openGraph: {
     type: "website",
     locale: seoConfig.defaultLocale,

@@ -13,7 +13,10 @@ import {
   getStaticPageSeo,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
-import type { StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
+import {
+  STATIC_PAGE_KEYS,
+  type StaticPageKey,
+} from "@domain/locationSeo/locationSeoKeys";
 import type { LocationSeoResolved } from "@domain/locationSeo/types";
 import { getAirportPrioritySeo, isPriorityAirportLocation } from "./airportPrioritySeo";
 import { buildHreflangAlternates } from "./hreflangBuilder";
@@ -40,6 +43,8 @@ function buildBaseMetadata(input: {
   canonicalPath: string;
   alternatePathsByLocale: Record<string, string>;
   locale: string;
+  /** When true, set robots to noindex,follow (for legal/technical pages). */
+  noindex?: boolean;
 }): Metadata {
   const seoConfig = getSeoConfig();
   const hreflangAlternates = buildHreflangAlternates(input.alternatePathsByLocale);
@@ -74,10 +79,9 @@ function buildBaseMetadata(input: {
       description: input.description,
       images: [`${seoConfig.baseUrl}/favicon.png`],
     },
-    robots: {
-      index: true,
-      follow: true,
-    },
+    robots: input.noindex
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
   };
 }
 
@@ -139,12 +143,18 @@ export function buildCarMetadata(input: {
   carSlug: string;
   carModel: string;
   locationName: string;
+  transmission?: string;
+  fuelType?: string;
+  seats?: string;
 }): Metadata {
   const locale = normalizeLocale(input.localeCandidate);
   const canonicalPath = `/${locale}/cars/${encodeURIComponent(input.carSlug)}`;
   const carSeo = buildCarSeoText(locale, {
     carModel: input.carModel,
     locationName: input.locationName,
+    transmission: input.transmission,
+    fuelType: input.fuelType,
+    seats: input.seats,
   });
 
   return buildBaseMetadata({
@@ -155,6 +165,14 @@ export function buildCarMetadata(input: {
     locale,
   });
 }
+
+/** Static pages that must not be indexed (legal/technical). Canonical and hreflang still set for consistency. */
+const NOINDEX_STATIC_PAGES: Set<StaticPageKey> = new Set([
+  STATIC_PAGE_KEYS.COOKIE_POLICY,
+  STATIC_PAGE_KEYS.PRIVACY_POLICY,
+  STATIC_PAGE_KEYS.TERMS_OF_SERVICE,
+  STATIC_PAGE_KEYS.RENTAL_TERMS,
+]);
 
 export function buildStaticPageMetadata(
   localeCandidate: string | undefined | null,
@@ -176,5 +194,6 @@ export function buildStaticPageMetadata(
     canonicalPath: getStaticPagePath(locale, pageKey),
     alternatePathsByLocale: alternatesByLocale,
     locale,
+    noindex: NOINDEX_STATIC_PAGES.has(pageKey),
   });
 }

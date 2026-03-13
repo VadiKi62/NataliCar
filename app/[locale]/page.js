@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Feed from "@app/components/Feed";
 import CarGrid from "@app/components/CarGrid";
 import JsonLdScript from "@app/components/seo/JsonLdScript";
@@ -26,9 +27,11 @@ export default async function LocalizedHomePage({ params }) {
   if (!isSupportedLocale(locale)) {
     notFound();
   }
+  const headersList = await headers();
+  const cookie = headersList.get("cookie");
 
   const [carsData, ordersData, companyData] = await Promise.all([
-    fetchAllCars(),
+    fetchAllCars({ cookie }),
     reFetchActiveOrders(),
     fetchCompany(COMPANY_ID),
   ]);

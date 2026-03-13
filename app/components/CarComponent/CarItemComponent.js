@@ -30,6 +30,7 @@ const CarTitle = muiStyled(Typography)(({ theme }) => ({
 }));
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import AcUnitIcon from "@mui/icons-material/AcUnit";
 import SpeedIcon from "@mui/icons-material/Speed";
@@ -54,6 +55,32 @@ import { useSnackbar } from "notistack";
 
 // ДОБАВИТЬ ЭТУ СТРОКУ:
 import dayjs from "dayjs";
+
+/**
+ * Client-side slug for car link when DB slug is missing (e.g. cached API response).
+ * Must match utils/slugCar.js generateSlugBase so links work before cache refresh.
+ */
+function getSlugFromCar(car) {
+  if (!car) return "";
+  const model = car.model ? String(car.model).trim() : "";
+  const transmission = car.transmission ? String(car.transmission).trim() : "";
+  const parts = [];
+  if (model) parts.push(model);
+  if (transmission && !model.toLowerCase().includes(transmission.toLowerCase())) {
+    parts.push(transmission);
+  }
+  const raw = parts.join(" ");
+  if (!raw) return "car";
+  const normalized = raw
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  const slug = normalized.replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return slug || "car";
+}
 
 const StyledCarItem = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(0.5), // Уменьшили с 1 до 0.5
@@ -161,7 +188,15 @@ const CarItemComponent = React.memo(function CarItemComponent({
   discountEnd,
   isFirstCar = false, // Only first car above-the-fold gets priority loading
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const pathname = usePathname();
+  const localeFromUrl = pathname?.split("/")[1];
+  const supportedLocales = ["en", "ru", "uk", "el", "de", "bg", "ro", "sr"];
+  const locale = localeFromUrl && supportedLocales.includes(localeFromUrl)
+    ? localeFromUrl
+    : (i18n.language || "en").split("-")[0];
+  const slugForLink = car?.slug?.trim() || getSlugFromCar(car);
+  const carPageHref = slugForLink ? `/${locale}/cars/${encodeURIComponent(slugForLink)}` : null;
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   // Для хранения id последнего снэка
   const lastSnackRef = useRef(null);
@@ -276,8 +311,14 @@ const CarItemComponent = React.memo(function CarItemComponent({
   return (
     <StyledCarItem elevation={3} ref={carItemRef}>
       <Wrapper>
-        {/* Название автомобиля над фото (единый стиль) */}
-        <CarTitle variant="h5">{car.model}</CarTitle>
+        {/* Название автомобиля над фото — ссылка на страницу машины */}
+        {carPageHref ? (
+          <Link href={carPageHref} style={{ textDecoration: "none", color: "inherit" }}>
+            <CarTitle variant="h5">{car.model}</CarTitle>
+          </Link>
+        ) : (
+          <CarTitle variant="h5">{car.model}</CarTitle>
+        )}
         <MediaRow>
           <Box className="car-image-wrapper">
             <CarImage

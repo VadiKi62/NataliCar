@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import cloudinary from "@utils/cloudinary";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { generateSlugBase, ensureUniqueSlug } from "@utils/slugCar";
 
 dayjs.extend(isBetween);
 
@@ -30,6 +31,14 @@ export async function POST(req) {
     }
 
     carData.dateAddCar = dayjs().toDate();
+
+    // Auto-generate SEO slug from model + transmission
+    const slugBase = generateSlugBase(carData);
+    carData.slug = await ensureUniqueSlug(slugBase, async (slug) => {
+      const existing = await Car.findOne({ slug: slug.trim().toLowerCase() }).lean();
+      return !!existing;
+    });
+
     // Create and save the car
     const newCar = new Car(carData);
 

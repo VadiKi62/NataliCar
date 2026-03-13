@@ -99,6 +99,11 @@ const CarSchema = new Schema({
     sparse: true,
     trim: true,
   },
+  /** When true, car is shown only to logged-in superadmin (hidden from clients and regular admins on main site). */
+  testingCar: {
+    type: Boolean,
+    default: false,
+  },
   photoUrl: {
     type: String,
   },

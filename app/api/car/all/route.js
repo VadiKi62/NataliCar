@@ -1,22 +1,38 @@
 import { Car } from "@models/car";
+import { ROLE } from "@models/user";
 import { connectToDB } from "@utils/database";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
 import { NextResponse } from "next/server";
 
 // Кеширование для статических данных (cars меняются редко)
 // Revalidate каждые 10 минут (600 секунд)
 export const revalidate = 600;
 
-export const GET = async () => {
+/** Cars with testingCar: true are only returned when the request is from a logged-in superadmin. */
+function getCarsFilter(session) {
+  const isSuperadmin =
+    session?.user?.isAdmin === true && session?.user?.role === ROLE.SUPERADMIN;
+  if (isSuperadmin) return {};
+  return {
+    $or: [
+      { testingCar: { $ne: true } },
+      { testingCar: { $exists: false } },
+    ],
+  };
+}
+
+export const GET = async (request) => {
   try {
     await connectToDB();
-
-    const cars = await Car.find();
+    const session = await getServerSession(authOptions);
+    const filter = getCarsFilter(session);
+    const cars = await Car.find(filter);
 
     return NextResponse.json(cars, {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        // Кеширование на клиенте и CDN
         "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300",
       },
     });
@@ -32,11 +48,12 @@ export const GET = async () => {
 };
 
 // POST запросы не кешируются (для обновления данных)
-export const POST = async () => {
+export const POST = async (request) => {
   try {
     await connectToDB();
-
-    const cars = await Car.find();
+    const session = await getServerSession(authOptions);
+    const filter = getCarsFilter(session);
+    const cars = await Car.find(filter);
 
     return NextResponse.json(cars, {
       status: 200,

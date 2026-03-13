@@ -23,16 +23,26 @@ function toSlugBase(str) {
 }
 
 /**
- * Generate base slug from make + model + year + optional location.
- * @param {Object} car - { model, registration, make?, location? }
+ * Generate base slug from model + transmission.
+ * Avoids duplicating transmission if it already appears in model name.
+ * Examples:
+ *   { model: "Toyota Yaris", transmission: "automatic" }  → "toyota-yaris-automatic"
+ *   { model: "Toyota Yaris Automatic", transmission: "automatic" } → "toyota-yaris-automatic"
+ *   { model: "Fiat 500 Cabrio", transmission: "manual" } → "fiat-500-cabrio-manual"
+ * @param {Object} car - { model, transmission }
  * @returns {string} Base slug (no uniqueness suffix).
  */
 function generateSlugBase(car) {
+  const model = car.model ? String(car.model).trim() : "";
+  const transmission = car.transmission ? String(car.transmission).trim() : "";
+
   const parts = [];
-  if (car.make && String(car.make).trim()) parts.push(String(car.make).trim());
-  if (car.model && String(car.model).trim()) parts.push(String(car.model).trim());
-  if (car.registration != null) parts.push(String(car.registration));
-  if (car.location && String(car.location).trim()) parts.push(String(car.location).trim());
+  if (model) parts.push(model);
+
+  if (transmission && !model.toLowerCase().includes(transmission.toLowerCase())) {
+    parts.push(transmission);
+  }
+
   const raw = parts.join(" ");
   const base = toSlugBase(raw);
   return base || "car";
