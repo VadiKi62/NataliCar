@@ -2,8 +2,11 @@
 
 import React, { createContext, useContext } from "react";
 
+/** @typedef {{ href: string, label: string, children?: Array<{ href: string, label: string }> }} NavLocationGroup */
+
 const NavLocationsContext = createContext({
-  hubLinks: [],
+  /** @type {NavLocationGroup[]} */
+  locationGroups: [],
   navLocationsDescription: "",
 });
 
@@ -11,10 +14,14 @@ export function useNavLocations() {
   return useContext(NavLocationsContext);
 }
 
-export function NavLocationsProvider({ hubLinks = [], navLocationsDescription = "", children }) {
+export function NavLocationsProvider({
+  locationGroups = [],
+  navLocationsDescription = "",
+  children,
+}) {
   const value = React.useMemo(
-    () => ({ hubLinks, navLocationsDescription }),
-    [hubLinks, navLocationsDescription]
+    () => ({ locationGroups, navLocationsDescription }),
+    [locationGroups, navLocationsDescription]
   );
   return (
     <NavLocationsContext.Provider value={value}>

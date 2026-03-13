@@ -13,22 +13,48 @@ import { connectToDB } from "@utils/database";
 const ALLOWED_ORIGIN = "https://bbqr.site";
 const AUTH_SCHEME = "Bearer";
 
-/** Public shape returned to the client. */
+const DEFAULT_BASE_URL = "https://natali-cars.com";
+
+/** Ideal format for external listings (e.g. BBQR). */
 export type InternalCarItem = {
-  _id: string;
-  brand: string;
-  model: string;
-  transmission: string;
-  price: number;
-  slug: string;
+  externalId: string;
+  title: string;
+  priceFrom: number;
   image: string | null;
+  bookingUrl: string;
 };
 
-/** Extract first word of model as brand (e.g. "Toyota Yaris" -> "Toyota"). */
-function extractBrand(model: string | undefined): string {
-  const trimmed = (model ?? "").trim();
-  if (!trimmed) return "";
-  return trimmed.split(/\s+/)[0];
+/** Base URL for booking links (no trailing slash). */
+function getBookingBaseUrl(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.VERCEL_URL;
+  if (typeof raw !== "string" || !raw.trim()) return DEFAULT_BASE_URL;
+  const url = raw.trim().replace(/\/+$/, "");
+  return url.startsWith("http") ? url : `https://${url}`;
+}
+
+/** Capitalize first letter of a word. */
+function capitalizeWord(s: string): string {
+  const t = (s ?? "").trim();
+  if (!t) return "";
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+}
+
+/** Build display title: "Toyota Yaris Automatic". */
+function buildTitle(
+  model: string | undefined,
+  transmission: string | undefined
+): string {
+  const combined = [(model ?? "").trim(), (transmission ?? "").trim()]
+    .filter(Boolean)
+    .join(" ");
+  return combined
+    .split(/\s+/)
+    .map(capitalizeWord)
+    .filter(Boolean)
+    .join(" ");
 }
 
 /**
@@ -124,16 +150,20 @@ export async function GET(request: NextRequest) {
       .lean()
       .exec();
 
+    const baseUrl = getBookingBaseUrl();
     const items: InternalCarItem[] = (cars as Array<Record<string, unknown>>).map(
-      (doc) => ({
-        _id: String(doc._id),
-        brand: extractBrand(doc.model as string),
-        model: (doc.model as string) ?? "",
-        transmission: (doc.transmission as string) ?? "",
-        price: getRepresentativePrice(doc.pricingTiers),
-        slug: (doc.slug as string) ?? "",
-        image: typeof doc.photoUrl === "string" ? doc.photoUrl : null,
-      })
+      (doc) => {
+        const slug = (doc.slug as string) ?? "";
+        const model = (doc.model as string) ?? "";
+        const transmission = (doc.transmission as string) ?? "";
+        return {
+          externalId: String(doc._id),
+          title: buildTitle(model, transmission),
+          priceFrom: getRepresentativePrice(doc.pricingTiers),
+          image: typeof doc.photoUrl === "string" ? doc.photoUrl : null,
+          bookingUrl: `${baseUrl}/cars/${encodeURIComponent(slug)}`,
+        };
+      }
     );
 
     return NextResponse.json(items, { status: 200, headers });

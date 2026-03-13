@@ -5,6 +5,7 @@ import {
   getDefaultLocale,
   getHubAlternates,
   getLocationAlternatesById,
+  getLocationPathFromLocation,
   getStaticPagePath,
   getSupportedLocales,
 } from "@domain/locationSeo/locationSeoService";
@@ -161,8 +162,9 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
 
       if (!localizedLocation) continue;
 
+      const locationPath = getLocationPathFromLocation(locale, localizedLocation);
       entries.push({
-        url: toAbsoluteUrl(`/${locale}/locations/${localizedLocation.slug}`),
+        url: toAbsoluteUrl(locationPath),
         lastModified: nowIso,
         changeFrequency: "weekly",
         priority: getLocationPriority(location.id, locale, defaultLocale),

@@ -50,7 +50,15 @@ export const LOCATION_IDS = {
   OLYMPIADA: "olympiada",
 } as const;
 
-/** IDs of the hub locations shown in the navbar Locations dropdown. */
+/** Main region IDs shown at top level in Locations nav (expandable regions + single links). */
+export const MAIN_NAV_REGION_IDS = [
+  LOCATION_IDS.THESSALONIKI_AIRPORT,
+  LOCATION_IDS.THESSALONIKI,
+  LOCATION_IDS.NEA_KALLIKRATIA,
+  LOCATION_IDS.HALKIDIKI,
+] as const;
+
+/** IDs of the hub locations shown in the navbar Locations dropdown (flat list for legacy). */
 export const HUB_NAV_LOCATION_IDS = [
   LOCATION_IDS.THESSALONIKI_AIRPORT,
   LOCATION_IDS.THESSALONIKI,

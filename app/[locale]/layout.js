@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import {
-  getHubLocationsForNav,
+  getHubLocationGroupsForNav,
   getLocaleDictionary,
   getLocaleRouteParams,
-  getLocationPath,
   isSupportedLocale,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
@@ -21,17 +20,13 @@ export default function LocaleLayout({ children, params }) {
     notFound();
   }
 
-  const hubLocations = getHubLocationsForNav(locale);
+  const locationGroups = getHubLocationGroupsForNav(locale);
   const dictionary = getLocaleDictionary(locale);
-  const hubLinks = hubLocations.map((loc) => ({
-    href: getLocationPath(locale, loc.slug),
-    label: loc.shortName,
-  }));
   const navLocationsDescription = dictionary?.links?.navLocationsDropdownDescription ?? "";
 
   return (
     <NavLocationsProvider
-      hubLinks={hubLinks}
+      locationGroups={locationGroups}
       navLocationsDescription={navLocationsDescription}
     >
       {children}

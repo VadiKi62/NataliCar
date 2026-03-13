@@ -10,6 +10,7 @@ import {
   getAllLocationsForLocale,
   getLocationById,
   getLocationPath,
+  getLocationPathFromLocation,
   getPathWithoutLocalePrefix,
   getStaticPagePath,
   isLocalePrefixedPath,
@@ -69,7 +70,7 @@ function buildLegacyLocationRedirect(
     if (locationId) {
       const location = getLocationById(locale, locationId);
       if (location && location.slug !== slug) {
-        return getLocationPath(locale, location.slug);
+        return getLocationPathFromLocation(locale, location);
       }
     }
     return null;
@@ -84,7 +85,7 @@ function buildLegacyLocationRedirect(
   const location = getLocationById(locale, locationId);
   if (!location) return null;
 
-  return getLocationPath(locale, location.slug);
+  return getLocationPathFromLocation(locale, location);
 }
 
 function withLocaleCookie(response: NextResponse, locale: string): NextResponse {
@@ -129,7 +130,7 @@ export function middleware(request: NextRequest) {
       LOCATION_IDS.THESSALONIKI_AIRPORT
     );
     const airportPath = airportLocation
-      ? getLocationPath(detectedLocale, airportLocation.slug)
+      ? getLocationPathFromLocation(detectedLocale, airportLocation)
       : withLocalePrefix(detectedLocale, normalizedPathname);
     const target = withSearchParams(airportPath, request);
     const url = new URL(target, request.url);

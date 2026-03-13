@@ -9,11 +9,14 @@ import {
   buildHubAndLocationLinks,
   getCarPath,
   getLocaleDictionary,
+  getHubSeo,
   getLocationById,
-  getLocationByLocaleAndSlug,
+  getLocationByPath,
   getLocationByAnySlug,
-  getLocationPath,
-  getLocationRouteParams,
+  getLocationPathFromLocation,
+  getLocationBreadcrumbChain,
+  getLocationHierarchyRouteParams,
+  getAllLocationsForLocale,
   getHomepageSearchUrl,
   isSupportedLocale,
   normalizeLocale,
@@ -27,7 +30,7 @@ import {
   getAirportPrioritySeo,
   isPriorityAirportLocation,
 } from "@/services/seo/airportPrioritySeo";
-import { buildLocationMetadata } from "@/services/seo/metadataBuilder";
+import { buildLocationMetadata, buildLocationsIndexMetadata } from "@/services/seo/metadataBuilder";
 import {
   SeoBreadcrumbNav,
   SeoFaqBlock,
@@ -62,42 +65,80 @@ function getPublicCars(cars) {
 export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
-  return getLocationRouteParams();
+  return getLocationHierarchyRouteParams();
 }
 
 export async function generateMetadata({ params }) {
   const locale = normalizeLocale(params.locale);
-  const location =
-    getLocationByLocaleAndSlug(locale, params.slug) ||
-    getLocationByAnySlug(locale, params.slug);
-
-  if (!location) {
-    return {
-      robots: { index: false, follow: false },
-    };
+  const path = params.path ?? [];
+  const pathArray = Array.isArray(path) ? path : [path].filter(Boolean);
+  if (pathArray.length === 0) {
+    return buildLocationsIndexMetadata(params.locale);
   }
-
+  let location = getLocationByPath(locale, pathArray);
+  if (!location && pathArray.length === 1) {
+    location = getLocationByAnySlug(locale, pathArray[0]);
+  }
+  if (!location) {
+    return { robots: { index: false, follow: false } };
+  }
   return buildLocationMetadata(location);
 }
 
-export default async function LocationSeoPage({ params }) {
+export default async function LocationHierarchyPage({ params }) {
   const locale = normalizeLocale(params.locale);
-  if (!isSupportedLocale(locale)) {
-    notFound();
+  if (!isSupportedLocale(locale)) notFound();
+
+  const path = params.path ?? [];
+  const pathArray = Array.isArray(path) ? path : [path].filter(Boolean);
+
+  if (pathArray.length > 3) notFound();
+
+  // Index: /locations (no path segments)
+  if (pathArray.length === 0) {
+    const hubSeo = getHubSeo(locale);
+    const dictionary = getLocaleDictionary(locale);
+    const locationLinks = getAllLocationsForLocale(locale).map((location) => ({
+      href: getLocationPathFromLocation(locale, location),
+      label: location.shortName,
+    }));
+    return (
+      <Feed locale={locale} isMain={false}>
+        <Box
+          component="main"
+          sx={{
+            color: "text.primary",
+            bgcolor: "background.default",
+            minHeight: "60vh",
+            py: 3,
+            px: { xs: 2, md: 3 },
+          }}
+        >
+          <Box sx={{ maxWidth: 980, mx: "auto" }}>
+            <SeoIntroBlock title={hubSeo.h1} introText={hubSeo.introText} />
+            <SeoLinksBlock
+              title={dictionary.links.hubToLocationsTitle}
+              links={locationLinks}
+            />
+          </Box>
+        </Box>
+      </Feed>
+    );
   }
 
-  let location = getLocationByLocaleAndSlug(locale, params.slug);
+  let location = getLocationByPath(locale, pathArray);
 
-  if (!location) {
-    const fallback = getLocationByAnySlug(locale, params.slug);
-    if (fallback) {
-      redirect(getLocationPath(locale, fallback.slug));
+  if (!location && pathArray.length === 1) {
+    const bySlug = getLocationByAnySlug(locale, pathArray[0]);
+    if (bySlug) {
+      redirect(getLocationPathFromLocation(locale, bySlug));
     }
     notFound();
   }
 
-  const dictionary = getLocaleDictionary(locale);
+  if (!location) notFound();
 
+  const dictionary = getLocaleDictionary(locale);
   const isPillar = PILLAR_LOCATION_IDS.includes(location.id);
   let allCars = [];
   let ordersData = null;
@@ -120,9 +161,10 @@ export default async function LocationSeoPage({ params }) {
     label: c.model || c.slug,
   }));
 
+  const pagePath = getLocationPathFromLocation(locale, location);
   const locationJsonLd = buildAutoRentalJsonLd({
     localeCandidate: locale,
-    pagePath: `/${locale}/locations/${location.slug}`,
+    pagePath,
     location,
   });
 
@@ -165,17 +207,13 @@ export default async function LocationSeoPage({ params }) {
       ? getHomepageSearchUrl(locale, location.canonicalSlug)
       : locationLinks.hubPath;
   const ctaLabel = links.locationHeroCtaLabel;
-
   const heroParagraphs = prioritySeo?.heroSubtitle
     ? [prioritySeo.heroSubtitle]
     : prioritizedIntroText
       ? [prioritizedIntroText]
       : [];
 
-  const breadcrumbItems = [
-    { href: `/${locale}`, label: dictionary.breadcrumbHome ?? "Home" },
-    { href: getLocationPath(locale, location.slug), label: prioritizedTitle },
-  ];
+  const breadcrumbItems = getLocationBreadcrumbChain(locale, location);
   const faqJsonLd = buildFaqJsonLd(location.faq || []);
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(
     breadcrumbItems.map((item) => ({ name: item.label, url: toAbsoluteUrl(item.href) }))
@@ -185,7 +223,7 @@ export default async function LocationSeoPage({ params }) {
   const internalLinks = [];
   if (halkidikiLocation) {
     internalLinks.push({
-      href: getLocationPath(locale, halkidikiLocation.slug),
+      href: getLocationPathFromLocation(locale, halkidikiLocation),
       label: halkidikiLocation.h1 || "Car rental in Halkidiki",
     });
   }

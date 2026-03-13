@@ -20,7 +20,7 @@ const CarTitle = muiStyled(Typography)(({ theme }) => ({
   fontWeight: 700,
   marginBottom: theme.spacing(1.7),
   marginTop: theme.spacing(2.5),
-  width: "60%",
+  width: "100%",
   textAlign: "center",
   // уменьшенный отступ сверху для горизонтальных телефонов
   ["@media (max-width:900px) and (orientation: landscape)"]: {

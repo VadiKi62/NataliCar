@@ -45,20 +45,38 @@ const cars = await res.json();
 
 ## Response format
 
-**200 OK** — JSON array of cars (minimal public fields only):
+**200 OK** — JSON array of cars (ideal format for external listings, e.g. BBQR):
 
 ```json
 [
   {
-    "_id": "507f1f77bcf86cd799439011",
-    "brand": "Toyota",
-    "model": "Yaris",
-    "transmission": "Automatic",
-    "price": 30,
-    "slug": "toyota-yaris-automatic",
-    "image": "https://..."
+    "externalId": "507f1f77bcf86cd799439011",
+    "title": "Toyota Yaris Automatic",
+    "priceFrom": 30,
+    "image": "https://...",
+    "bookingUrl": "https://natali-cars.com/cars/toyota-yaris-automatic"
   }
 ]
+```
+
+- **externalId** — MongoDB `_id` (for mapping in external system).
+- **title** — Display name: brand + model + transmission (e.g. "Toyota Yaris Automatic").
+- **priceFrom** — Representative minimum price from pricing tiers (for "from €30").
+- **image** — Car photo URL (or `null`).
+- **bookingUrl** — Deep link to Natali Cars booking: `/cars/[slug]`. BBQR can use this directly for "Check availability"; no need to build URLs or know site structure.
+
+**Base URL** for `bookingUrl` is taken from `NEXT_PUBLIC_API_BASE_URL` or `NEXT_PUBLIC_SITE_URL` (or Vercel), fallback `https://natali-cars.com`.
+
+**BBQR mapping example:**
+
+```json
+{
+  "externalId": "externalId",
+  "title": "title",
+  "priceFrom": "priceFrom",
+  "coverImage": "image",
+  "bookingUrl": "bookingUrl"
+}
 ```
 
 **401 Unauthorized** — Missing or invalid token:

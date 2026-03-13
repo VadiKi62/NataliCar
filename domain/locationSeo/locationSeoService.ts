@@ -2,7 +2,9 @@ import {
   CARS_ROUTE_SEGMENT,
   DEFAULT_LOCALE,
   HUB_NAV_LOCATION_IDS,
+  LOCATION_IDS,
   LOCATION_ROUTE_SEGMENT,
+  MAIN_NAV_REGION_IDS,
   REQUIRED_CONTENT_LOCALES,
   STATIC_PAGE_KEYS,
   SUPPORTED_LOCALES,
@@ -18,6 +20,11 @@ import {
   locationContentByKey,
   locationSeoRepo,
 } from "./locationSeoRepo";
+import {
+  getLocationPathSegments,
+  resolveLocationIdByPath,
+  getAllHierarchyPathSegments,
+} from "./locationHierarchy";
 import type {
   LocaleDetectionInput,
   LocationAlternateMap,
@@ -242,7 +249,7 @@ export function getAllLocationsForLocale(
   return locationSeoRepo.map((item) => buildLocationSeoRecord(locale, item));
 }
 
-/** Hub locations for the navbar Locations dropdown. */
+/** Hub locations for the navbar Locations dropdown (flat list, legacy). */
 export function getHubLocationsForNav(
   localeCandidate: string | undefined | null
 ): LocationSeoResolved[] {
@@ -250,6 +257,40 @@ export function getHubLocationsForNav(
   return HUB_NAV_LOCATION_IDS.map((id) => getLocationById(locale, id)).filter(
     (loc): loc is LocationSeoResolved => loc != null
   );
+}
+
+/** Single nav link: href + label. */
+export type NavLocationLink = { href: string; label: string };
+
+/** Region for nav: top-level link and optional child city links (e.g. Halkidiki → cities). */
+export type NavLocationGroup = {
+  href: string;
+  label: string;
+  children?: NavLocationLink[];
+};
+
+/**
+ * Hub location groups for compact Locations UI: main regions first; Halkidiki expands to cities.
+ * Use in navbar/drawer to show only main regions, with cities in an expandable panel.
+ */
+export function getHubLocationGroupsForNav(
+  localeCandidate: string | undefined | null
+): NavLocationGroup[] {
+  const locale = normalizeLocale(localeCandidate);
+  return MAIN_NAV_REGION_IDS.map((id) => {
+    const loc = getLocationById(locale, id);
+    if (!loc) return null;
+    const href = getLocationPathFromLocation(locale, loc);
+    const label = loc.shortName;
+    const children =
+      id === LOCATION_IDS.HALKIDIKI && loc.childIds?.length
+        ? getChildLocations(loc).map((child) => ({
+            href: getLocationPathFromLocation(locale, child),
+            label: child.shortName,
+          }))
+        : undefined;
+    return { href, label, children };
+  }).filter((g): g is NavLocationGroup => g != null);
 }
 
 export function getLocationById(
@@ -308,11 +349,9 @@ export function getLocationByAnySlug(
 }
 
 export function getLocationAlternatesById(locationId: LocationId): LocationAlternateMap {
-  const repoItem = locationById.get(locationId);
-  if (!repoItem) return {};
-
   return SUPPORTED_LOCALES.reduce((acc, locale) => {
-    acc[locale] = getLocationPath(locale, repoItem.slugByLocale[locale]);
+    const loc = getLocationById(locale, locationId);
+    if (loc) acc[locale] = getLocationPathFromLocation(locale, loc);
     return acc;
   }, {} as LocationAlternateMap);
 }
@@ -350,12 +389,44 @@ export function getHomepageSearchUrl(
   return `${base}?${param}`;
 }
 
+/** Build path for locations route (flat: one segment). */
 export function getLocationPath(
   localeCandidate: string | undefined | null,
   locationSlug: string
 ): string {
   const locale = normalizeLocale(localeCandidate);
   return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${locationSlug}`;
+}
+
+/**
+ * Returns hierarchical URL for a location when defined in hierarchy (e.g. /en/locations/halkidiki/kassandra/afitos).
+ * Otherwise returns flat URL (e.g. /en/locations/car-rental-halkidiki).
+ */
+export function getLocationPathFromLocation(
+  localeCandidate: string | undefined | null,
+  location: LocationSeoResolved
+): string {
+  const locale = normalizeLocale(localeCandidate);
+  const segments = getLocationPathSegments(location.id);
+  if (segments && segments.length > 0) {
+    const path = segments.join("/");
+    return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${path}`;
+  }
+  return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${location.slug}`;
+}
+
+/**
+ * Resolves URL path segments to a location. Path segments = location IDs (e.g. ['halkidiki','kassandra','afitos']).
+ * Returns null if path is invalid.
+ */
+export function getLocationByPath(
+  localeCandidate: string | undefined | null,
+  pathSegments: string[]
+): LocationSeoResolved | null {
+  const locale = normalizeLocale(localeCandidate);
+  const locationId = resolveLocationIdByPath(pathSegments);
+  if (!locationId) return null;
+  return getLocationById(locale, locationId);
 }
 
 export function getCarPath(localeCandidate: string | undefined | null, carSlug: string): string {
@@ -400,6 +471,19 @@ export function getLocationRouteParams(): Array<{ locale: SupportedLocale; slug:
   return SUPPORTED_LOCALES.flatMap((locale) =>
     getAllLocationsForLocale(locale).map((location) => ({ locale, slug: location.slug }))
   );
+}
+
+/** Params for hierarchical locations route [[...path]]: { locale, path: string[] }. Includes empty path for index. */
+export function getLocationHierarchyRouteParams(): Array<{
+  locale: SupportedLocale;
+  path: string[];
+}> {
+  const segments = getAllHierarchyPathSegments();
+  const withSegments = SUPPORTED_LOCALES.flatMap((locale) =>
+    segments.map((path) => ({ locale, path }))
+  );
+  const indexParams = SUPPORTED_LOCALES.map((locale) => ({ locale, path: [] }));
+  return [...indexParams, ...withSegments];
 }
 
 export function getLocaleRouteParams(): Array<{ locale: SupportedLocale }> {
@@ -513,19 +597,51 @@ export function buildHubAndLocationLinks(
     hubPath: getLocaleRootPath(locale),
     parent: parent
       ? {
-          path: getLocationPath(locale, parent.slug),
+          path: getLocationPathFromLocation(locale, parent),
           label: parent.shortName,
         }
       : null,
     children: children.map((child) => ({
-      path: getLocationPath(locale, child.slug),
+      path: getLocationPathFromLocation(locale, child),
       label: child.shortName,
     })),
     siblings: siblings.map((sibling) => ({
-      path: getLocationPath(locale, sibling.slug),
+      path: getLocationPathFromLocation(locale, sibling),
       label: sibling.shortName,
     })),
   };
+}
+
+/**
+ * Breadcrumb chain for a location (from hierarchy): e.g. Home > Halkidiki > Kassandra > Afytos.
+ * Uses hierarchical paths when available.
+ */
+export function getLocationBreadcrumbChain(
+  localeCandidate: string | undefined | null,
+  location: LocationSeoResolved
+): Array<{ href: string; label: string }> {
+  const locale = normalizeLocale(localeCandidate);
+  const segments = getLocationPathSegments(location.id);
+  if (!segments || segments.length === 0) {
+    return [
+      { href: getLocaleRootPath(locale), label: localeSeoDictionary[locale].car.breadcrumbHome },
+      { href: getLocationPath(locale, location.slug), label: location.shortName },
+    ];
+  }
+  const items: Array<{ href: string; label: string }> = [
+    { href: getLocaleRootPath(locale), label: localeSeoDictionary[locale].car.breadcrumbHome },
+  ];
+  for (let i = 0; i < segments.length; i++) {
+    const loc = getLocationById(locale, segments[i]);
+    if (loc) {
+      const href =
+        i === segments.length - 1
+          ? getLocationPathFromLocation(locale, loc)
+          : getLocationPathFromLocation(locale, loc);
+      items.push({ href, label: loc.shortName });
+    }
+  }
+  return items;
 }
 
 /** CTA label for city pages: "Search cars in {locationName}" with shortName filled. */
