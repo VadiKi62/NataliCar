@@ -289,7 +289,8 @@ export function getHubLocationGroupsForNav(
             label: child.shortName,
           }))
         : undefined;
-    return { href, label, children };
+    const group: NavLocationGroup = children ? { href, label, children } : { href, label };
+    return group;
   }).filter((g): g is NavLocationGroup => g != null);
 }
 
