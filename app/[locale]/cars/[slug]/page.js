@@ -1,5 +1,4 @@
 import { notFound, permanentRedirect } from "next/navigation";
-import { headers } from "next/headers";
 import JsonLdScript from "@app/components/seo/JsonLdScript";
 import Feed from "@app/components/Feed";
 import SingleCarDisplay from "@app/components/SingleCarDisplay";
@@ -29,13 +28,15 @@ import {
 } from "@domain/locationSeo/locationSeoService";
 import { LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
 import { COMPANY_ID } from "@config/company";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
 import {
-  fetchAllCars,
-  fetchCar,
-  fetchCarBySlug,
-  fetchCompany,
-  reFetchActiveOrders,
-} from "@utils/action";
+  getCars,
+  getCarById,
+  getCarBySlug,
+  getCompany,
+  getActiveOrders,
+} from "@/domain/services";
 import {
   buildAutoRentalJsonLd,
   buildCarProductJsonLd,
@@ -88,7 +89,7 @@ function getPublicCars(cars) {
 }
 
 export async function generateStaticParams() {
-  const cars = await fetchAllCars().catch(() => []);
+  const cars = await getCars().catch(() => []);
   const publicCars = getPublicCars(cars);
   const locales = getSupportedLocales();
 
@@ -99,7 +100,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }) {
   const locale = normalizeLocale(params.locale);
-  const car = await fetchCarBySlug(params.slug).catch(() => null);
+  const car = await getCarBySlug(params.slug).catch(() => null);
 
   if (!car) {
     return { robots: { index: false, follow: false } };
@@ -128,9 +129,11 @@ export default async function LocalizedCarPage({ params }) {
     notFound();
   }
 
+  const session = await getServerSession(authOptions);
+
   // MongoDB ObjectId in URL → redirect to real slug
   if (MONGO_ID_REGEX.test(params.slug)) {
-    const carById = await fetchCar(params.slug).catch(() => null);
+    const carById = await getCarById(params.slug, { session }).catch(() => null);
     if (carById?.slug) {
       permanentRedirect(getCarPath(locale, carById.slug));
     }
@@ -138,12 +141,10 @@ export default async function LocalizedCarPage({ params }) {
   }
 
   // ── Data fetching ──────────────────────────────────────────────────
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
   const [allCarsData, ordersData, companyData] = await Promise.all([
-    fetchAllCars({ cookie }).catch(() => []),
-    reFetchActiveOrders().catch(() => []),
-    fetchCompany(COMPANY_ID).catch(() => null),
+    getCars({ session }).catch(() => []),
+    getActiveOrders({ session }).catch(() => []),
+    getCompany(COMPANY_ID).catch(() => null),
   ]);
 
   const carFromList = (allCarsData || []).find(
@@ -152,7 +153,7 @@ export default async function LocalizedCarPage({ params }) {
 
   let resolvedCar = carFromList;
   if (!resolvedCar) {
-    const carDirect = await fetchCarBySlug(params.slug).catch(() => null);
+    const carDirect = await getCarBySlug(params.slug, { session }).catch(() => null);
     if (!carDirect) notFound();
     resolvedCar = carDirect;
   }

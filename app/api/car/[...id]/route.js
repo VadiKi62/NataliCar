@@ -1,22 +1,19 @@
-import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
-import { withOrderVisibility } from "@/middleware/withOrderVisibility";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
+import { getCarById } from "@/domain/services";
 
 function getId(paramId) {
   return Array.isArray(paramId) ? paramId[0] : paramId;
 }
 
-async function handler(request, { params }) {
+export const GET = async (request, { params }) => {
   try {
-    await connectToDB();
-
     const id = getId(params.id);
-    const car = await Car.findById(id).populate("orders").lean();
-
+    const session = await getServerSession(authOptions);
+    const car = await getCarById(id, { session });
     if (!car) {
       return new Response("Car not found", { status: 404 });
     }
-
     return new Response(JSON.stringify(car), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -24,6 +21,4 @@ async function handler(request, { params }) {
   } catch (error) {
     return new Response("Failed to fetch car", { status: 500 });
   }
-}
-
-export const GET = withOrderVisibility(handler);
+};

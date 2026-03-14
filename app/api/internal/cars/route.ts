@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 
 const ALLOWED_ORIGIN = "https://bbqr.site";
 const AUTH_SCHEME = "Bearer";

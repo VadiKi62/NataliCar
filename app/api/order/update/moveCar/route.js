@@ -1,6 +1,6 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { requireAdmin } from "@/lib/adminAuth";
 import { ROLE } from "@models/user";
 import dayjs from "dayjs";

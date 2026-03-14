@@ -1,4 +1,4 @@
-// import { connectToDB } from "@utils/database";
+// import { connectToDB } from "@lib/database";
 // import DiscountSetting from "@models/DiscountSetting";
 
 // export const POST = async (req) => {
@@ -94,7 +94,7 @@
 //   }
 // };
 
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import DiscountSetting from "@models/DiscountSetting";
 
 // POST — сохраняет скидку

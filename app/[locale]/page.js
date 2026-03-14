@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import Feed from "@app/components/Feed";
 import CarGrid from "@app/components/CarGrid";
 import JsonLdScript from "@app/components/seo/JsonLdScript";
@@ -13,7 +12,9 @@ import {
 import { LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
 import { COMPANY_ID } from "@config/company";
 import { getSeoConfig } from "@config/seo";
-import { fetchAllCars, fetchCompany, reFetchActiveOrders } from "@utils/action";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
+import { getCars, getCompany, getActiveOrders } from "@/domain/services";
 import { buildHubJsonLd } from "@/services/seo/jsonLdBuilder";
 import { buildHubMetadata } from "@/services/seo/metadataBuilder";
 
@@ -27,13 +28,11 @@ export default async function LocalizedHomePage({ params }) {
   if (!isSupportedLocale(locale)) {
     notFound();
   }
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
-
+  const session = await getServerSession(authOptions);
   const [carsData, ordersData, companyData] = await Promise.all([
-    fetchAllCars({ cookie }),
-    reFetchActiveOrders(),
-    fetchCompany(COMPANY_ID),
+    getCars({ session }),
+    getActiveOrders({ session }),
+    getCompany(COMPANY_ID),
   ]);
 
   const hubSeo = getHubSeo(locale);

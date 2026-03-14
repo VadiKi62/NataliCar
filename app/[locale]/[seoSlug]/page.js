@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import JsonLdScript from "@app/components/seo/JsonLdScript";
 import Feed from "@app/components/Feed";
 import FilteredCarsDisplay from "@app/components/FilteredCarsDisplay";
@@ -23,7 +22,9 @@ import {
   getLocaleDictionary,
 } from "@domain/locationSeo/locationSeoService";
 import { COMPANY_ID } from "@config/company";
-import { fetchAllCars, fetchCompany, reFetchActiveOrders } from "@utils/action";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
+import { getCars, getCompany, getActiveOrders } from "@/domain/services";
 import {
   buildAutoRentalJsonLd,
   buildFaqJsonLd,
@@ -77,7 +78,7 @@ export async function generateStaticParams() {
   let programmaticParams = [];
   let brandParams = [];
   try {
-    const cars = await fetchAllCars().catch(() => []);
+    const cars = await getCars().catch(() => []);
     const publicCars = getPublicCars(cars);
 
     const carSlugs = publicCars.map((c) => String(c.slug).trim());
@@ -102,8 +103,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }) {
   const locale = normalizeLocale(params.locale);
   const slug = params.seoSlug;
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
+  const session = await getServerSession(authOptions);
 
   // Category × location page
   const catPage = getSeoPageBySlug(locale, slug);
@@ -142,7 +142,7 @@ export async function generateMetadata({ params }) {
   }
 
   // Brand × location page
-  const brandPage = await resolveBrandPage(slug, cookie, locale);
+  const brandPage = await resolveBrandPage(slug, session, locale);
   if (brandPage) {
     const locationName = brandPage.locationDef.nameByLocale[locale];
     const resolved = getResolvedBrandContent(brandPage.brand, locale, locationName);
@@ -160,7 +160,7 @@ export async function generateMetadata({ params }) {
   }
 
   // Programmatic page — try to resolve
-  const progPage = await resolveProgrammaticPage(locale, slug, cookie);
+  const progPage = await resolveProgrammaticPage(locale, slug, session);
   if (progPage) {
     const { car, locationDef } = progPage;
     const locationName = locationDef.nameByLocale[locale];
@@ -196,25 +196,24 @@ export default async function SeoLandingPage({ params }) {
   if (!isSupportedLocale(locale)) notFound();
 
   const slug = params.seoSlug;
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
+  const session = await getServerSession(authOptions);
 
   // ── Try category × location page first ──
   const catPage = getSeoPageBySlug(locale, slug);
   if (catPage) {
-    return renderCategoryPage(locale, catPage, cookie);
+    return renderCategoryPage(locale, catPage, session);
   }
 
   // ── Try brand × location page ──
-  const brandPage = await resolveBrandPage(slug, cookie, locale);
+  const brandPage = await resolveBrandPage(slug, session, locale);
   if (brandPage) {
-    return renderBrandPage(locale, slug, brandPage, cookie);
+    return renderBrandPage(locale, slug, brandPage, session);
   }
 
   // ── Try programmatic rent-{car}-{location} page ──
-  const progPage = await resolveProgrammaticPage(locale, slug, cookie);
+  const progPage = await resolveProgrammaticPage(locale, slug, session);
   if (progPage) {
-    return renderProgrammaticPage(locale, slug, progPage, cookie);
+    return renderProgrammaticPage(locale, slug, progPage, session);
   }
 
   notFound();
@@ -224,7 +223,7 @@ export default async function SeoLandingPage({ params }) {
 // Category × Location page
 // ---------------------------------------------------------------------------
 
-async function renderCategoryPage(locale, catPage, cookie) {
+async function renderCategoryPage(locale, catPage, session) {
   const category = getCategoryById(catPage.categoryId);
   const locationDef = getSeoLocationById(catPage.locationId);
   if (!category || !locationDef) notFound();
@@ -236,9 +235,9 @@ async function renderCategoryPage(locale, catPage, cookie) {
   const dictionary = getLocaleDictionary(locale);
 
   const [allCarsData, ordersData, companyData] = await Promise.all([
-    fetchAllCars({ cookie }).catch(() => []),
-    reFetchActiveOrders().catch(() => []),
-    fetchCompany(COMPANY_ID).catch(() => null),
+    getCars({ session }).catch(() => []),
+    getActiveOrders({ session }).catch(() => []),
+    getCompany(COMPANY_ID).catch(() => null),
   ]);
 
   const publicCars = getPublicCars(allCarsData);
@@ -366,16 +365,16 @@ async function renderCategoryPage(locale, catPage, cookie) {
 // Brand × Location page
 // ---------------------------------------------------------------------------
 
-async function renderBrandPage(locale, slug, brandPage, cookie) {
+async function renderBrandPage(locale, slug, brandPage, session) {
   const { brand, locationDef, brandSlug } = brandPage;
   const locationName = locationDef.nameByLocale[locale];
   const resolved = getResolvedBrandContent(brand, locale, locationName);
   const dictionary = getLocaleDictionary(locale);
 
   const [allCarsData, ordersData, companyData] = await Promise.all([
-    fetchAllCars({ cookie }).catch(() => []),
-    reFetchActiveOrders().catch(() => []),
-    fetchCompany(COMPANY_ID).catch(() => null),
+    getCars({ session }).catch(() => []),
+    getActiveOrders({ session }).catch(() => []),
+    getCompany(COMPANY_ID).catch(() => null),
   ]);
 
   const publicCars = getPublicCars(allCarsData);
@@ -496,16 +495,16 @@ async function renderBrandPage(locale, slug, brandPage, cookie) {
 // Programmatic rent-{car}-{location} page
 // ---------------------------------------------------------------------------
 
-async function renderProgrammaticPage(locale, slug, progPage, cookie) {
+async function renderProgrammaticPage(locale, slug, progPage, session) {
   const { car, locationDef } = progPage;
   const locationName = locationDef.nameByLocale[locale];
   const carModel = car.model || car.slug;
   const dictionary = getLocaleDictionary(locale);
 
   const [allCarsData, ordersData, companyData] = await Promise.all([
-    fetchAllCars({ cookie }).catch(() => []),
-    reFetchActiveOrders().catch(() => []),
-    fetchCompany(COMPANY_ID).catch(() => null),
+    getCars({ session }).catch(() => []),
+    getActiveOrders({ session }).catch(() => []),
+    getCompany(COMPANY_ID).catch(() => null),
   ]);
 
   const locationResolved = getLocationById(locale, locationDef.locationId);
@@ -613,10 +612,10 @@ async function renderProgrammaticPage(locale, slug, progPage, cookie) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function resolveBrandPage(slug, cookie, locale) {
+async function resolveBrandPage(slug, session, locale) {
   if (!slug.includes("-car-rental-")) return null;
 
-  const cars = await fetchAllCars({ cookie }).catch(() => []);
+  const cars = await getCars({ session }).catch(() => []);
   const publicCars = getPublicCars(cars);
   const brandEntry = resolveBrandFromSlug(slug, publicCars, locale);
   if (!brandEntry) return null;
@@ -643,8 +642,8 @@ function buildItemListJsonLd(items) {
   };
 }
 
-async function resolveProgrammaticPage(locale, slug, cookie) {
-  const cars = await fetchAllCars({ cookie }).catch(() => []);
+async function resolveProgrammaticPage(locale, slug, session) {
+  const cars = await getCars({ session }).catch(() => []);
   const publicCars = getPublicCars(cars);
 
   const entry = getProgrammaticPageBySlug(locale, slug);

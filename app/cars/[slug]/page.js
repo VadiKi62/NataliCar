@@ -1,5 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
-import { fetchCar } from "@utils/action";
+import { getCarById } from "@/domain/services";
 import { getDefaultLocale, getCarPath } from "@domain/locationSeo/locationSeoService";
 
 const MONGO_ID_REGEX = /^[0-9a-f]{24}$/i;
@@ -19,7 +19,7 @@ export default async function LegacyCarsSlugRedirectPage({ params }) {
 
   // If this looks like a MongoDB ObjectId, resolve the real slug and redirect
   if (MONGO_ID_REGEX.test(raw)) {
-    const car = await fetchCar(raw).catch(() => null);
+    const car = await getCarById(raw).catch(() => null);
     if (car?.slug) {
       permanentRedirect(getCarPath(defaultLocale, car.slug));
     }

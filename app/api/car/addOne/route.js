@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import cloudinary from "@utils/cloudinary";

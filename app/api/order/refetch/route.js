@@ -1,15 +1,11 @@
-import { connectToDB } from "@utils/database";
-import { Order } from "@models/order";
-import { withOrderVisibility } from "@/middleware/withOrderVisibility";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
+import { getAllOrders } from "@/domain/services";
 
-async function handler(request) {
+export const POST = async (request) => {
   try {
-    await connectToDB();
-
-    const orders = await Order.find()
-      .select("rentalStartDate rentalEndDate timeIn timeOut car carNumber regNumber confirmed customerName phone email secondDriver Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber")
-      .lean();
-
+    const session = await getServerSession(authOptions);
+    const orders = await getAllOrders({ session });
     return new Response(JSON.stringify(orders), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -20,6 +16,4 @@ async function handler(request) {
       status: 500,
     });
   }
-}
-
-export const POST = withOrderVisibility(handler);
+};

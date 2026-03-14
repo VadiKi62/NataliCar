@@ -1,7 +1,7 @@
 import { Order } from "@models/order";
 import Company from "@models/company";
 import { COMPANY_ID } from "@config/company";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { requireAdmin } from "@/lib/adminAuth";
 import { confirmOrderFlow } from "@/domain/orders/confirmOrderFlow";
 import { orderMessages } from "@/domain/messages";

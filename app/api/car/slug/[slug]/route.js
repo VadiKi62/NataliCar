@@ -1,24 +1,18 @@
-import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
-import { withOrderVisibility } from "@/middleware/withOrderVisibility";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
+import { getCarBySlug } from "@/domain/services";
 
-async function handler(request, { params }) {
+export const GET = async (request, { params }) => {
   try {
-    await connectToDB();
-
     const slug = params.slug;
     if (!slug) {
       return new Response("Slug required", { status: 400 });
     }
-
-    const car = await Car.findOne({ slug: slug.trim().toLowerCase() })
-      .populate("orders")
-      .lean();
-
+    const session = await getServerSession(authOptions);
+    const car = await getCarBySlug(slug, { session });
     if (!car) {
       return new Response("Car not found", { status: 404 });
     }
-
     return new Response(JSON.stringify(car), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -26,6 +20,4 @@ async function handler(request, { params }) {
   } catch (error) {
     return new Response("Failed to fetch car", { status: 500 });
   }
-}
-
-export const GET = withOrderVisibility(handler);
+};

@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import Feed from "@app/components/Feed";
 import CarGrid from "@app/components/CarGrid";
 import {
@@ -10,7 +9,9 @@ import {
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
 import { COMPANY_ID } from "@config/company";
-import { fetchAllCars, fetchCompany, reFetchActiveOrders } from "@utils/action";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
+import { getCars, getCompany, getActiveOrders } from "@/domain/services";
 import { SeoLinksBlock, SeoIntroBlock } from "@app/components/seo/SeoContentBlocks";
 import { buildHreflangAlternates } from "@/services/seo/hreflangBuilder";
 import { toAbsoluteUrl } from "@/services/seo/urlBuilder";
@@ -51,13 +52,11 @@ export async function generateMetadata({ params }) {
 export default async function CarsIndexPage({ params }) {
   const locale = normalizeLocale(params.locale);
   if (!isSupportedLocale(locale)) notFound();
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
-
+  const session = await getServerSession(authOptions);
   const [allCarsData, ordersData, companyData] = await Promise.all([
-    fetchAllCars({ cookie }).catch(() => []),
-    reFetchActiveOrders().catch(() => []),
-    fetchCompany(COMPANY_ID).catch(() => null),
+    getCars({ session }).catch(() => []),
+    getActiveOrders({ session }).catch(() => []),
+    getCompany(COMPANY_ID).catch(() => null),
   ]);
 
   const publicCars = getPublicCars(allCarsData);

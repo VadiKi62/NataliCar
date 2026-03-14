@@ -1,6 +1,6 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 
 export const DELETE = async (request) => {
   try {

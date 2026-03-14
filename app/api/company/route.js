@@ -1,5 +1,5 @@
 import Company from "@models/company";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { COMPANY_ID } from "@config/company";
 
 /**

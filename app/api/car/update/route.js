@@ -1,5 +1,5 @@
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { revalidatePath, revalidateTag } from "next/cache";
 import dayjs from "dayjs";
 import { generateSlugBase, ensureUniqueSlug } from "@utils/slugCar";

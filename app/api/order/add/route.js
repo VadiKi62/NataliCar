@@ -1,4 +1,3 @@
-import { connectToDB } from "@utils/database";
 import mongoose from "mongoose";
 import { Car } from "@models/car";
 import { Order } from "@models/order";
@@ -24,6 +23,7 @@ import {
   getBusinessRentalDaysByMinutes,
   toBusinessDateTime,
 } from "@/domain/orders/numberOfDays";
+import { connectToDB } from "@lib/database";
 import { orderGuard } from "@/middleware/orderGuard";
 
 dayjs.extend(utc);
@@ -381,7 +381,10 @@ async function postOrderAddHandler(request) {
   }
 }
 
-export const POST = orderGuard(postOrderAddHandler);
+export const POST = async (request) => {
+  await connectToDB();
+  return orderGuard(postOrderAddHandler)(request);
+};
 
 // function that iterates over all conflicting orders adding to them new conflicts orders
 async function updateConflictingOrders(conflicOrdersId, newOrderId) {

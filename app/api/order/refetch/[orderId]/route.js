@@ -1,4 +1,4 @@
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { Order } from "@models/order";
 import { withOrderVisibility } from "@/middleware/withOrderVisibility";
 

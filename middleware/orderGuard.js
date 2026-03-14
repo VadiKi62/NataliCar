@@ -8,7 +8,6 @@
  * WHY: All checks run in order (ban → rate limit → abuse). next() only if all pass.
  */
 
-import { connectToDB } from "@utils/database";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@lib/authOptions";
 import { checkBan, createAutoBan } from "@/services/banService";
@@ -91,18 +90,7 @@ export function orderGuard(handler) {
       });
     }
 
-    try {
-      await connectToDB();
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("orderGuard: connectToDB failed", err);
-      }
-      return jsonResponse(503, {
-        code: "SERVICE_UNAVAILABLE",
-        message: "Database unavailable",
-      });
-    }
-
+    // DB connection must be established by the route before calling this guard.
     await ensureOrderAttemptsIndexes();
 
     const { ip, fingerprint, userAgent } = extractClientContext(request);

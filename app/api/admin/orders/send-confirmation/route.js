@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import mongoose from "mongoose";
 import { authOptions } from "@lib/authOptions";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { ROLE } from "@models/user";

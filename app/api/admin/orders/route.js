@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@lib/authOptions";
 import { Order } from "@models/order";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { withOrderVisibility } from "@/middleware/withOrderVisibility";
 
 /**

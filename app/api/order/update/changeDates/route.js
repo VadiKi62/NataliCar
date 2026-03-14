@@ -1,6 +1,6 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { requireAdmin } from "@/lib/adminAuth";
 // 🔧 FIXED: Use orderAccessPolicy directly (no legacy shims)
 import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";

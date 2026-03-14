@@ -1,5 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
-import { fetchCar } from "@utils/action";
+import { getCarById } from "@/domain/services";
 import { getDefaultLocale } from "@domain/locationSeo/locationSeoService";
 
 const getId = (idParam) => (Array.isArray(idParam) ? idParam[0] : idParam);
@@ -15,7 +15,7 @@ export async function generateMetadata() {
 
 export default async function LegacyCarIdRedirectPage({ params }) {
   const id = getId(params.id);
-  const car = await fetchCar(id).catch(() => null);
+  const car = await getCarById(id).catch(() => null);
 
   if (!car) {
     notFound();

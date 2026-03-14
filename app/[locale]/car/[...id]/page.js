@@ -1,5 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
-import { fetchCar } from "@utils/action";
+import { getCarById } from "@/domain/services";
 import { normalizeLocale } from "@domain/locationSeo/locationSeoService";
 
 const getId = (idParam) => (Array.isArray(idParam) ? idParam[0] : idParam);
@@ -23,7 +23,7 @@ export default async function LocalizedLegacyCarPage({ params }) {
   const locale = normalizeLocale(params.locale);
   const id = getId(params.id);
 
-  const car = await fetchCar(id).catch(() => null);
+  const car = await getCarById(id).catch(() => null);
   if (!car) {
     notFound();
   }

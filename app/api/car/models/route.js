@@ -1,5 +1,5 @@
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 
 // Нормализация ключа для сравнения: нижний регистр, без диакритики/пробелов/дефисов/точек
 const normalizeKey = (s) => {

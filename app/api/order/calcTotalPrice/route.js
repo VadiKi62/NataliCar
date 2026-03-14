@@ -1,4 +1,4 @@
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { Car } from "@models/car";
 import { toBusinessDateTime } from "@/domain/orders/numberOfDays";
 

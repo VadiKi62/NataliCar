@@ -1,5 +1,4 @@
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
@@ -28,7 +27,9 @@ import {
   getLocationHeroImage,
   getLocationDistanceText,
 } from "@domain/locationSeo/locationHeroImages";
-import { fetchAllCars, fetchCompany, reFetchActiveOrders } from "@utils/action";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@lib/authOptions";
+import { getCars, getCompany, getActiveOrders } from "@/domain/services";
 import { COMPANY_ID } from "@config/company";
 import { buildAutoRentalJsonLd, buildFaqJsonLd, buildBreadcrumbJsonLd } from "@/services/seo/jsonLdBuilder";
 import { toAbsoluteUrl } from "@/services/seo/urlBuilder";
@@ -223,19 +224,17 @@ export default async function LocationHierarchyPage({ params }) {
   let ordersData = null;
   let companyData = null;
   if (isPillar) {
-    const headersList = await headers();
-    const cookie = headersList.get("cookie");
+    const session = await getServerSession(authOptions);
     const [carsData, orders, company] = await Promise.all([
-      fetchAllCars({ cookie }).catch(() => []),
-      reFetchActiveOrders().catch(() => null),
-      fetchCompany(COMPANY_ID).catch(() => null),
+      getCars({ session }).catch(() => []),
+      getActiveOrders({ session }).catch(() => null),
+      getCompany(COMPANY_ID).catch(() => null),
     ]);
     allCars = carsData || [];
     ordersData = orders;
     companyData = company;
   } else if (linkTarget) {
-    // Fetch cars for "Popular cars" section on non-pillar locations.
-    const carsData = await fetchAllCars({}).catch(() => []);
+    const carsData = await getCars().catch(() => []);
     allCars = carsData || [];
   }
   const publicCars = getPublicCars(allCars);

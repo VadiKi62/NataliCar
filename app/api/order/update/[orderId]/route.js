@@ -1,7 +1,7 @@
 import { Order } from "@models/order";
 import { Car } from "@models/car";
 import Company from "@models/company";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { requireAdmin } from "@/lib/adminAuth";
 import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
 import { getTimeBucket } from "@/domain/time/athensTime";
