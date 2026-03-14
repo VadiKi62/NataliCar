@@ -16,6 +16,10 @@ import {
 /** Query param on homepage for preselected pickup location (canonical slug). */
 export const HOMEPAGE_PICKUP_PARAM = "pickup" as const;
 import {
+  LOCATION_PAGE_CONTENT,
+  type LocationPageContentItem,
+} from "./locationContentRepo";
+import {
   localeSeoDictionary,
   locationContentByKey,
   locationSeoRepo,
@@ -24,6 +28,7 @@ import {
   getLocationPathSegments,
   resolveLocationIdByPath,
   getAllHierarchyPathSegments,
+  HALKIDIKI_AREA_IDS,
 } from "./locationHierarchy";
 import {
   getLocationSeoSlug as getLocationSeoSlugFromSeoLocations,
@@ -118,8 +123,11 @@ function buildLocationSeoRecord(
     pickupLocation: content.pickupLocation,
     offerName: content.offerName,
     offerDescription: content.offerDescription,
+    mainInfoText: content.mainInfoText,
+    distanceToThessalonikiText: content.distanceToThessalonikiText,
     pickupGuidance: content.pickupGuidance,
     nearbyPlaces: content.nearbyPlaces,
+    usefulTips: content.usefulTips,
     faq: content.faq,
   };
 }
@@ -466,7 +474,7 @@ export function getLocationPath(
 
 /**
  * Always returns /{locale}/locations/{seoSlug}. Single source: SEO_LOCATIONS.seoSlugByLocale.
- * For locations in SEO_LOCATIONS uses that; otherwise falls back to hierarchy or location slug.
+ * For hierarchy locations: first segments stay as IDs; last segment (city level) uses slugByLocale[locale].
  */
 export function getLocationPathFromLocation(
   localeCandidate: string | undefined | null,
@@ -479,13 +487,29 @@ export function getLocationPathFromLocation(
   }
   const segments = getLocationPathSegments(location.id);
   if (segments && segments.length > 0) {
+    const repoItem = locationById.get(location.id);
+    // City level (3 segments): use slugByLocale for last segment; region/area stay as IDs
+    if (segments.length === 3) {
+      const lastSlug = repoItem?.slugByLocale[locale] ?? segments[2];
+      const path = [segments[0], segments[1], lastSlug].join("/");
+      return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${path}`;
+    }
+    // Two segments: area (halkidiki/sithonia, halkidiki/kassandra) = IDs; direct city (halkidiki/nea-moudania) = slug for last
+    if (segments.length === 2) {
+      const isArea = HALKIDIKI_AREA_IDS.includes(segments[1] as LocationId);
+      if (!isArea && repoItem?.slugByLocale[locale]) {
+        const path = [segments[0], repoItem.slugByLocale[locale]].join("/");
+        return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${path}`;
+      }
+    }
     return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${segments.join("/")}`;
   }
   return `/${locale}/${LOCATION_ROUTE_SEGMENT}/${location.slug}`;
 }
 
 /**
- * Resolves URL path segments to a location. Path segments = location IDs (e.g. ['halkidiki','kassandra','afitos']).
+ * Resolves URL path segments to a location.
+ * Path segments: region/area use IDs; city (3-segment) last segment can be ID or slugByLocale[locale].
  * Returns null if path is invalid.
  */
 export function getLocationByPath(
@@ -493,9 +517,32 @@ export function getLocationByPath(
   pathSegments: string[]
 ): LocationSeoResolved | null {
   const locale = normalizeLocale(localeCandidate);
+  // First try: all segments as IDs (backward compat: nikiti, afitos, etc.)
   const locationId = resolveLocationIdByPath(pathSegments);
-  if (!locationId) return null;
-  return getLocationById(locale, locationId);
+  if (locationId) return getLocationById(locale, locationId);
+  // Second try: 3-segment path with last segment = slugByLocale (e.g. car-rental-nikiti)
+  if (pathSegments.length === 3) {
+    const [region, area, lastSegment] = pathSegments;
+    const repoItem = locationSeoRepo.find((item) => item.slugByLocale[locale] === lastSegment);
+    if (repoItem) {
+      const segs = getLocationPathSegments(repoItem.id);
+      if (segs && segs[0] === region && segs[1] === area) {
+        return buildLocationSeoRecord(locale, repoItem);
+      }
+    }
+  }
+  // Third try: 2-segment path with last segment = slug (e.g. halkidiki/car-rental-nea-moudania)
+  if (pathSegments.length === 2) {
+    const [region, lastSegment] = pathSegments;
+    const repoItem = locationSeoRepo.find((item) => item.slugByLocale[locale] === lastSegment);
+    if (repoItem) {
+      const segs = getLocationPathSegments(repoItem.id);
+      if (segs && segs.length === 2 && segs[0] === region) {
+        return buildLocationSeoRecord(locale, repoItem);
+      }
+    }
+  }
+  return null;
 }
 
 export function getCarPath(localeCandidate: string | undefined | null, carSlug: string): string {
@@ -549,7 +596,27 @@ export function getLocationHierarchyRouteParams(): Array<{
 }> {
   const segments = getAllHierarchyPathSegments();
   const withSegments = SUPPORTED_LOCALES.flatMap((locale) =>
-    segments.map((path) => ({ locale, path }))
+    segments.map((path) => {
+      // City level (3 segments): use slugByLocale for last segment
+      if (path.length === 3) {
+        const repoItem = locationById.get(path[2]);
+        const slug = repoItem?.slugByLocale[locale];
+        return {
+          locale,
+          path: slug ? [path[0], path[1], slug] : path,
+        };
+      }
+      // Two segments: direct city under Halkidiki (e.g. nea-moudania) → use slug for last segment
+      if (path.length === 2 && !HALKIDIKI_AREA_IDS.includes(path[1] as LocationId)) {
+        const repoItem = locationById.get(path[1]);
+        const slug = repoItem?.slugByLocale[locale];
+        return {
+          locale,
+          path: slug ? [path[0], slug] : path,
+        };
+      }
+      return { locale, path };
+    })
   );
   const indexParams = SUPPORTED_LOCALES.map((locale) => ({ locale, path: [] }));
   return [...indexParams, ...withSegments];
@@ -594,13 +661,9 @@ export function switchPathLocale(
   const stripped = getPathWithoutLocalePrefix(pathname);
   const segments = stripped.split("/").filter(Boolean);
 
-  // /{locale}/locations/{slug} → resolve slug to next locale
-  if (
-    segments.length === 2 &&
-    segments[0] === LOCATION_ROUTE_SEGMENT
-  ) {
+  // /{locale}/locations/{slug} → single-segment, resolve slug to next locale
+  if (segments.length === 2 && segments[0] === LOCATION_ROUTE_SEGMENT) {
     const currentSlug = segments[1];
-    // Find repo item by any locale slug
     const repoItem = locationSeoRepo.find(
       (item) =>
         item.canonicalSlug === currentSlug ||
@@ -609,6 +672,36 @@ export function switchPathLocale(
     if (repoItem) {
       const nextSlug = repoItem.slugByLocale[nextLocale];
       return `/${nextLocale}/${LOCATION_ROUTE_SEGMENT}/${nextSlug}`;
+    }
+  }
+
+  // /{locale}/locations/{region}/{area}/{citySlug} → 3-level hierarchy (e.g. halkidiki/sithonia/nikiti)
+  if (segments.length === 4 && segments[0] === LOCATION_ROUTE_SEGMENT) {
+    const [, region, area, lastSegment] = segments;
+    const repoItem = locationSeoRepo.find((item) =>
+      Object.values(item.slugByLocale).includes(lastSegment)
+    );
+    if (repoItem) {
+      const segs = getLocationPathSegments(repoItem.id);
+      if (segs && segs[0] === region && segs[1] === area) {
+        const nextSlug = repoItem.slugByLocale[nextLocale];
+        return `/${nextLocale}/${LOCATION_ROUTE_SEGMENT}/${region}/${area}/${nextSlug}`;
+      }
+    }
+  }
+
+  // /{locale}/locations/{region}/{citySlug} → 2-level hierarchy (e.g. halkidiki/car-rental-nea-moudania)
+  if (segments.length === 3 && segments[0] === LOCATION_ROUTE_SEGMENT) {
+    const [, region, lastSegment] = segments;
+    const repoItem = locationSeoRepo.find((item) =>
+      Object.values(item.slugByLocale).includes(lastSegment)
+    );
+    if (repoItem) {
+      const segs = getLocationPathSegments(repoItem.id);
+      if (segs && segs.length === 2 && segs[0] === region) {
+        const nextSlug = repoItem.slugByLocale[nextLocale];
+        return `/${nextLocale}/${LOCATION_ROUTE_SEGMENT}/${region}/${nextSlug}`;
+      }
     }
   }
 
@@ -733,4 +826,30 @@ export function isLocalePrefixedPath(pathname: string): boolean {
 
 export function getStaticPagePathMap(): Record<StaticPageKey, string> {
   return { ...staticPagePathMap };
+}
+
+const EMPTY_PAGE_CONTENT: LocationPageContentItem = {
+  intro: "",
+  mainInfo: "",
+  distanceToThessaloniki: "",
+  pickupGuidance: "",
+  usefulTips: [],
+  faq: [],
+  nearbyPlaces: [],
+};
+
+/**
+ * Returns page body content for a location and locale.
+ * Use for rendering intro, mainInfo, distanceToThessaloniki, pickupGuidance, usefulTips, faq.
+ * Falls back to English if the requested locale is missing.
+ */
+export function getLocationPageContent(
+  locationId: string,
+  localeCandidate: string | undefined | null
+): LocationPageContentItem {
+  const locale = normalizeLocale(localeCandidate);
+  const byLocale = LOCATION_PAGE_CONTENT[locationId];
+  if (!byLocale) return EMPTY_PAGE_CONTENT;
+  const content = byLocale[locale] ?? byLocale[DEFAULT_LOCALE];
+  return content ?? EMPTY_PAGE_CONTENT;
 }

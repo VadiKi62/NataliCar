@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { Box } from "@mui/material";
@@ -19,6 +19,7 @@ import {
   getLocationHierarchyRouteParams,
   getAllLocationsForLocale,
   getHomepageSearchUrl,
+  getLocationPageContent,
   isSupportedLocale,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
@@ -43,16 +44,21 @@ import {
   SeoLinksBlock,
   SeoNearbyPlacesBlock,
   SeoPickupGuidanceBlock,
+  SeoTipsBlock,
   SeoWhyRentBlock,
   SeoDistanceTableBlock,
   SeoMapBlock,
 } from "@app/components/seo/SeoContentBlocks";
+import { getLocationPathSegments } from "@domain/locationSeo/locationHierarchy";
 import {
   CAR_CATEGORIES,
   SEO_LOCATIONS,
   getLocationSeoSlug,
   getResolvedCategoryContent,
   getSeoPagePath,
+  buildProgrammaticSlug,
+  BROWSE_BY_CATEGORY_IDS,
+  POPULAR_CARS_LIMIT,
 } from "@domain/seoPages/seoPageRegistry";
 
 const PILLAR_LOCATION_IDS = [LOCATION_IDS.HALKIDIKI, LOCATION_IDS.THESSALONIKI_AIRPORT, LOCATION_IDS.NEA_KALLIKRATIA];
@@ -173,14 +179,46 @@ export default async function LocationHierarchyPage({ params }) {
       }
     }
   } else {
-    // Multi-segment: hierarchy only (path segments = location IDs)
+    // Multi-segment: hierarchy (IDs for first segments; last segment can be ID or slug)
     location = getLocationByPath(locale, pathArray);
+    if (location) {
+      const canonicalPath = getLocationPathFromLocation(locale, location);
+      const currentPath = `/${locale}/locations/${pathArray.join("/")}`;
+      if (canonicalPath !== currentPath) {
+        permanentRedirect(canonicalPath);
+      }
+    }
+    // Legacy: location moved from Sithonia to direct Halkidiki (e.g. Nea Moudania) — redirect to new path
+    if (!location && pathArray.length === 3) {
+      const locationDirect = getLocationByPath(locale, [pathArray[0], pathArray[2]]);
+      if (locationDirect) {
+        permanentRedirect(getLocationPathFromLocation(locale, locationDirect));
+      }
+    }
   }
 
   if (!location) notFound();
 
   const dictionary = getLocaleDictionary(locale);
   const isPillar = PILLAR_LOCATION_IDS.includes(location.id);
+
+  // Resolve link target for category/programmatic pages: current location or nearest SEO ancestor.
+  const matchedSeoLoc = SEO_LOCATIONS.find((sl) => sl.locationId === location.id);
+  const linkTargetSeoLoc =
+    matchedSeoLoc ??
+    (() => {
+      const segments = getLocationPathSegments(location.id);
+      if (!segments?.length) return null;
+      const rootId = segments[0];
+      return SEO_LOCATIONS.find((sl) => sl.locationId === rootId) ?? null;
+    })();
+  const linkTarget = linkTargetSeoLoc
+    ? {
+        locSlug: getLocationSeoSlug(linkTargetSeoLoc.locationId, locale),
+        locName: linkTargetSeoLoc.nameByLocale[locale] || linkTargetSeoLoc.nameByLocale.en,
+      }
+    : null;
+
   let allCars = [];
   let ordersData = null;
   let companyData = null;
@@ -195,6 +233,10 @@ export default async function LocationHierarchyPage({ params }) {
     allCars = carsData || [];
     ordersData = orders;
     companyData = company;
+  } else if (linkTarget) {
+    // Fetch cars for "Popular cars" section on non-pillar locations.
+    const carsData = await fetchAllCars({}).catch(() => []);
+    allCars = carsData || [];
   }
   const publicCars = getPublicCars(allCars);
 
@@ -207,16 +249,18 @@ export default async function LocationHierarchyPage({ params }) {
 
   const locationLinks = buildHubAndLocationLinks(locale, location);
   const links = dictionary.links;
+  const pageContent = getLocationPageContent(location.id, locale);
   const prioritySeo = isPriorityAirportLocation(location)
     ? getAirportPrioritySeo(locale)
     : null;
   const prioritizedTitle = prioritySeo?.h1 || location.h1;
-  const prioritizedIntroText = prioritySeo?.introText || location.introText;
+  const prioritizedIntroText = prioritySeo?.introText || pageContent.intro;
 
   // Hero images: from config (domain/locationSeo/locationHeroImages.ts). Fallback used if no entry.
   const locationHeroImage = getLocationHeroImage(location.id);
   const heroImages = [locationHeroImage];
-  const distanceText = getLocationDistanceText(location.id);
+  const distanceText =
+    pageContent.distanceToThessaloniki || getLocationDistanceText(location.id) || "";
   const ctaHref =
     location.canonicalSlug && typeof getHomepageSearchUrl === "function"
       ? getHomepageSearchUrl(locale, location.canonicalSlug)
@@ -229,7 +273,7 @@ export default async function LocationHierarchyPage({ params }) {
       : [];
 
   const breadcrumbItems = getLocationBreadcrumbChain(locale, location);
-  const faqJsonLd = buildFaqJsonLd(location.faq || []);
+  const faqJsonLd = buildFaqJsonLd(pageContent.faq || []);
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(
     breadcrumbItems.map((item) => ({ name: item.label, url: toAbsoluteUrl(item.href) }))
   );
@@ -301,7 +345,7 @@ export default async function LocationHierarchyPage({ params }) {
             </section>
           )} */}
 
-          {/* 1. Intro (first paragraph only when we have multiple) */}
+          {/* 1. Intro (first paragraph; remaining paras = main info if no mainInfoText) */}
           {(() => {
             const introParas = prioritizedIntroText
               ? prioritizedIntroText.split(/\n\n+/).filter(Boolean)
@@ -312,29 +356,78 @@ export default async function LocationHierarchyPage({ params }) {
             );
           })()}
 
-          {/* 2. Location information: remaining short paragraphs */}
-          {prioritizedIntroText &&
-            prioritizedIntroText.split(/\n\n+/).filter(Boolean).length > 1 && (
-              <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 8px" }}>
-                {prioritizedIntroText
-                  .split(/\n\n+/)
+          {/* 2. Main location information */}
+          {(pageContent.mainInfo ||
+            (pageContent.intro && pageContent.intro.split(/\n\n+/).filter(Boolean).length > 1)) && (
+            <section
+              style={{
+                maxWidth: 980,
+                margin: "0 auto",
+                padding: "20px 16px",
+                border: "1px solid #e0e0e0",
+                borderRadius: 8,
+                backgroundColor: "#fafafa",
+              }}
+            >
+              {pageContent.mainInfo ? (
+                <p style={{ margin: 0, lineHeight: 1.6, fontSize: "1rem" }}>
+                  {pageContent.mainInfo}
+                </p>
+              ) : (
+                pageContent.intro
+                  ?.split(/\n\n+/)
                   .filter(Boolean)
                   .slice(1)
                   .map((p, i) => (
-                    <p key={i} style={{ margin: "0 0 12px", lineHeight: 1.6 }}>
+                    <p key={i} style={{ margin: "0 0 12px", lineHeight: 1.6, fontSize: "1rem" }}>
                       {p.trim()}
                     </p>
-                  ))}
-              </section>
-            )}
+                  ))
+              )}
+            </section>
+          )}
 
           {/* 3. Distance to Thessaloniki */}
           {distanceText && (
-            <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 8px" }}>
-              <h2 style={{ marginBottom: 8, fontSize: "1.25rem" }}>Distance to Thessaloniki</h2>
-              <p style={{ margin: 0, lineHeight: 1.6 }}>{distanceText}</p>
+            <section
+              style={{
+                maxWidth: 980,
+                margin: "0 auto",
+                padding: "20px 16px",
+                border: "1px solid #e0e0e0",
+                borderRadius: 8,
+                backgroundColor: "#fafafa",
+              }}
+            >
+              <h2
+                style={{
+                  marginBottom: 12,
+                  marginTop: 0,
+                  fontSize: "1.125rem",
+                  fontWeight: 600,
+                  color: "#333",
+                }}
+              >
+                {links.distanceToThessalonikiTitle ?? "Distance to Thessaloniki"}
+              </h2>
+              <p style={{ margin: 0, lineHeight: 1.6, fontSize: "1rem" }}>{distanceText}</p>
             </section>
           )}
+
+          {/* 4. Pickup guidance */}
+          <SeoPickupGuidanceBlock
+            title={links.pickupGuidanceTitle}
+            pickupGuidance={pageContent.pickupGuidance}
+          />
+
+          {/* 5. Nearby places */}
+          <SeoNearbyPlacesBlock
+            title={links.nearbyPlacesTitle}
+            nearbyPlaces={pageContent.nearbyPlaces}
+          />
+
+          {/* 6. Useful tips */}
+          <SeoTipsBlock title={links.usefulTipsTitle} tips={pageContent.usefulTips} />
 
           {isAirport && prioritySeo?.benefitBlockTitle && prioritySeo?.quickBenefits?.length > 0 && (
             <SeoWhyRentBlock
@@ -353,15 +446,6 @@ export default async function LocationHierarchyPage({ params }) {
             </section>
           )}
 
-          <SeoPickupGuidanceBlock
-            title={links.pickupGuidanceTitle}
-            pickupGuidance={location.pickupGuidance}
-          />
-          <SeoNearbyPlacesBlock
-            title={links.nearbyPlacesTitle}
-            nearbyPlaces={location.nearbyPlaces}
-          />
-
           {isAirport && prioritySeo?.distanceTableTitle && prioritySeo?.distanceTableRows?.length > 0 && (
             <SeoDistanceTableBlock
               title={prioritySeo.distanceTableTitle}
@@ -377,10 +461,10 @@ export default async function LocationHierarchyPage({ params }) {
             />
           )}
 
-          {/* 4. FAQ */}
-          <SeoFaqBlock title={links.localFaqTitle} faq={location.faq} />
+          {/* 7. FAQ */}
+          <SeoFaqBlock title={links.localFaqTitle} faq={pageContent.faq} />
 
-          {/* 5. Cars list (text + links, no CarGrid) */}
+          {/* 8. Cars list (text + links, no CarGrid) */}
           {publicCars.length > 0 && (
             <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 24px" }}>
               <h2 style={{ marginBottom: 12, fontSize: "1.25rem", fontWeight: 600 }}>
@@ -410,22 +494,28 @@ export default async function LocationHierarchyPage({ params }) {
             </section>
           )}
 
-          {(() => {
-            const matchedSeoLoc = SEO_LOCATIONS.find((sl) => sl.locationId === location.id);
-            if (!matchedSeoLoc) return null;
-            const locSlug = getLocationSeoSlug(matchedSeoLoc.locationId, locale);
-            const catLinks = CAR_CATEGORIES.map((cat) => {
-              const locName = matchedSeoLoc.nameByLocale[locale];
-              const content = getResolvedCategoryContent(cat.id, locale, locName);
-              return {
-                href: getSeoPagePath(locale, `${cat.id}-car-rental-${locSlug}`),
-                label: content?.h1 || `${cat.id} car rental`,
-              };
-            });
-            return catLinks.length > 0 ? (
-              <SeoLinksBlock title="Browse by category" links={catLinks} />
-            ) : null;
-          })()}
+          {linkTarget && (
+            <>
+              <SeoLinksBlock
+                title="Browse by category"
+                links={BROWSE_BY_CATEGORY_IDS.map((id) => {
+                  const cat = CAR_CATEGORIES.find((c) => c.id === id);
+                  const content = cat ? getResolvedCategoryContent(cat.id, locale, linkTarget.locName) : null;
+                  return {
+                    href: getSeoPagePath(locale, `${id}-car-rental-${linkTarget.locSlug}`),
+                    label: content?.h1 ?? `${id} car rental in ${linkTarget.locName}`,
+                  };
+                })}
+              />
+              <SeoLinksBlock
+                title="Popular cars in this location"
+                links={publicCars.slice(0, POPULAR_CARS_LIMIT).map((car) => ({
+                  href: getSeoPagePath(locale, buildProgrammaticSlug(car.slug, linkTarget.locSlug)),
+                  label: `${car.model || car.slug} rental in ${linkTarget.locName}`,
+                }))}
+              />
+            </>
+          )}
 
           {internalLinks.length > 0 && (
             <SeoLinksBlock

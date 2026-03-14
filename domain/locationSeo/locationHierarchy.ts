@@ -41,12 +41,16 @@ export const SITHONIA_CITY_IDS: readonly LocationId[] = [
   LOCATION_IDS.NEOS_MARMARAS,
   LOCATION_IDS.AGIOS_NIKOLAOS_HALKIDIKI,
   LOCATION_IDS.SARTI,
-  LOCATION_IDS.NEA_MOUDANIA,
   LOCATION_IDS.METAMORFOSI,
   LOCATION_IDS.ORMILIA,
   LOCATION_IDS.PETRALONA,
   LOCATION_IDS.VRASNA,
   LOCATION_IDS.OLYMPIADA,
+] as const;
+
+/** Cities directly under Halkidiki (two segments: /locations/halkidiki/[city] — not Sithonia/Kassandra). */
+export const HALKIDIKI_DIRECT_CITY_IDS: readonly LocationId[] = [
+  LOCATION_IDS.NEA_MOUDANIA,
 ] as const;
 
 /** Map: location id -> path segments (e.g. afitos -> ['halkidiki','kassandra','afitos']). */
@@ -70,6 +74,11 @@ KASSANDRA_CITY_IDS.forEach((cityId) =>
 // Sithonia cities: three segments
 SITHONIA_CITY_IDS.forEach((cityId) =>
   registerPath(cityId, [LOCATION_IDS.HALKIDIKI, LOCATION_IDS.SITHONIA, cityId])
+);
+
+// Halkidiki direct cities: two segments (e.g. Nea Moudania — not in Sithonia/Kassandra)
+HALKIDIKI_DIRECT_CITY_IDS.forEach((cityId) =>
+  registerPath(cityId, [LOCATION_IDS.HALKIDIKI, cityId])
 );
 
 // NEA_KALLIKRATIA is both root and in Halkidiki childIds in repo; we keep it as root only
@@ -101,9 +110,10 @@ export function resolveLocationIdByPath(path: string[]): LocationId | null {
   }
 
   if (normalized.length === 2) {
-    const [region, area] = normalized;
+    const [region, second] = normalized;
     if (region !== LOCATION_IDS.HALKIDIKI) return null;
-    if (HALKIDIKI_AREA_IDS.includes(area as LocationId)) return area as LocationId;
+    if (HALKIDIKI_AREA_IDS.includes(second as LocationId)) return second as LocationId;
+    if (HALKIDIKI_DIRECT_CITY_IDS.includes(second as LocationId)) return second as LocationId;
     return null;
   }
 
@@ -132,6 +142,9 @@ export function getAllHierarchyPathSegments(): LocationId[][] {
   );
   SITHONIA_CITY_IDS.forEach((cityId) =>
     out.push([LOCATION_IDS.HALKIDIKI, LOCATION_IDS.SITHONIA, cityId])
+  );
+  HALKIDIKI_DIRECT_CITY_IDS.forEach((cityId) =>
+    out.push([LOCATION_IDS.HALKIDIKI, cityId])
   );
   return out;
 }

@@ -86,6 +86,8 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       locationHeroCtaLabel: "Find your car",
       pickupGuidanceTitle: "Pickup guidance",
       nearbyPlacesTitle: "Nearby places",
+      usefulTipsTitle: "Useful tips",
+      distanceToThessalonikiTitle: "Distance to Thessaloniki",
       localFaqTitle: "Local FAQ",
       navLocationsDropdownDescription:
         "Pickup and return across Thessaloniki, airport, and Halkidiki peninsula. Choose your area for details and car search.",
@@ -176,6 +178,8 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       locationHeroCtaLabel: "Подобрать авто",
       pickupGuidanceTitle: "Инструкция по выдаче",
       nearbyPlacesTitle: "Рядом",
+      usefulTipsTitle: "Полезные советы",
+      distanceToThessalonikiTitle: "Расстояние до Салоник",
       localFaqTitle: "Частые вопросы",
       navLocationsDropdownDescription:
         "Выдача и возврат в Салониках, аэропорту и на полуострове Халкидики. Выберите район для деталей и поиска авто.",
@@ -266,6 +270,8 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       locationHeroCtaLabel: "Знайти авто",
       pickupGuidanceTitle: "Інструкція з отримання",
       nearbyPlacesTitle: "Поруч",
+      usefulTipsTitle: "Корисні поради",
+      distanceToThessalonikiTitle: "Відстань до Салонік",
       localFaqTitle: "Часті питання",
       navLocationsDropdownDescription:
         "Отримання та повернення в Салоніках, аеропорту та на півострові Халкідіки. Оберіть регіон для деталей та пошуку авто.",
@@ -356,6 +362,8 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       locationHeroCtaLabel: "Βρείτε το αυτοκίνητό σας",
       pickupGuidanceTitle: "Οδηγίες παραλαβής",
       nearbyPlacesTitle: "Κοντινά σημεία",
+      usefulTipsTitle: "Χρήσιμες συμβουλές",
+      distanceToThessalonikiTitle: "Απόσταση από τη Θεσσαλονίκη",
       localFaqTitle: "Συχνές ερωτήσεις",
       navLocationsDropdownDescription:
         "Παραλαβή και επιστροφή στη Θεσσαλονίκη, αεροδρόμιο και Χαλκιδική. Επιλέξτε περιοχή για λεπτομέρειες και αναζήτηση αυτοκινήτου.",
@@ -446,6 +454,8 @@ const localeSeoDictionaryRaw: PartialLocaleRecord<LocaleSeoDictionary> = {
       locationHeroCtaLabel: "Намерете своя автомобил",
       pickupGuidanceTitle: "Информация за получаване",
       nearbyPlacesTitle: "Близки места",
+      usefulTipsTitle: "Полезни съвети",
+      distanceToThessalonikiTitle: "Разстояние до Солун",
       localFaqTitle: "Често задавани въпроси",
       navLocationsDropdownDescription:
         "Получаване и връщане в Солун, летището и на полуостров Халкидики. Изберете район за подробности и търсене на автомобил.",
@@ -763,6 +773,18 @@ function expandLocationContentRecord(
   return expanded;
 }
 
+/**
+ * Location page content — single source of truth for all location SEO pages.
+ *
+ * Edit content here. Each location has per-locale content with:
+ * - introText: main intro (first para = hero, rest = main info if no mainInfoText)
+ * - mainInfoText (optional): extra location details block
+ * - distanceToThessalonikiText (optional): "Distance to Thessaloniki" paragraph
+ * - pickupGuidance (optional): pickup instructions
+ * - nearbyPlaces (optional): string[] of nearby spots
+ * - usefulTips (optional): string[] of travel/rental tips
+ * - faq (optional): { question, answer }[] — hide block if empty
+ */
 const locationContentByKeyRaw: Record<
   LocationContentKey,
   PartialLocaleRecord<LocationSeoContent>
@@ -781,6 +803,8 @@ const locationContentByKeyRaw: Record<
       offerName: "Thessaloniki City Car Hire Offer",
       offerDescription:
         "Flexible city pickup for short stays, business schedules, and direct transfer to Halkidiki resorts.",
+      distanceToThessalonikiText:
+        "Thessaloniki is the second-largest city in Greece and the main hub for Northern Greece.",
     },
     ru: {
       shortName: "Салоники",
@@ -839,6 +863,8 @@ const locationContentByKeyRaw: Record<
       offerName: "Airport Pickup Rental Offer",
       offerDescription:
         "Fast airport handover with route-ready setup for resorts and villas in Halkidiki.",
+      distanceToThessalonikiText:
+        "Thessaloniki Airport (SKG) is the main international airport serving Thessaloniki and the wider region.",
     },
     ru: {
       shortName: "Аэропорт Салоники",
@@ -953,6 +979,8 @@ const locationContentByKeyRaw: Record<
       offerName: "Halkidiki Regional Rental Offer",
       offerDescription:
         "Regional pickup coverage for beaches, villas, and family travel across Halkidiki.",
+      distanceToThessalonikiText:
+        "Halkidiki is about 110 km from Thessaloniki and roughly 90 km from Thessaloniki Airport (SKG).",
     },
     ru: {
       shortName: "Халкидики",
@@ -1130,6 +1158,13 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Pickup in Nea Kallikratia is typically arranged near your accommodation or a agreed landmark along the main coastal road. Confirm the exact spot when booking so the handover is smooth.",
       nearbyPlaces: ["Thessaloniki (city)", "Nea Moudania (port)", "Sithonia peninsula"],
+      distanceToThessalonikiText:
+        "Nea Kallikratia is located about 35 km from Thessaloniki and about 25 km from Thessaloniki Airport (SKG).",
+      usefulTips: [
+        "Book in advance during peak season (July–August) for best availability.",
+        "We offer free delivery to hotels and apartments in Nea Kallikratia.",
+        "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.",
+      ],
       faq: [
         { question: "Can I get a car delivered to my hotel in Nea Kallikratia?", answer: "Yes. We coordinate pickup at or near your hotel or rental; confirm the address when booking." },
         { question: "Is Nea Kallikratia a good base for exploring Halkidiki?", answer: "Yes. It sits on the main route into the peninsula, so Sithonia and Kassandra are easily reachable by car." },

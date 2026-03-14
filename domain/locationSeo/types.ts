@@ -26,16 +26,23 @@ export interface LocationSeoContent {
   h1: string;
   seoTitle: string;
   seoDescription: string;
+  /** Main intro paragraph(s) — first para shown as hero, rest as main info if no mainInfoText */
   introText: string;
   areaServed: string[];
   pickupLocation: string;
   offerName: string;
   offerDescription: string;
-  /** Optional: pickup guidance paragraph for city/SEO pages */
+  /** Optional: main location information block (renders after intro) */
+  mainInfoText?: string;
+  /** Optional: distance to Thessaloniki paragraph */
+  distanceToThessalonikiText?: string;
+  /** Optional: pickup guidance paragraph */
   pickupGuidance?: string;
-  /** Optional: 3-item nearby places list */
+  /** Optional: nearby places list */
   nearbyPlaces?: string[];
-  /** Optional: 3-item FAQ for local content */
+  /** Optional: useful travel/rental tips (bulleted list) */
+  usefulTips?: string[];
+  /** Optional: FAQ for local content */
   faq?: LocationSeoFaqItem[];
 }
 
@@ -90,6 +97,8 @@ export interface LinkSeoContent {
   locationHeroCtaLabel: string;
   pickupGuidanceTitle: string;
   nearbyPlacesTitle: string;
+  usefulTipsTitle: string;
+  distanceToThessalonikiTitle: string;
   localFaqTitle: string;
   /** Short description for the navbar Locations mega menu (left column). */
   navLocationsDropdownDescription: string;
@@ -126,8 +135,11 @@ export interface LocationSeoResolved {
   pickupLocation: string;
   offerName: string;
   offerDescription: string;
+  mainInfoText?: string;
+  distanceToThessalonikiText?: string;
   pickupGuidance?: string;
   nearbyPlaces?: string[];
+  usefulTips?: string[];
   faq?: LocationSeoFaqItem[];
 }
 

@@ -127,6 +127,18 @@ function expandContent(
   }, {} as Record<SupportedLocale, CarCategorySeoContent>);
 }
 
+/** Category IDs for "Browse by category" block on location pages. Edit here to change which categories appear. */
+export const BROWSE_BY_CATEGORY_IDS = [
+  "automatic",
+  "cheap",
+  "family",
+  "luxury",
+  "cabrio",
+] as const;
+
+/** Max number of cars in "Popular cars in this location" block. Edit here to change limit (6–8). */
+export const POPULAR_CARS_LIMIT = 8;
+
 export const CAR_CATEGORIES: CarCategoryDefinition[] = [
   // ── AUTOMATIC ──────────────────────────────────────────────────
   {

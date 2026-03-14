@@ -84,11 +84,52 @@ export function SeoNearbyPlacesBlock({ title, nearbyPlaces }) {
   if (!nearbyPlaces || nearbyPlaces.length === 0) return null;
 
   return (
-    <section style={{ maxWidth: 980, margin: "0 auto", padding: "8px 16px" }}>
-      <h2 style={{ marginBottom: 8 }}>{title}</h2>
-      <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+    <section
+      style={{
+        maxWidth: 980,
+        margin: "0 auto",
+        padding: "20px 16px",
+        border: "1px solid #e0e0e0",
+        borderRadius: 8,
+        backgroundColor: "#fafafa",
+      }}
+    >
+      <h2 style={{ marginBottom: 12, marginTop: 0, fontSize: "1.125rem", fontWeight: 600, color: "#333" }}>
+        {title}
+      </h2>
+      <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.8, listStyle: "disc", fontSize: "1rem" }}>
         {nearbyPlaces.map((place, i) => (
           <li key={i}>{place}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Useful tips block — bulleted list of travel/rental tips. Matches SeoLinksBlock styling. */
+export function SeoTipsBlock({ title, tips }) {
+  if (!tips || tips.length === 0) return null;
+
+  return (
+    <section
+      style={{
+        maxWidth: 980,
+        margin: "0 auto",
+        padding: "20px 16px",
+        marginTop: 16,
+        border: "1px solid #e0e0e0",
+        borderRadius: 8,
+        backgroundColor: "#fafafa",
+      }}
+    >
+      <h2 style={{ marginBottom: 12, marginTop: 0, fontSize: "1.125rem", fontWeight: 600, color: "#333" }}>
+        {title}
+      </h2>
+      <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7, listStyle: "disc", fontSize: "1rem" }}>
+        {tips.map((tip, i) => (
+          <li key={i} style={{ marginBottom: 6 }}>
+            {tip}
+          </li>
         ))}
       </ul>
     </section>
@@ -99,12 +140,23 @@ export function SeoFaqBlock({ title, faq }) {
   if (!faq || faq.length === 0) return null;
 
   return (
-    <section style={{ maxWidth: 980, margin: "0 auto", padding: "8px 16px 16px" }}>
-      <h2 style={{ marginBottom: 8 }}>{title}</h2>
-      <ul style={{ margin: 0, paddingLeft: 20, listStyle: "none" }}>
+    <section
+      style={{
+        maxWidth: 980,
+        margin: "0 auto",
+        padding: "20px 16px",
+        border: "1px solid #e0e0e0",
+        borderRadius: 8,
+        backgroundColor: "#fafafa",
+      }}
+    >
+      <h2 style={{ marginBottom: 12, marginTop: 0, fontSize: "1.125rem", fontWeight: 600, color: "#333" }}>
+        {title}
+      </h2>
+      <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", fontSize: "1rem" }}>
         {faq.map((item, i) => (
-          <li key={i} style={{ marginBottom: 12 }}>
-            <strong style={{ display: "block", marginBottom: 4 }}>{item.question}</strong>
+          <li key={i} style={{ marginBottom: 16 }}>
+            <strong style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>{item.question}</strong>
             <span style={{ lineHeight: 1.6 }}>{item.answer}</span>
           </li>
         ))}

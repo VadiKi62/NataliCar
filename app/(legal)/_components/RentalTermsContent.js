@@ -38,10 +38,18 @@ export default function RentalTermsContent({ forcedLang = null }) {
     setIsHydrated(true);
   }, [forcedLang]);
 
+  const containerStyle = {
+    width: "100%",
+    maxWidth: 820,
+    margin: "0 auto",
+    padding: "24px 24px 48px",
+    boxSizing: "border-box",
+  };
+
   // Show loading until hydration is complete to prevent mismatch
   if (!isHydrated) {
     return (
-      <div style={{ textAlign: "center", padding: "48px" }}>
+      <div style={{ ...containerStyle, textAlign: "center", paddingTop: "48px", paddingBottom: "48px" }}>
         <p style={{ color: "#666" }}>Loading...</p>
       </div>
     );
@@ -51,7 +59,8 @@ export default function RentalTermsContent({ forcedLang = null }) {
   const content = terms[lang] || terms.en;
 
   return (
-    <article>
+    <div style={containerStyle}>
+    <article style={{ margin: 0, padding: 0 }}>
       <h1
         style={{
           textAlign: "center",
@@ -224,5 +233,6 @@ export default function RentalTermsContent({ forcedLang = null }) {
         </p>
       )}
     </article>
+    </div>
   );
 }
